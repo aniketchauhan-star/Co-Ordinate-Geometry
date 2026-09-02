@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#25BEE6">
+<title>Co-ordinate Geometry — Air Traffic Control</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ============ 16:9 GAME STAGE (design canvas 1920x1080) ============ -->
+  <div class="stage" id="stage" data-screen="loading">
+
+    <!-- Layer 0 — ocean artwork -->
+    <img class="layer layer-bg" id="bgImg" src="assets/background.png" alt="" draggable="false">
+
+    <!-- Layer 1 — living water: swell, caustics and a slow glint sweep.
+         All of it is an overlay; the artwork itself is never distorted. -->
+    <div class="layer layer-water" aria-hidden="true">
+      <div class="swell"></div>
+      <div class="caustic caustic-a"></div>
+      <div class="caustic caustic-b"></div>
+      <div class="glint"></div>
+    </div>
+
+    <!-- Layer 3 — the gameplay panel tint (see .chart-veil). Under the
+         terrain, so mountain.png is never tinted or softened. -->
+    <div class="chart-veil" id="chartVeil" aria-hidden="true"></div>
+
+    <!-- Layer 4 — static coastal terrain -->
+    <div class="layer layer-terrain" aria-hidden="true">
+      <img class="mtn mtn-l" src="assets/mountain.png" alt="" draggable="false">
+      <img class="mtn mtn-r" src="assets/mountain.png" alt="" draggable="false">
+    </div>
+
+    <!-- Layer 5 — cloud cover over the headlands. Sits ABOVE the terrain
+         so it veils the islands, and is masked to the two corners so it
+         never drifts across the open chart (a bright cloud under the grid
+         collapses the grid's contrast; measured 108 -> 43). -->
+    <div class="layer layer-clouds" aria-hidden="true">
+      <div class="cloud cloud-peak-l"><i></i><i></i><i></i></div>
+      <div class="cloud cloud-peak-r"><i></i><i></i><i></i></div>
+      <div class="cloud cloud-1"><i></i><i></i><i></i></div>
+      <div class="cloud cloud-2"><i></i><i></i><i></i></div>
+      <div class="cloud cloud-3"><i></i><i></i><i></i></div>
+    </div>
+
+    <!-- Layers 4-8 — navigation grid, axes, trail, numbers, target -->
+    <svg class="layer layer-field" id="field" viewBox="0 0 1920 1080" aria-hidden="true">
+      <defs>
+        <!-- the gameplay panel: a rounded rectangle in stage coordinates.
+             Everything on the chart is clipped to it, so the grid stops
+             cleanly at the panel's rounded corners. -->
+        <clipPath id="panelClip"><rect x="64" y="148" width="1792" height="768" rx="28" ry="28"></rect></clipPath>
+        <clipPath id="chartedClip"><rect id="chartedRect" x="0" y="0" width="0" height="0"></rect></clipPath>
+        <filter id="beaconGlow" x="-120%" y="-120%" width="340%" height="340%">
+          <feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur>
+          <feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+        </filter>
+      </defs>
+      <!-- The whole chart lives inside one panned/scaled group and is
+           clipped to the charted area, so the coordinate plane genuinely
+           unfolds quadrant by quadrant instead of appearing all at once. -->
+      <g clip-path="url(#panelClip)">
+      <g id="chart">
+        <g clip-path="url(#chartedClip)">
+          <!-- 4: grid — solid white lines on the tinted panel -->
+          <g id="gridLines"></g>
+          <!-- 5: axes / origin -->
+          <g id="axes"></g>
+          <g id="ticks"></g>
+          <g id="axisNums"></g>
+        </g>
+        <g id="axisEnds"></g>
+        <g id="hintLayer"></g>
+      <!-- 6: flight trail -->
+      <g id="trailLayer"></g>
+      <g id="pathLayer"></g>
+      <!-- 7: movement numbers -->
+      <g id="revealLayer"></g>
+      <!-- 8: target + beacon -->
+      <g id="markerLayer"></g>
+      <g id="fxLayer"></g>
+      </g>
+      </g>
+    </svg>
+
+    <!-- Layer 9 — aircraft -->
+    <div class="plane-holder" id="planeHolder">
+      <div class="plane-spin" id="planeSpin">
+        <img id="plane" src="assets/airplane.png" alt="Aircraft" draggable="false">
+      </div>
+    </div>
+
+    <!-- Layers 7-10 — interface -->
+    <div class="layer layer-ui" id="ui">
+
+      <div class="hud">
+        <div class="pill pill-level" id="levelPill">
+          <span class="pill-key">MISSION</span>
+          <span class="pill-val"><b id="levelNow">1</b><i>/</i><span id="levelTotal">13</span></span>
+        </div>
+        <div class="hud-right">
+          <button class="icon-btn" id="btnSound" type="button" aria-pressed="true" aria-label="Sound on">
+            <svg viewBox="0 0 24 24" class="ic-on"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/><path class="w1" d="M15.4 9.1a4 4 0 0 1 0 5.8"/><path class="w2" d="M17.9 6.4a7.6 7.6 0 0 1 0 11.2"/></svg>
+            <svg viewBox="0 0 24 24" class="ic-off"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/><path class="w1" d="M16 9.7l5 4.6M21 9.7l-5 4.6"/></svg>
+          </button>
+          <button class="icon-btn" id="btnReset" type="button" aria-label="Reset this mission">
+            <svg viewBox="0 0 24 24" class="ic-reset"><path d="M19 12a7 7 0 1 1-2.4-5.3"/><path d="M19.4 4.2v4.3h-4.3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mission / question panel (text is always dynamic, never baked into art) -->
+      <section class="mission" id="mission" role="status" aria-live="polite">
+        <p class="mission-text" id="missionText"></p>
+        <p class="mission-sub" id="missionSub"></p>
+        <div class="mission-actions" id="missionActions"></div>
+      </section>
+
+      <!-- callout that appears beside the aircraft (LOCATION / (3, 2)) -->
+      <div class="coord-tag" id="coordTag" hidden></div>
+
+      <!-- tap target used once, for "tap where the two axes meet" -->
+      <button class="origin-tap" id="originTap" type="button" hidden
+              aria-label="Tap where the two axes meet"></button>
+
+      <!-- Layers 21-22 — one unified control dock backplate + its buttons -->
+      <div class="dock" id="dock">
+        <div class="dock-inner">
+          <div class="controls" id="controls"></div>
+          <button class="go" id="btnGo" type="button">GO</button>
+        </div>
+      </div>
+
+      <!-- idle nudge -->
+      <div class="hand" id="hand" hidden aria-hidden="true">
+        <svg viewBox="0 0 64 64"><path d="M26 6c3.3 0 6 2.7 6 6v17l3.4-5.2c1.7-2.6 5.1-3.3 7.7-1.6 2.3 1.5 3.1 4.4 2 6.8l-7.7 16.8C35.8 50.5 32.2 53 28.1 53H22.4c-4.1 0-7.8-2.4-9.4-6.1L6.3 31.2c-1.1-2.5-.1-5.4 2.3-6.7 2.5-1.3 5.6-.4 7 2L20 33.5V12c0-3.3 2.7-6 6-6z"/></svg>
+      </div>
+    </div>
+
+    <!-- Start screen -->
+    <div class="screen screen-start" id="screenStart">
+      <img class="start-art" src="assets/start%20screen.png" alt="Co-ordinate Geometry" draggable="false">
+      <button class="play-btn" id="btnPlay" type="button" aria-label="Play" disabled>
+        <img src="assets/start%20button.png" alt="" draggable="false">
+        <span class="play-label">PLAY</span>
+      </button>
+    </div>
+
+    <!-- Completion screen -->
+    <div class="screen screen-complete" id="screenComplete" hidden>
+      <div class="complete-card">
+        <p class="complete-kicker">AIR TRAFFIC CONTROL</p>
+        <h2 class="complete-title">MISSION COMPLETE</h2>
+        <p class="complete-line" id="completeLine">Two numbers can locate any point on the plane.</p>
+        <div class="complete-actions">
+          <button class="btn btn-primary" id="btnPlayAgain" type="button">PLAY AGAIN</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="screen screen-load" id="screenLoad">
+      <div class="load-inner">
+        <p class="load-label">PREPARING AIRSPACE</p>
+        <div class="load-bar"><i id="loadFill"></i></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Supplied sound effects. Filenames contain spaces (and a trailing
+     space before .mp3), so they are URL-encoded here. -->
+<audio id="sfxFly" src="sfx/airplane%20fly%20sound%20.mp3" loop preload="auto"></audio>
+<audio id="sfxReached" src="sfx/airplane%20reached%20sound%20.mp3" preload="auto"></audio>
+<!-- 5:01 of music, 7.2MB: deliberately NOT part of the blocking preload,
+     so the loading screen never waits on it. It streams and fades in. -->
+<audio id="sfxMusic" src="sfx/bg%20music.mp3" loop preload="auto"></audio>
+
+<div id="rotateHint" hidden><p>Rotate your device<br><span>for the best flight deck view</span></p></div>
+
+<script src="js/audio.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

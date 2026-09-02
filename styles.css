@@ -1,0 +1,885 @@
+/* ============================================================
+   CO-ORDINATE GEOMETRY — Air Traffic Control
+   Design canvas: 1920 x 1080 (16:9), uniformly scaled.
+   ============================================================ */
+
+:root{
+  /* palette */
+  --ocean-cyan:#38D5EC;
+  --ocean-deep:#12A9CE;
+  --navy:#16375B;
+  --navy-ink:#0E2740;
+  --cream:#FFF0CC;
+  --cream-hi:#FFFBEF;
+  --orange:#F58A22;
+  --orange-dk:#C96A0D;
+  --green:#48BE37;
+  --green-dk:#2F8E23;
+  --lime:#7BE034;
+  --lime-dk:#4FA915;
+  --purple:#8B56D9;
+  --purple-dk:#6A38B4;
+  --coral:#E84E4E;
+  --coral-dk:#B92F2F;
+  --charcoal:#2B3947;
+  --charcoal-dk:#1B2530;
+
+  /* ---- SEMANTIC vs DIRECTION -----------------------------------------
+     The four direction hues (orange 30deg, green 112, purple 264, coral 0)
+     plus GO's lime (95) already occupy most of the wheel, and the ocean
+     owns cyan (190). Rather than hunt for unused hues and lose the
+     universal "green = right, amber = try again" reading, the system
+     separates by PLACE:
+
+        direction hues  ->  the control dock only, never on the field
+        semantic hues   ->  the field only, never on the dock
+
+     They can never be seen in the same surface, so there is no ambiguity.
+     The values below are also visibly lighter and yellower than their
+     dock counterparts, so they do not read as the same token.
+     Before this, "success" literally reused LEFT/GO green and "retry"
+     reused DOWN coral.                                                  */
+  --ok:#A8F05A;         /* field: target reached      */
+  --ok-ring:#D6FFA8;
+  --retry:#FFC24D;      /* field: not there yet        */
+  --retry-ring:#FFE0A3;
+
+  /* grid ink — an air-traffic navigation field, not graph paper.
+     The whole field is drawn faint; the charted quadrants get a second
+     pass on top, so together they land near the target opacity. */
+  /* GRID INK — solid white lines, no shadow.
+     Thin lines lose most of their contrast to antialiasing (a 1.6px line
+     lands on ~1.3 device pixels and gets smeared across two), so these
+     are wide and fully opaque. Being opaque is also what keeps them clear
+     of the panel tint behind them: measured line-vs-panel luma delta is
+     116/255 with nothing else helping. */
+  --grid-line:#FFFFFF;
+  --grid-axis:#FFFFFF;
+  /* darkness of the gameplay panel — the one number to turn if the grid
+     needs to read harder (raise) or the ocean brighter (lower) */
+  --panel-tint:.26;
+
+  /* shape */
+  --ui-radius:16px;
+  --ui-radius-lg:22px;
+  /* ---- DEPTH ----------------------------------------------------------
+     One shadow scale, one rim rule, applied everywhere. Every shadow is
+     the same hue (the ocean's shadow, 200deg) so nothing reads as lit by
+     a different sun. Rim = a 1px inner highlight on the top edge only.  */
+  --sh-1:0 2px 6px rgba(8,45,70,.16);                    /* sits on      */
+  --sh-2:0 6px 16px rgba(8,45,70,.20);                   /* lifts off    */
+  --sh-3:0 14px 34px rgba(8,45,70,.26);                  /* floats above */
+  --rim:inset 0 1px 0 rgba(255,255,255,.26);
+  --ui-shadow:var(--sh-2);
+  --ui-shadow-lg:var(--sh-3);
+  --ui-stroke:rgba(22,55,91,.90);
+
+  /* motion */
+  --t-hover:165ms;
+  --t-press:110ms;
+  --t-panel:260ms;
+  --t-cell:640ms;
+  --t-pulse:620ms;
+  --ease-out:cubic-bezier(.22,.85,.30,1);
+  --ease-io:cubic-bezier(.45,.05,.30,1);
+
+  /* ---- TYPE ----------------------------------------------------------
+     "Nunito" was in this stack but is not installed anywhere in the
+     project and is not a system face, so every glyph has been silently
+     falling back to Avenir Next / Segoe UI since day one. The phantom is
+     removed. The core game may not pull a web font (no CDN dependency),
+     so display and text share one family and are separated by weight,
+     tracking and size instead — a real distinction, honestly labelled.
+     A characterful display face needs either a base64 @font-face embed
+     or lifting the no-CDN rule; say the word.                          */
+  --font:"Avenir Next","Segoe UI Variable Display","Segoe UI",system-ui,
+         -apple-system,"Helvetica Neue",Arial,sans-serif;
+  --font-num:"Avenir Next","Segoe UI Variable Display",system-ui,sans-serif;
+
+  /* one scale, ratio ~1.27, in design px on the 1920x1080 canvas */
+  --fs-hero:60px;   /* MISSION COMPLETE                */
+  --fs-xl:38px;     /* GO                              */
+  --fs-lg:30px;     /* mission instruction, callouts   */
+  --fs-md:23px;     /* mission sub-line, buttons       */
+  --fs-sm:21px;     /* control labels                  */
+  --fs-xs:16px;     /* eyebrows, kickers               */
+  --tracking-label:.09em;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:#0b2d40}
+body{
+  font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+  color:var(--navy);
+  overscroll-behavior:none;
+  touch-action:manipulation;
+}
+img{user-select:none;-webkit-user-drag:none}
+button{font-family:inherit}
+
+#app{position:fixed;inset:0;display:grid;place-items:center}
+
+/* ---------------- STAGE ---------------- */
+.stage{
+  position:absolute;left:50%;top:50%;
+  width:1920px;height:1080px;
+  transform-origin:50% 50%;
+  transform:translate(-50%,-50%) scale(var(--s,1));
+  overflow:hidden;
+  background:#2BC4E4;
+  box-shadow:0 24px 70px rgba(0,0,0,.45);
+}
+.layer{position:absolute;inset:0}
+/* strict rendering order (requirement 24) */
+.layer-bg{z-index:0}
+.layer-water{z-index:1}
+.chart-veil{z-index:2}
+.layer-terrain{z-index:3}
+.layer-clouds{z-index:4}
+.layer-field{z-index:5}
+.plane-holder{z-index:9}
+.layer-ui{z-index:20}
+.hud{z-index:20}
+.mission{z-index:20}
+.dock{z-index:21}
+.hand{z-index:24}
+.screen{z-index:30}
+
+/* ---------------- LAYER 1 : living water ----------------
+   Everything here is an overlay that drifts *above* the artwork, so
+   background.png is never scaled, warped or moved — and the terrain,
+   clouds and grid all sit above this layer and stay perfectly still. */
+.layer-water{pointer-events:none;overflow:hidden}
+.layer-water > *{position:absolute;will-change:transform,opacity;backface-visibility:hidden}
+
+/* slow ocean swell: wide, heavily blurred bands rolling through */
+.swell{
+  inset:-25%;
+  opacity:.10;
+  mix-blend-mode:soft-light;
+  filter:blur(26px);
+  background-image:repeating-linear-gradient(8deg,
+      rgba(255,255,255,0) 0 90px,
+      rgba(255,255,255,.95) 130px,
+      rgba(255,255,255,0) 170px,
+      rgba(255,255,255,0) 260px);
+  animation:swellRoll 34s linear infinite;
+}
+
+/* ---------------- LAYER 4 : cloud cover over the headlands ---------- */
+.layer-clouds{
+  pointer-events:none;overflow:hidden;
+  /* Clouds sit ABOVE the terrain, so they genuinely veil the islands and
+     soften the grid where it crosses the land. They are masked to the two
+     headlands (measured land mass centres: 123,114 and 1799,100) and fade
+     to nothing well before the open chart — because a bright cloud
+     between the panel and the grid drops the grid's line contrast from
+     108 to 43. Outside these two pools there is no cloud at all. */
+  -webkit-mask-image:
+    radial-gradient(420px 320px at 122px 96px,#000 30%,rgba(0,0,0,0) 100%),
+    radial-gradient(420px 320px at 1800px 84px,#000 30%,rgba(0,0,0,0) 100%);
+  mask-image:
+    radial-gradient(420px 320px at 122px 96px,#000 30%,rgba(0,0,0,0) 100%),
+    radial-gradient(420px 320px at 1800px 84px,#000 30%,rgba(0,0,0,0) 100%);
+  -webkit-mask-composite:source-over;
+  mask-composite:add;
+}
+
+/* two caustic meshes drifting at different angles. Each translation is an
+   exact multiple of its gradient period, so the loop is seamless. */
+.caustic{inset:-16%;mix-blend-mode:screen}
+.caustic-a{
+  opacity:.09;
+  filter:blur(6px);
+  background-image:repeating-linear-gradient(28deg,
+      rgba(255,255,255,0) 0 30px,
+      rgba(255,255,255,.9) 36px,
+      rgba(255,255,255,0) 42px,
+      rgba(255,255,255,0) 74px);
+  animation:driftA 27s linear infinite;
+}
+.caustic-b{
+  opacity:.07;
+  filter:blur(11px);
+  background-image:repeating-linear-gradient(-34deg,
+      rgba(255,255,255,0) 0 38px,
+      rgba(255,255,255,.85) 46px,
+      rgba(255,255,255,0) 54px,
+      rgba(255,255,255,0) 96px);
+  animation:driftB 37s linear infinite;
+}
+
+/* a single broad highlight sweeping slowly across the surface */
+.glint{
+  top:-30%;bottom:-30%;left:-60%;width:60%;
+  opacity:.08;
+  mix-blend-mode:screen;
+  filter:blur(34px);
+  background:linear-gradient(100deg,rgba(255,255,255,0),rgba(255,255,255,.9) 50%,rgba(255,255,255,0));
+  animation:glintSweep 23s cubic-bezier(.55,0,.45,1) infinite;
+}
+
+
+@keyframes swellRoll{from{transform:translate3d(0,0,0)}to{transform:translate3d(36.2px,-257.5px,0)}}
+@keyframes driftA{from{transform:translate3d(0,0,0)}to{transform:translate3d(34.7px,-65.3px,0)}}
+@keyframes driftB{from{transform:translate3d(0,0,0)}to{transform:translate3d(-53.7px,-79.6px,0)}}
+@keyframes glintSweep{
+  0%{transform:translate3d(0,0,0);opacity:0}
+  12%{opacity:.10}
+  88%{opacity:.10}
+  100%{transform:translate3d(300%,0,0);opacity:0}
+}
+
+/* ---------------- LAYER 3 : the gameplay panel ----------------
+   A transparent chart laid on deeper water. Every colour here is sampled
+   from the supplied artwork, not chosen against a neutral:
+
+     panel tint  #08495C  the ocean's own deepest hue (measured #1EBEEB,
+                          hue 193 deg) pushed down to 36% value. At 26%
+                          over the water the composite is #23AECC, hue
+                          191, sat .83 - the same hue family as the ocean,
+                          so it reads as depth rather than as a card.
+     neatline    #F2F3EF  the white of the surf line around the islands.
+
+   Rejected: the islands' shadow green #095842 (drags the panel toward
+   green, hue 187, and costs 4.5 luma of grid contrast).
+
+   No blur: backdrop-filter and a blurred duplicate layer each made WebKit
+   drop the grid and HUD on roughly a fifth of frames.
+
+   Sits UNDER the terrain, so mountain.png is never tinted. Its top edge
+   is hidden behind both headlands (the islands are opaque to x=227 at
+   y=148), so the chart appears to tuck under the coastline. The matching
+   rounded clip is #panelClip in index.html; the rect mirrors
+   CG.CHART.rect in js/levels.js. */
+.chart-veil{
+  position:absolute;
+  left:64px;top:148px;width:1792px;height:768px;
+  pointer-events:none;
+  border-radius:28px;
+  background:
+    linear-gradient(180deg,rgba(242,243,239,.07),rgba(242,243,239,0) 24%),
+    rgba(8,73,92,var(--panel-tint));
+  border:1.5px solid rgba(242,243,239,.46);
+  box-shadow:
+    var(--rim),
+    var(--sh-2);
+}
+/* map neatline: a hairline rule set in from the outer rule, the way a
+   chart plate is framed. No corner ticks - the top two corners are
+   provably behind the islands, so ticks would only show on the bottom
+   two and read as an error. */
+.chart-veil::before{
+  content:"";position:absolute;inset:7px;
+  border:1px solid rgba(242,243,239,.15);
+  border-radius:21px;
+}
+
+/* ---------------- LAYER 2 : terrain (always static) ---------------- */
+.layer-terrain{pointer-events:none}
+.mtn{position:absolute;width:404px;height:auto;filter:drop-shadow(0 12px 26px rgba(8,45,70,.26))}
+.mtn-l{left:-84px;top:-104px}
+.mtn-r{right:-92px;top:-118px;transform:scaleX(-1) rotate(4deg)}
+
+/* ---------------- LAYER 2b : drifting clouds ----------------
+   Soft top-down puffs built from three blurred blobs each. Swap in real
+   cloud PNGs by putting an <img> inside .cloud and deleting the .cloud i
+   rules below. */
+.layer-clouds{
+  pointer-events:none;overflow:hidden;
+  /* Clouds are confined to the sky band above the chart and fade out
+     completely by y=148, the panel's top edge. Measured reason: a bright
+     cloud drifting under the panel lifts the water beneath it, and the
+     grid's line-vs-panel contrast collapses from 108 to 74 - below the
+     100 floor. Fading them out before the chart costs nothing and keeps
+     them bright where they can be seen. */
+  -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 84px,rgba(0,0,0,0) 148px);
+  mask-image:linear-gradient(to bottom,#000 0,#000 84px,rgba(0,0,0,0) 148px);
+}
+.cloud{
+  position:absolute;
+  width:440px;height:186px;
+  will-change:transform;
+  filter:drop-shadow(0 10px 22px rgba(8,45,70,.16));
+}
+.cloud i{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(60% 60% at 42% 34%,rgba(255,255,255,.96),rgba(255,255,255,.62) 62%,rgba(255,255,255,0) 78%);
+}
+.cloud i:nth-child(1){left:0;top:26%;width:56%;height:74%}
+.cloud i:nth-child(2){left:28%;top:0;width:52%;height:100%}
+.cloud i:nth-child(3){left:58%;top:22%;width:44%;height:70%}
+
+/* three drifting banks: masked to the headlands, so each one appears as
+   it reaches a coast and thins out again over open water */
+.cloud-1{top:6px;   opacity:.50;--cs:1.14;animation:cloudDrift 104s linear infinite}
+.cloud-2{top:88px;  opacity:.40;--cs:.88; animation:cloudDrift 140s linear infinite -52s}
+.cloud-3{top:-46px; opacity:.44;--cs:1.02;animation:cloudDrift 118s linear infinite -78s}
+@keyframes cloudDrift{
+  from{transform:translateX(-420px) scale(var(--cs,1))}
+  to{transform:translateX(1980px) scale(var(--cs,1))}
+}
+
+/* Two standing cloud masses parked over the headlands, breathing in
+   place. Centred on the measured land mass, and translucent enough that
+   the island still reads as an island through them. Opacity here is the
+   lever: raise for more cover, lower to show more of the coastline. */
+.cloud-peak-l{left:-90px;  top:-58px; opacity:.66;--cs:1.30;animation:cloudFloat 46s ease-in-out infinite}
+.cloud-peak-r{right:-96px; top:-70px; opacity:.62;--cs:1.22;animation:cloudFloat 54s ease-in-out infinite -18s}
+@keyframes cloudFloat{
+  0%,100%{transform:translate(0,0)          scale(var(--cs,1))}
+  50%    {transform:translate(30px,10px)    scale(var(--cs,1))}
+}
+
+/* ---------------- LAYERS 3-6 : field svg ---------------- */
+.layer-field{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;
+  transition:opacity 420ms var(--ease-out);
+}
+/* dark under-stroke: a hair wider than the white line above it, so the
+   grid keeps its edge over bright water without any blur */
+/* Widths are in design px and do NOT scale with the chart zoom
+   (vector-effect: non-scaling-stroke), so the grid keeps the same weight
+   in every stage. */
+#gridLines line{stroke:var(--grid-line);stroke-width:2.4}
+/* During the tutorial missions the field is a plain, even grid. The axes,
+   their ticks and their arrowheads only appear once the concept reveal
+   gives them names. */
+#axes,#ticks,#axisEnds{opacity:0;transition:opacity 620ms var(--ease-out)}
+#axes.axes-shown,#ticks.axes-shown,#axisEnds.axes-shown{opacity:1}
+#axes line{stroke:var(--grid-axis);stroke-width:3.6;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
+#axes line.axis-hot{stroke:#FFF6DC;stroke-width:5.4}
+#ticks line{stroke:#FFFFFF;stroke-width:3;stroke-linecap:round}
+#axisEnds path{fill:var(--grid-axis);transition:opacity 420ms var(--ease-out)}
+#axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
+
+
+.axis-num,.reveal-num{
+  font:800 25px/1 var(--font);
+  fill:var(--cream);
+  stroke:rgba(14,39,64,.66);stroke-width:4.5;paint-order:stroke fill;
+  text-anchor:middle;dominant-baseline:middle;
+}
+#axisNums{opacity:0;transition:opacity 520ms var(--ease-out)}
+#axisNums.shown{opacity:1}
+/* gentle: opacity 0 -> 1, scale .85 -> 1, ~190ms (requirement 8) */
+.reveal-num{animation:numPop 190ms var(--ease-out) both}
+.num-hot{animation:numHot 700ms var(--ease-out)}
+@keyframes numPop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
+@keyframes numHot{0%{fill:var(--cream)}30%{fill:#FFFFFF;stroke:rgba(245,138,34,.95)}100%{fill:var(--cream)}}
+.reveal-num,.num-hot{transform-box:fill-box;transform-origin:center}
+
+/* "count the spaces" hint — the distance is shown, never the number */
+.hint-run{animation:fadeIn 260ms both}
+.hint-span{stroke:#FFF3C4;stroke-width:7;stroke-linecap:round;opacity:.92;
+  animation:hintPulse 2200ms var(--ease-io) infinite}
+.hint-pip{fill:#FFF3C4;stroke:rgba(14,39,64,.55);stroke-width:2.5;
+  animation:hintPulse 2200ms var(--ease-io) infinite}
+@keyframes hintPulse{0%,100%{opacity:.55}50%{opacity:1}}
+
+/* quadrant labels + sign patterns (concept reveal only) */
+.quad{animation:numPop 320ms var(--ease-out) both}
+.quad-roman{font:900 46px var(--font);fill:var(--cream);
+  stroke:rgba(14,39,64,.60);stroke-width:6;paint-order:stroke fill;
+  text-anchor:middle;dominant-baseline:middle;opacity:.92}
+.quad-signs{font:800 30px var(--font);fill:#FFF6DC;
+  stroke:rgba(14,39,64,.60);stroke-width:5;paint-order:stroke fill;
+  text-anchor:middle;dominant-baseline:middle}
+
+/* flight path */
+.puff{fill:rgba(255,255,255,.62);transform-box:fill-box;transform-origin:center;
+  animation:puffOut 1200ms var(--ease-out) forwards}
+@keyframes puffOut{
+  0%{transform:scale(.35);opacity:.75}
+  100%{transform:scale(1.9);opacity:0}
+}
+.path-dot{fill:rgba(214,248,255,.88);animation:dotIn 200ms var(--ease-out) both}
+@keyframes dotIn{from{opacity:0}to{opacity:1}}
+
+/* origin beacon */
+.beacon-glow{fill:rgba(245,138,34,.38)}
+.beacon-ring{fill:none;stroke:#fff;stroke-width:2.8}
+.beacon-core{fill:var(--orange)}
+#markerLayer .beacon{opacity:0;animation:fadeIn 520ms var(--ease-out) forwards}
+.beacon-hot .beacon-ring{stroke-width:4.5;stroke:#FFF6DC}
+.beacon-label{font:800 26px var(--font);fill:var(--cream);stroke:rgba(14,39,64,.62);stroke-width:5;paint-order:stroke fill;text-anchor:start;dominant-baseline:middle}
+
+/* target waypoint */
+.wp-glow{fill:rgba(168,240,90,.46)}
+.wp-pulse{transform-box:fill-box;transform-origin:center;animation:wpPulse 2600ms var(--ease-io) infinite}
+.wp-core{fill:var(--ok);stroke:rgba(15,61,88,.55);stroke-width:2.4}
+@keyframes wpPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+.wp-hi .wp-core{fill:var(--ok-ring)}
+/* outline glow circles coming out of the point */
+.wp-ping{fill:none;stroke:var(--ok-ring);stroke-width:2.6;
+  transform-box:fill-box;transform-origin:center;
+  animation:ping 3400ms var(--ease-io) infinite}
+.wp-ping-2{animation-delay:1700ms}
+/* aircraft within 1.5 cells: the rings tighten and quicken, so arrival
+   feels earned rather than announced */
+.waypoint.wp-closing .wp-ping{animation-duration:1200ms;stroke-width:3.2}
+.waypoint.wp-closing .wp-ping-2{animation-delay:600ms}
+.waypoint.wp-closing .wp-pulse{animation-duration:1000ms}
+@keyframes ping{0%{transform:scale(.75);opacity:.9}70%,100%{transform:scale(3.6);opacity:0}}
+.wp-hi .wp-ping{stroke:#FFFFFF;stroke-width:3.2}
+
+/* the "look here" mark — same idea, warm, used for the tap beat */
+.ping-glow{fill:rgba(255,214,120,.55)}
+.ping-core{fill:#FFF3C4;stroke:rgba(14,39,64,.5);stroke-width:2.4}
+.ping-ring{fill:none;stroke:rgba(255,243,196,.9);stroke-width:2.8;
+  transform-box:fill-box;transform-origin:center;
+  animation:ping 2800ms var(--ease-io) infinite}
+.ping-ring-2{animation-delay:1400ms}
+
+/* fx */
+.ring-fx{fill:none;stroke-width:4.5;transform-box:fill-box;transform-origin:center;animation:ringOut 720ms var(--ease-out) forwards}
+.ring-ok{stroke:var(--ok-ring)}
+.ring-bad{stroke:var(--retry-ring)}
+@keyframes ringOut{from{transform:scale(.35);opacity:1}to{transform:scale(2.6);opacity:0}}
+.spark{transform-box:fill-box;transform-origin:center;animation:sparkOut 720ms var(--ease-out) forwards}
+@keyframes sparkOut{from{transform:translate(0,0) scale(1);opacity:1}
+  to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.endmark{fill:none;stroke:var(--retry);stroke-width:4;stroke-dasharray:7 9;transform-box:fill-box;transform-origin:center;animation:fadeIn 260ms both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* ---------------- LAYER 5 : aircraft ---------------- */
+.plane-holder{
+  position:absolute;left:0;top:0;width:0;height:0;
+  transform:translate3d(960px,520px,0);
+  transition:transform var(--t-cell) var(--ease-io);
+  will-change:transform;
+}
+.plane-holder.snap{transition:transform 560ms cubic-bezier(.65,0,.35,1)}
+
+/* Heading is driven frame-by-frame from the flight path's tangent, so
+   this element must not carry its own transition while airborne. */
+.plane-spin{position:absolute;left:0;top:0;transition:transform 260ms var(--ease-out)}
+.plane-spin.free{transition:none}
+#plane{
+  position:absolute;width:var(--plane-w,88px);height:auto;
+  transform:translate(-50%,-50%);
+  filter:drop-shadow(0 9px 11px rgba(8,50,80,.34));
+  transition:width 560ms cubic-bezier(.65,0,.35,1);
+}
+/* exactly one of these plays at a time — see setPlaneMood() */
+/* flight state: a touch more lift and a deeper shadow while airborne */
+#plane.flying{
+  transform:translate(-50%,-50%) scale(1.015);
+  filter:drop-shadow(0 15px 17px rgba(8,50,80,.42));
+  transition:transform 240ms var(--ease-out),filter 240ms var(--ease-out);
+}
+/* Exactly one of these plays at a time — see setPlaneMood().
+   Parked, the aircraft idles with its engines running rather than
+   floating; arriving, it settles onto the mark instead of popping. */
+#plane.bob{animation:bob 3600ms ease-in-out infinite}
+#plane.settle{animation:settle 620ms var(--ease-out)}
+#plane.lost{animation:lost 2400ms ease-in-out infinite}
+@keyframes bob{
+  0%,100%{transform:translate(-50%,-50%) translateY(0) scale(1)}
+  50%{transform:translate(-50%,-50%) translateY(-4px) scale(1.012)}
+}
+/* weight: a small overshoot, then it comes to rest. No bounce back up. */
+@keyframes settle{
+  0%{transform:translate(-50%,-50%) scale(1.055)}
+  46%{transform:translate(-50%,-50%) scale(.982)}
+  78%{transform:translate(-50%,-50%) scale(1.006)}
+  100%{transform:translate(-50%,-50%) scale(1)}
+}
+/* lost, not punished: a slow search sweep, as if looking for the strip */
+@keyframes lost{
+  0%,100%{transform:translate(-50%,-50%) rotate(-7deg)}
+  50%{transform:translate(-50%,-50%) rotate(7deg)}
+}
+
+/* ---------------- LAYERS 7-10 : UI ---------------- */
+.layer-ui{pointer-events:none}
+.layer-ui > *{pointer-events:auto}
+
+/* HUD */
+.hud{position:absolute;left:0;right:0;top:20px;height:64px;pointer-events:none;padding:0 34px;display:flex;justify-content:space-between;align-items:flex-start}
+.hud > *{pointer-events:auto}
+.pill{
+  display:inline-flex;align-items:center;gap:10px;
+  height:56px;padding:0 22px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(255,251,239,.96),rgba(255,240,204,.94));
+  border:2.5px solid var(--ui-stroke);
+  box-shadow:var(--ui-shadow);
+}
+.pill-key{font-size:var(--fs-xs);font-weight:800;letter-spacing:var(--tracking-label);color:rgba(22,55,91,.55)}
+.pill-val{font:900 25px/1 var(--font-num);font-variant-numeric:tabular-nums;color:var(--navy)}
+.pill-val i{font-style:normal;opacity:.4;margin:0 3px}
+.pill-val span{opacity:.55}
+
+.hud-right{display:flex;gap:14px}
+.icon-btn{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
+  border:2.5px solid var(--ui-stroke);
+  box-shadow:var(--ui-shadow);
+  display:grid;place-items:center;cursor:pointer;
+  transition:transform var(--t-hover) var(--ease-out),background var(--t-hover);
+}
+.icon-btn svg{width:30px;height:30px;fill:none;stroke:var(--navy);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn svg path:first-child{fill:var(--navy);stroke-width:1.6}
+.icon-btn .ic-off{display:none}
+.icon-btn .ic-off path:not(:first-child){fill:none}
+.icon-btn[aria-pressed="false"] .ic-on{display:none}
+.icon-btn[aria-pressed="false"] .ic-off{display:block}
+.icon-btn:hover{transform:scale(1.06)}
+.icon-btn:active{transform:scale(.94)}
+#btnReset.spin .ic-reset{animation:spin 520ms var(--ease-out)}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
+.ic-reset path{fill:none!important}
+
+/* MISSION PANEL */
+.mission{
+  position:absolute;left:50%;top:10px;transform:translateX(-50%);
+  min-width:520px;max-width:1060px;
+  padding:13px 36px 15px;
+  border-radius:var(--ui-radius-lg);
+  background:linear-gradient(180deg,var(--cream-hi) 0%,var(--cream) 100%);
+  border:3px solid var(--ui-stroke);
+  box-shadow:inset 0 0 0 3px rgba(245,138,34,.30),var(--ui-shadow-lg);
+  text-align:center;
+  transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
+}
+.mission.mission-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-16px)}
+.mission.enter{animation:panelIn 280ms var(--ease-out) both}
+@keyframes panelIn{from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(.98)}to{opacity:1;transform:translateX(-50%)}}
+.mission-text{margin:0;font-size:var(--fs-lg);line-height:1.2;font-weight:800;color:var(--navy);text-wrap:balance}
+.mission-sub{margin:7px 0 0;font-size:var(--fs-md);line-height:1.24;font-weight:600;color:rgba(22,55,91,.66)}
+.mission-sub:empty,.mission-text:empty{display:none}
+.mission-actions{display:flex;gap:14px;justify-content:center;margin-top:12px}
+.mission-actions:empty{display:none}
+/* the emphasised number inside a sentence is the thing to look at: it
+   gets the numeral face, tabular figures and a warm ground, so it reads
+   as a value rather than as bold text */
+.mission em{
+  font:900 1.06em/1 var(--font-num);font-style:normal;
+  font-variant-numeric:tabular-nums;
+  color:var(--navy);background:rgba(245,138,34,.20);
+  padding:.06em .3em;border-radius:6px;
+}
+.mission .coord{
+  font:900 1.04em/1 var(--font-num);font-variant-numeric:tabular-nums;
+  color:var(--navy);background:rgba(22,55,91,.09);
+  padding:.06em .34em;border-radius:7px;letter-spacing:.01em;
+}
+.fadeword{display:inline-block;opacity:0;transform:translateY(7px);animation:wordIn 460ms var(--ease-out) forwards}
+@keyframes wordIn{to{opacity:1;transform:none}}
+
+/* buttons */
+.btn{
+  border:3px solid var(--ui-stroke);border-radius:var(--ui-radius);
+  padding:0 26px;height:56px;font-size:22px;font-weight:900;letter-spacing:.06em;
+  cursor:pointer;color:#fff;
+  box-shadow:0 5px 0 rgba(0,0,0,.18),var(--ui-shadow);
+  transition:transform var(--t-press) var(--ease-out),filter var(--t-hover);
+}
+.btn:hover{transform:translateY(-1px) scale(1.03)}
+.btn:active{transform:translateY(3px) scale(.98);box-shadow:0 1px 0 rgba(0,0,0,.18)}
+.btn-primary{background:linear-gradient(180deg,var(--lime),var(--green));text-shadow:0 2px 0 rgba(0,0,0,.22)}
+
+/* coordinate tag beside aircraft */
+.coord-tag{
+  position:absolute;left:0;top:0;pointer-events:none;
+  transform:translate(-50%,-50%) scale(.7);
+  padding:9px 18px;border-radius:14px;
+  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
+  border:3px solid var(--ui-stroke);
+  box-shadow:var(--ui-shadow);
+  font-weight:900;color:var(--navy);white-space:nowrap;text-align:center;
+  display:grid;gap:1px;
+  opacity:0;transition:opacity 260ms var(--ease-out),transform 320ms var(--ease-out);
+}
+.coord-kicker{font-size:16px;letter-spacing:.16em;color:rgba(22,55,91,.58)}
+.coord-val{font:900 var(--fs-lg)/1.05 var(--font-num);font-variant-numeric:tabular-nums}
+
+/* the origin becomes tappable for one beat of the concept reveal */
+/* generous for touch, completely invisible: the glowing point drawn on
+   the grid is the only thing the learner sees */
+.origin-tap{
+  position:absolute;width:132px;height:132px;
+  transform:translate(-50%,-50%);
+  border-radius:50%;cursor:pointer;
+  background:none;border:0;padding:0;
+}
+.origin-tap[hidden]{display:none}
+.coord-tag.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* ---------------- CONTROL DOCK ----------------
+   ONE unified backplate behind every control (requirement 13). Dark
+   warm graphite so the orange / green / purple / coral buttons pop off
+   the bright ocean, with a thin cream rim to seat it in the artwork.
+   Panel top sits at y=944 on the design canvas: 116px tall + 20px
+   bottom margin = 10.7% of stage height, well under the 20% ceiling. */
+.dock{
+  position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
+  padding:16px 22px;
+  border-radius:22px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 42%),
+    rgba(33,39,44,.90);
+  border:2px solid rgba(255,255,255,.70);
+  box-shadow:var(--sh-3),var(--rim);
+  transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
+}
+.dock.dock-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(18px)}
+/* played once when the gameplay screen opens — never per mission */
+.dock.dock-enter{animation:dockIn 360ms var(--ease-out) both}
+@keyframes dockIn{
+  from{opacity:0;transform:translateX(-50%) translateY(20px)}
+  to{opacity:1;transform:translateX(-50%)}
+}
+/* ONE ROW, always. Wrapping is what pushed GO onto a second line and
+   made the dock tall enough to reach up into the grid. The stage scales
+   uniformly, so the dock never actually needs to wrap: at four controls
+   plus GO the content is 1456px inside a 1920px stage. */
+.dock-inner{display:flex;align-items:center;gap:24px;flex-wrap:nowrap;justify-content:center}
+.controls{display:flex;align-items:center;gap:16px;flex-wrap:nowrap;justify-content:center}
+.controls[hidden]{display:none}
+
+/* No individual card per control — the dock backplate is the frame. */
+.ctrl{
+  --c:var(--orange);--cd:var(--orange-dk);
+  display:flex;align-items:center;gap:10px;
+  height:84px;
+  animation:ctrlIn 300ms var(--ease-out) both;
+}
+@keyframes ctrlIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.ctrl[data-dir="right"]{--c:#FFA83E;--cd:var(--orange-dk)}
+.ctrl[data-dir="left"] {--c:#63D24B;--cd:var(--green-dk)}
+.ctrl[data-dir="up"]   {--c:#A574EE;--cd:var(--purple-dk)}
+.ctrl[data-dir="down"] {--c:#FF6E6E;--cd:var(--coral-dk)}
+
+.ctrl-label{
+  display:flex;align-items:center;gap:9px;
+  height:66px;min-width:120px;padding:0 14px;border-radius:13px;
+  background:linear-gradient(180deg,var(--c),var(--cd));
+  border:2.5px solid rgba(14,39,64,.55);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.34);
+  color:#fff;font-size:var(--fs-sm);font-weight:900;letter-spacing:var(--tracking-label);
+  text-shadow:0 2px 0 rgba(0,0,0,.24);
+}
+.ctrl-label svg{width:22px;height:22px;fill:#fff;flex:none;filter:drop-shadow(0 1px 0 rgba(0,0,0,.25))}
+
+.ctrl-val{
+  min-width:72px;height:66px;border-radius:13px;
+  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
+  border:2.5px solid rgba(14,39,64,.55);
+  box-shadow:inset 0 -3px 0 rgba(200,160,80,.22);
+  display:grid;place-items:center;
+  font:900 34px/1 var(--font-num);color:var(--navy);
+  font-variant-numeric:tabular-nums;
+}
+.ctrl-val.bump{animation:bump 180ms var(--ease-out)}
+@keyframes bump{50%{transform:scale(1.14)}}
+
+.stepper{display:flex;flex-direction:column;gap:6px}
+.step-btn{
+  width:50px;height:30px;border-radius:9px;cursor:pointer;
+  background:linear-gradient(180deg,var(--charcoal),var(--charcoal-dk));
+  border:2.5px solid rgba(14,39,64,.7);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.18),0 2px 0 rgba(6,18,28,.55);
+  display:grid;place-items:center;
+  /* generous hit area without a bigger button (requirement: 44x44) */
+  position:relative;
+  transition:transform var(--t-press) var(--ease-out),filter var(--t-hover),
+             box-shadow var(--t-press);
+}
+.step-btn::after{content:"";position:absolute;inset:-8px -4px;border-radius:12px}
+.step-btn svg{width:18px;height:18px;fill:#fff;transition:fill var(--t-hover)}
+.step-btn:hover:not(:disabled){filter:brightness(1.22)}
+/* press: the key actually travels down onto the plate */
+.step-btn:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.14)}
+
+/* LIMIT — "that is as far as it goes". The key stays present and solid;
+   only its arrow hollows out, so it reads as an end stop. */
+.step-btn[data-limit="1"]{cursor:default;filter:none}
+.step-btn[data-limit="1"] svg{fill:rgba(255,255,255,.26)}
+
+/* LOCKED — "not right now", while the aircraft is flying. Carried by the
+   whole dock dimming and a diagonal hatch, never by opacity alone, so it
+   is distinguishable from LIMIT at a glance. */
+.dock[data-locked="1"] .step-btn,
+.dock[data-locked="1"] .go{cursor:default}
+.dock[data-locked="1"] .step-btn{
+  background:repeating-linear-gradient(135deg,
+    #2B3947 0 5px,#222E3A 5px 10px);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.08);
+}
+.dock[data-locked="1"] .step-btn svg{fill:rgba(255,255,255,.34)}
+
+/* GO */
+.go{
+  position:relative;
+  height:84px;min-width:180px;padding:0 38px;
+  border-radius:20px;cursor:pointer;
+  font-size:var(--fs-xl);font-weight:900;letter-spacing:.10em;color:#fff;
+  text-shadow:0 3px 0 rgba(0,0,0,.26);
+  background:linear-gradient(180deg,#96EE4C 0%,var(--lime) 45%,var(--green) 100%);
+  border:3.5px solid var(--ui-stroke);
+  box-shadow:0 6px 0 var(--lime-dk),0 12px 22px rgba(10,48,72,.30),inset 0 3px 0 rgba(255,255,255,.42);
+  transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press),
+             opacity var(--t-hover),filter var(--t-hover);
+}
+/* GO no longer breathes on a loop. Nothing on screen should pulse
+   forever while the learner is reading; the glow now appears only when
+   GO is actually armed (see .go.armed). */
+/* --- GO, four states -------------------------------------------------
+   idle      nothing selected yet: present but clearly not ready
+   armed     a movement is set: it glows, once, and stays lit
+   pressed   travels down onto the dock
+   locked    the aircraft is flying: hatched with the rest of the dock  */
+.go:hover:not(:disabled){transform:scale(1.03)}
+.go:active:not(:disabled){
+  transform:translateY(3px) scale(.98);
+  box-shadow:0 2px 0 var(--lime-dk),var(--sh-1),inset 0 3px 0 rgba(255,255,255,.42);
+}
+.go:disabled{
+  cursor:default;
+  background:linear-gradient(180deg,#5E7A52 0%,#4A6342 100%);
+  border-color:rgba(22,55,91,.7);
+  color:rgba(255,255,255,.62);
+  box-shadow:0 6px 0 #38492F,var(--sh-1);
+}
+.go.armed:not(:disabled){
+  box-shadow:0 6px 0 var(--lime-dk),0 0 0 4px rgba(168,240,90,.28),
+             0 12px 22px rgba(10,48,72,.30),inset 0 3px 0 rgba(255,255,255,.42);
+}
+.dock[data-locked="1"] .go{
+  background:repeating-linear-gradient(135deg,#4A6342 0 6px,#3D5237 6px 12px);
+  color:rgba(255,255,255,.5);box-shadow:0 6px 0 #38492F,var(--sh-1);
+}
+
+/* focus visibility everywhere */
+:where(button,input,[tabindex]):focus-visible{
+  outline:3px solid #FFF3C4;
+  outline-offset:3px;
+  box-shadow:0 0 0 6px rgba(255,243,196,.30);
+}
+/* icon buttons sit on the artwork, so their ring needs a dark backing */
+.icon-btn:focus-visible{box-shadow:0 0 0 6px rgba(14,39,64,.35)}
+
+/* tutorial highlight */
+.tut-hi{position:relative;z-index:4}
+.tut-hi::after{
+  content:"";position:absolute;inset:-11px;border-radius:26px;
+  border:4px solid #FFF3C4;
+  box-shadow:0 0 0 4px rgba(255,243,196,.28),0 0 22px rgba(255,243,196,.55);
+  pointer-events:none;
+  animation:tutPulse 2000ms var(--ease-io) infinite;
+}
+@keyframes tutPulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.035)}}
+
+/* idle hand nudge */
+.hand{position:absolute;left:0;top:0;width:58px;height:58px;pointer-events:none;
+  transform:translate(-24px,0);opacity:0;transition:opacity 240ms}
+.hand.show{opacity:1;animation:handNudge 1500ms var(--ease-io) infinite}
+.hand svg{width:100%;height:100%;fill:#FFFBEF;stroke:var(--navy);stroke-width:3.4;stroke-linejoin:round;
+  filter:drop-shadow(0 4px 7px rgba(8,45,70,.4))}
+@keyframes handNudge{0%,100%{transform:translate(-24px,0)}50%{transform:translate(-24px,11px)}}
+
+/* ---------------- SCREENS ---------------- */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:30}
+.screen[hidden]{display:none}
+
+.screen-start{transition:opacity 520ms var(--ease-out)}
+.screen-start.leaving{opacity:0;pointer-events:none}
+.start-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  opacity:0;animation:artIn 900ms var(--ease-out) 120ms forwards}
+@keyframes artIn{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:none}}
+
+.play-btn{
+  position:absolute;left:960px;top:600px;transform:translate(-50%,-50%);
+  width:300px;height:auto;padding:0;background:none;border:0;cursor:pointer;
+  display:grid;justify-items:center;gap:4px;
+  /* `backwards` (not `forwards`) so the resting state is the element's own
+     style — leaving :hover can never re-trigger the entry animation. */
+  animation:playIn 520ms var(--ease-out) 620ms backwards;
+  transition:transform var(--t-hover) var(--ease-out);
+}
+@keyframes playIn{
+  from{opacity:0;transform:translate(-50%,-50%) scale(.94)}
+  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
+.play-btn img{
+  width:190px;height:auto;display:block;
+  filter:drop-shadow(0 10px 20px rgba(8,45,70,.45));
+  animation:playIdle 3200ms ease-in-out 1200ms infinite;   /* slow idle pulse */
+}
+@keyframes playIdle{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+.play-label{
+  font-size:27px;font-weight:900;letter-spacing:.16em;color:var(--cream-hi);
+  text-shadow:0 3px 0 rgba(14,39,64,.75),0 6px 14px rgba(8,45,70,.5);
+}
+.play-btn:disabled{cursor:default}
+.play-btn:hover:not(:disabled){transform:translate(-50%,-50%) scale(1.05)}
+.play-btn:active:not(:disabled){transform:translate(-50%,-50%) scale(.94);transition-duration:var(--t-press)}
+
+/* temporary fallback if the supplied start artwork is missing.
+   Clearly separated so the PNG can simply be dropped back in. */
+.screen-start.art-missing{background:radial-gradient(120% 100% at 50% 20%,#4FE0F2,#1198C4)}
+.screen-start.art-missing .start-art{display:none}
+.screen-start.art-missing::before{
+  content:"CO-ORDINATE GEOMETRY";
+  position:absolute;top:20%;left:50%;transform:translateX(-50%);
+  font-size:86px;font-weight:900;letter-spacing:.02em;color:var(--cream);
+  text-shadow:0 6px 0 var(--navy),0 16px 30px rgba(8,45,70,.45);white-space:nowrap;
+}
+
+/* completion */
+.screen-complete{background:rgba(9,44,68,.22);animation:fadeIn 420ms both}
+.complete-card{
+  width:840px;padding:38px 48px 34px;text-align:center;
+  border-radius:26px;
+  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
+  border:3.5px solid var(--ui-stroke);
+  box-shadow:inset 0 0 0 3px rgba(245,138,34,.3),var(--ui-shadow-lg);
+  /* NB: not panelIn — that keyframe carries the mission strip's
+     translateX(-50%) and would shove this flex-centred card left. */
+  animation:cardIn 320ms var(--ease-out) both;
+}
+@keyframes cardIn{
+  from{opacity:0;transform:translateY(-14px) scale(.97)}
+  to{opacity:1;transform:none}
+}
+.complete-kicker{margin:0;font-size:20px;font-weight:900;letter-spacing:.22em;color:rgba(22,55,91,.55)}
+.complete-title{margin:6px 0 12px;font-size:var(--fs-hero);line-height:1;font-weight:900;color:var(--navy);letter-spacing:.02em}
+.complete-line{margin:0 auto;max-width:660px;font-size:26px;font-weight:700;color:rgba(22,55,91,.82)}
+.complete-actions{margin-top:26px;display:flex;gap:16px;justify-content:center}
+.complete-actions .btn{height:64px;font-size:25px;padding:0 34px}
+
+/* loading */
+.screen-load{background:#2BC4E4;transition:opacity 420ms var(--ease-out)}
+.screen-load.leaving{opacity:0;pointer-events:none}
+.load-inner{text-align:center}
+.load-label{margin:0 0 16px;font-size:22px;font-weight:900;letter-spacing:.22em;color:rgba(255,255,255,.92)}
+.load-bar{width:320px;height:10px;border-radius:999px;background:rgba(255,255,255,.3);overflow:hidden;margin:0 auto}
+.load-bar i{display:block;height:100%;width:0%;border-radius:999px;background:var(--cream);transition:width 220ms linear}
+
+/* hidden gameplay layers while on start/loading */
+.stage[data-screen="loading"] .layer-field,
+.stage[data-screen="loading"] .layer-ui,
+.stage[data-screen="loading"] .plane-holder,
+.stage[data-screen="start"] .layer-field,
+.stage[data-screen="start"] .layer-ui,
+.stage[data-screen="start"] .plane-holder{opacity:0;pointer-events:none}
+.layer-ui,.plane-holder{transition:opacity 460ms var(--ease-out)}
+
+/* rotate hint (very narrow portrait only) */
+#rotateHint{position:fixed;inset:0;z-index:60;display:grid;place-items:center;
+  background:#0E2740;color:var(--cream);text-align:center;font-weight:800;font-size:22px}
+#rotateHint[hidden]{display:none}
+#rotateHint span{font-size:16px;font-weight:700;opacity:.7}
+
+/* ---------------- reduced motion ---------------- */
+@media (prefers-reduced-motion:reduce){
+  .caustic,.swell,.glint,.cloud,.go,.wp-pulse,.wp-ping,.play-btn img,
+  .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff{animation:none!important}
+  .puff{display:none}
+  *{transition-duration:1ms!important}
+  .plane-holder{transition:transform 200ms linear!important}
+}

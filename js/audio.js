@@ -1,0 +1,428 @@
+/* ============================================================
+   audio.js — sound effects.
+
+   Two supplied recordings do the heavy lifting:
+     sfx/airplane fly sound .mp3     looped while the aircraft flies
+     sfx/airplane reached sound .mp3 played when it reaches the target
+     sfx/bg music.mp3                looped under everything, at 40%
+
+   Everything else (clicks, stepper ticks, the wrong-answer cue) is
+   still generated with the Web Audio API, so no extra files are
+   needed. If a recording fails to load the synthesised engine takes
+   over automatically, and the game never falls silent.
+   ============================================================ */
+window.CG = window.CG || {};
+
+CG.Audio = (function () {
+  var ctx = null, master = null;
+  var enabled = true;
+
+  try {
+    var saved = sessionStorage.getItem('cg-sound');
+    if (saved !== null) enabled = saved === '1';
+  } catch (e) { /* private mode — keep default */ }
+
+  function ensure() {
+    if (ctx) return ctx;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { console.warn('[audio] Web Audio API unavailable — running silent.'); return null; }
+    try {
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = 0.30;
+      master.connect(ctx.destination);
+    } catch (err) {
+      console.warn('[audio] could not create AudioContext:', err);
+      ctx = null;
+    }
+    return ctx;
+  }
+
+  /* Called from the first real user gesture (no autoplay before that). */
+  function unlock() {
+    var c = ensure();
+    if (c && c.state === 'suspended') c.resume();
+  }
+
+  function voice(o) {
+    if (!enabled) return;
+    var c = ensure();
+    if (!c) return;
+    var t0 = c.currentTime + (o.delay || 0);
+    var osc = c.createOscillator();
+    var gain = c.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(o.freq, t0);
+    if (o.to) osc.frequency.exponentialRampToValueAtTime(Math.max(40, o.to), t0 + o.dur);
+
+    var peak = (o.vol == null ? 0.5 : o.vol);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + (o.attack || 0.008));
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + o.dur);
+
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(t0);
+    osc.stop(t0 + o.dur + 0.02);
+  }
+
+  function noise(o) {
+    if (!enabled) return;
+    var c = ensure();
+    if (!c) return;
+    var dur = o.dur || 0.3;
+    var len = Math.floor(c.sampleRate * dur);
+    var buf = c.createBuffer(1, len, c.sampleRate);
+    var data = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = c.createBufferSource();
+    src.buffer = buf;
+    var bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = o.freq || 800;
+    bp.Q.value = o.q || 0.8;
+    var g = c.createGain();
+    g.gain.value = (o.vol == null ? 0.12 : o.vol);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(c.currentTime + (o.delay || 0));
+  }
+
+  /* ---- looping aircraft engine -------------------------------------
+     Two detuned saw oscillators plus filtered noise, so the aircraft is
+     audibly running for the whole flight rather than just clicking per
+     cell. start() ramps in, boost() lifts it as the plane accelerates
+     into a cell, stop() ramps out. ------------------------------------ */
+  var engine = null;
+
+  function engineStart() {
+    if (!enabled) return;
+    var c = ensure();
+    if (!c || engine) return;
+    try {
+      var t = c.currentTime;
+      var g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.16, t + 0.35);
+
+      var lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(420, t);
+      lp.Q.value = 0.7;
+
+      var o1 = c.createOscillator(), o2 = c.createOscillator();
+      o1.type = 'sawtooth'; o2.type = 'sawtooth';
+      o1.frequency.setValueAtTime(84, t);
+      o2.frequency.setValueAtTime(88.5, t);      /* slight detune = beating */
+
+      var og = c.createGain();
+      og.gain.value = 0.55;
+      o1.connect(og); o2.connect(og); og.connect(lp);
+
+      /* rushing-air bed: 2 s of looping noise */
+      var len = Math.floor(c.sampleRate * 2);
+      var buf = c.createBuffer(1, len, c.sampleRate);
+      var d = buf.getChannelData(0);
+      for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      var air = c.createBufferSource();
+      air.buffer = buf; air.loop = true;
+      var bp = c.createBiquadFilter();
+      bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.5;
+      var ag = c.createGain(); ag.gain.value = 0.30;
+      air.connect(bp); bp.connect(ag); ag.connect(lp);
+
+      lp.connect(g); g.connect(master);
+      o1.start(t); o2.start(t); air.start(t);
+
+      engine = { g: g, lp: lp, o1: o1, o2: o2, air: air };
+    } catch (err) {
+      console.warn('[audio] engine failed to start:', err);
+      engine = null;
+    }
+  }
+
+  /* a small surge of thrust as the aircraft enters the next cell */
+  function engineBoost() {
+    if (!engine || !ctx) return;
+    var t = ctx.currentTime;
+    try {
+      engine.lp.frequency.cancelScheduledValues(t);
+      engine.lp.frequency.setValueAtTime(engine.lp.frequency.value, t);
+      engine.lp.frequency.linearRampToValueAtTime(900, t + 0.10);
+      engine.lp.frequency.linearRampToValueAtTime(430, t + 0.40);
+      engine.o1.frequency.setValueAtTime(engine.o1.frequency.value, t);
+      engine.o1.frequency.linearRampToValueAtTime(102, t + 0.10);
+      engine.o1.frequency.linearRampToValueAtTime(86, t + 0.40);
+    } catch (err) { /* ramp collision — harmless */ }
+  }
+
+  function engineStop() {
+    if (!engine || !ctx) return;
+    var e = engine, t = ctx.currentTime;
+    engine = null;
+    try {
+      e.g.gain.cancelScheduledValues(t);
+      e.g.gain.setValueAtTime(e.g.gain.value, t);
+      e.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+      window.setTimeout(function () {
+        try { e.o1.stop(); e.o2.stop(); e.air.stop(); } catch (err) {}
+      }, 600);
+    } catch (err) { /* context already gone */ }
+  }
+
+  /* ---- supplied recordings ------------------------------------------
+     The fly recording is 45s of varied flight ambience rather than a
+     clean drone: it opens quietly, and thins out badly after ~33s. We
+     start every flight at a settled, even-level point and loop, so each
+     flight sounds the same and never lands in the quiet stretch. */
+  var FLY_START = 11.0;      /* seconds — measured settled point */
+  var FLY_VOL = 0.55;
+  var REACHED_VOL = 0.9;
+  var MUSIC_VOL = 0.40;      /* the requested bed level */
+
+  /* Ducking. A 40% music bed sitting under a 0.9 voice muddies the
+     instruction, which is the one thing a learner cannot afford to miss,
+     so the bed steps down while anything more important is playing.
+     Factors multiply, so voice during flight ducks the most. */
+  var DUCK = { voice: 0.42, flight: 0.70 };
+  var ducks = {};
+
+  var media = { fly: null, reached: null };
+  var mediaReady = { fly: false, reached: false };
+  var music = null, musicReady = false, musicWanted = false;
+  var fadeRaf = null, musicRaf = null;
+
+  function bindMedia() {
+    if (media.fly || media.reached) return;
+    media.fly = document.getElementById('sfxFly');
+    media.reached = document.getElementById('sfxReached');
+    music = document.getElementById('sfxMusic');
+    if (music) {
+      music.volume = 0;
+      music.addEventListener('canplay', function () {
+        musicReady = true;
+        if (musicWanted) musicStart();
+      });
+      music.addEventListener('error', function () {
+        musicReady = false;
+        console.warn('[audio] could not load ' + music.getAttribute('src') +
+                     ' — the game runs without music.');
+      });
+      if (music.readyState >= 2) musicReady = true;
+    } else {
+      console.warn('[audio] no <audio id="sfxMusic"> — no background music.');
+    }
+    Object.keys(media).forEach(function (k) {
+      var el = media[k];
+      if (!el) { console.warn('[audio] missing <audio> element for "' + k + '"'); return; }
+      el.volume = 0;
+      el.addEventListener('canplaythrough', function () { mediaReady[k] = true; });
+      el.addEventListener('error', function () {
+        mediaReady[k] = false;
+        console.warn('[audio] could not load ' + el.getAttribute('src') +
+                     ' — falling back to the synthesised cue.');
+      });
+      if (el.readyState >= 3) mediaReady[k] = true;
+    });
+  }
+
+  /* Waits for both recordings so the loading screen can cover them. */
+  function preload() {
+    bindMedia();
+    var waits = Object.keys(media).map(function (k) {
+      var el = media[k];
+      if (!el) return Promise.resolve();
+      if (el.readyState >= 3) { mediaReady[k] = true; return Promise.resolve(); }
+      return new Promise(function (resolve) {
+        var done = function () { resolve(); };
+        el.addEventListener('canplaythrough', done, { once: true });
+        el.addEventListener('error', done, { once: true });
+        window.setTimeout(done, 8000);       /* never block the game on audio */
+        try { el.load(); } catch (e) { done(); }
+      });
+    });
+    return Promise.all(waits);
+  }
+
+  /* smooth volume ramp on a media element (no Web Audio routing needed,
+     so this works from file:// as well as a server) */
+  function fadeTo(el, target, ms, thenPause) {
+    if (!el) return;
+    if (fadeRaf) { cancelAnimationFrame(fadeRaf); fadeRaf = null; }
+    var from = el.volume, t0 = performance.now();
+    function frame(now) {
+      var p = Math.min(1, (now - t0) / ms);
+      el.volume = Math.max(0, Math.min(1, from + (target - from) * p));
+      if (p < 1) { fadeRaf = requestAnimationFrame(frame); return; }
+      fadeRaf = null;
+      if (thenPause) { try { el.pause(); } catch (e) {} }
+    }
+    fadeRaf = requestAnimationFrame(frame);
+  }
+
+  function flyStart() {
+    var el = media.fly;
+    if (!el || !mediaReady.fly) return false;
+    try {
+      /* always from the same settled point: every flight sounds the
+         same, and playback can never drift into the thin stretch that
+         starts around 33s */
+      el.currentTime = FLY_START;
+      el.volume = 0;
+      var pr = el.play();
+      if (pr && pr.catch) pr.catch(function () { /* blocked before a gesture */ });
+      fadeTo(el, FLY_VOL, 420);
+      return true;
+    } catch (err) {
+      console.warn('[audio] fly sound failed:', err);
+      return false;
+    }
+  }
+
+  function flyStop() {
+    var el = media.fly;
+    if (!el) return;
+    fadeTo(el, 0, 520, true);
+  }
+
+  /* muting must be instant, not a graceful landing */
+  function flyStopNow() {
+    var el = media.fly;
+    if (!el) return;
+    if (fadeRaf) { cancelAnimationFrame(fadeRaf); fadeRaf = null; }
+    el.volume = 0;
+    try { el.pause(); } catch (e) {}
+  }
+
+  /* ---- background music -------------------------------------------- */
+  function musicTarget() {
+    var v = MUSIC_VOL;
+    Object.keys(ducks).forEach(function (k) { if (ducks[k]) v *= DUCK[k] || 1; });
+    return v;
+  }
+
+  function fadeMusic(target, ms) {
+    if (!music) return;
+    if (musicRaf) { cancelAnimationFrame(musicRaf); musicRaf = null; }
+    var from = music.volume, t0 = performance.now();
+    function frame(now) {
+      var p = Math.min(1, (now - t0) / ms);
+      music.volume = Math.max(0, Math.min(1, from + (target - from) * p));
+      if (p < 1) { musicRaf = requestAnimationFrame(frame); return; }
+      musicRaf = null;
+      if (target === 0) { try { music.pause(); } catch (e) {} }
+    }
+    musicRaf = requestAnimationFrame(frame);
+  }
+
+  function musicStart() {
+    musicWanted = true;
+    if (!enabled) return;
+    bindMedia();
+    if (!music || !musicReady) return;      /* still streaming; retried on canplay */
+    try {
+      var pr = music.play();
+      if (pr && pr.catch) pr.catch(function () {});
+      fadeMusic(musicTarget(), 1400);       /* ease in, never a hard cut */
+    } catch (err) {
+      console.warn('[audio] music failed to start:', err);
+    }
+  }
+
+  function musicStop() {
+    musicWanted = false;
+    fadeMusic(0, 700);
+  }
+
+  /* duck('voice', true) while an instruction is being spoken, etc. */
+  function duck(reason, on) {
+    if (!(reason in DUCK)) return;
+    if (!!ducks[reason] === !!on) return;
+    ducks[reason] = !!on;
+    if (music && musicWanted && enabled) fadeMusic(musicTarget(), on ? 260 : 520);
+  }
+
+  function playReached() {
+    var el = media.reached;
+    if (!el || !mediaReady.reached) return false;
+    try {
+      el.currentTime = 0;
+      el.volume = REACHED_VOL;
+      var pr = el.play();
+      if (pr && pr.catch) pr.catch(function () {});
+      return true;
+    } catch (err) {
+      console.warn('[audio] reached sound failed:', err);
+      return false;
+    }
+  }
+
+  var cues = {
+    uiClick:     function () { voice({ freq: 620, to: 880, dur: 0.09, type: 'triangle', vol: 0.30 }); },
+    stepperTick: function () { voice({ freq: 1180, to: 1500, dur: 0.05, type: 'square', vol: 0.10 }); },
+    /* a soft tick as each grid line is crossed — it gives the counting a
+       rhythm under the flight recording without competing with it */
+    aircraftMove: function () {
+      if (mediaReady.fly) { voice({ freq: 1500, to: 1900, dur: 0.06, type: 'triangle', vol: 0.07 }); return; }
+      noise({ freq: 1300, dur: 0.30, vol: 0.09, q: 1.1 });
+      voice({ freq: 300, to: 220, dur: 0.18, type: 'sine', vol: 0.09 });
+      engineBoost();
+    },
+    /* the supplied arrival chime; synth fallback if it is unavailable */
+    reached: function () {
+      if (playReached()) return;
+      [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
+        voice({ freq: f, dur: 0.30, type: 'triangle', vol: 0.26, delay: i * 0.085 });
+      });
+    },
+    success: function () {
+      [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) {
+        voice({ freq: f, dur: 0.30, type: 'triangle', vol: 0.26, delay: i * 0.085 });
+      });
+    },
+    incorrect: function () {
+      voice({ freq: 300, to: 190, dur: 0.26, type: 'sine', vol: 0.24 });
+      voice({ freq: 224, to: 150, dur: 0.30, type: 'sine', vol: 0.16, delay: 0.09 });
+    },
+    levelTransition: function () {
+      voice({ freq: 440, to: 880, dur: 0.22, type: 'triangle', vol: 0.16 });
+    },
+    reveal: function () {
+      voice({ freq: 880, to: 1320, dur: 0.20, type: 'triangle', vol: 0.16 });
+    }
+  };
+
+  function play(name) {
+    var fn = cues[name];
+    if (!fn) { console.warn('[audio] unknown cue:', name); return; }
+    if (!enabled) return;
+    unlock();
+    try { fn(); } catch (err) { console.warn('[audio] cue failed:', name, err); }
+  }
+
+  return {
+    play: play,
+    unlock: unlock,
+    preload: preload,
+    musicStart: function () { unlock(); bindMedia(); musicStart(); },
+    musicStop: musicStop,
+    duck: duck,
+    /* flight bed: the recording if it loaded, the synthesiser if not */
+    engineStart: function () {
+      if (!enabled) return;
+      unlock();
+      bindMedia();
+      if (!flyStart()) engineStart();      /* recording, else synthesiser */
+    },
+    engineStop: function () {
+      flyStop();
+      engineStop();
+    },
+    isEnabled: function () { return enabled; },
+    setEnabled: function (v) {
+      enabled = !!v;
+      try { sessionStorage.setItem('cg-sound', enabled ? '1' : '0'); } catch (e) {}
+      if (enabled) { unlock(); if (musicWanted) musicStart(); }
+      else { flyStopNow(); engineStop(); fadeMusic(0, 200); }
+    }
+  };
+})();
