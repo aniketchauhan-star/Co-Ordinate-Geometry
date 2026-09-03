@@ -36,6 +36,10 @@ window.CG = window.CG || {};
     animationState: 'idle'        /* idle | flying | returning */
   };
 
+  /* set the moment the game may be started — by the preloader finishing,
+     or by the boot watchdog. See startGame() and releaseBoot(). */
+  var bootReleased = false;
+
   var animToken = 0;              /* bumped to cancel an in-flight sequence */
   var seqToken = 0;               /* bumped to cancel a teaching sequence   */
   var idleTimer = null;
@@ -1097,15 +1101,36 @@ window.CG = window.CG || {};
     });
   }
 
+  /* The single point at which the game becomes startable — reached
+     either by the preloader finishing or by the boot watchdog. Both the
+     button and the flag are set here so the two can never disagree. */
+  function releaseBoot() {
+    if (bootReleased) return;
+    bootReleased = true;
+    var gauge = document.getElementById('loadGauge');
+    if (gauge) gauge.hidden = true;
+    dom.btnPlay.hidden = false;
+    dom.btnPlay.disabled = false;
+    void dom.btnPlay.offsetWidth;
+    dom.btnPlay.classList.add('play-in');
+  }
+
   /* ============================================================
      SCREENS
      ============================================================ */
   function startGame() {
-    /* TWO guards, not one. The button being disabled stops a click, but
-       Enter/Space and anything calling startGame() directly would sail
-       straight past it — so the preloader is asked as well. */
-    if (!CG.Preload || !CG.Preload.isDone()) return;
-    if (dom.btnPlay.disabled) return;      /* assets are still loading */
+    /* ONE flag, checked by every route in. The button being disabled
+       stops a click, but Enter/Space and anything calling startGame()
+       directly would sail straight past it — so the flag is asked as
+       well.
+
+       It is a flag rather than CG.Preload.isDone() because the boot
+       watchdog can also release the game, and asking the preloader
+       directly would have left the watchdog revealing a button that
+       this function then refused: a dead button, which is worse than a
+       stuck bar. */
+    if (!bootReleased) return;
+    if (dom.btnPlay.disabled) return;
     Audio.unlock();
     CG.Voice.unlock();                     /* first real user gesture */
     CG.Voice.setEnabled(CG.Audio.isEnabled());
@@ -1317,12 +1342,7 @@ window.CG = window.CG || {};
         console.warn('[assets] ' + res.missing.length + ' asset(s) could not be fetched; ' +
                      'the game runs on their original URLs: ' + res.missing.join(', '));
       }
-      /* reveal, with a pop-in, and only now is Play live */
-      if (gauge) gauge.hidden = true;
-      dom.btnPlay.hidden = false;
-      dom.btnPlay.disabled = false;
-      void dom.btnPlay.offsetWidth;
-      dom.btnPlay.classList.add('play-in');
+      releaseBoot();
     });
 
     /* ---- §4: stop compositing when nobody is looking ----------------
@@ -1344,15 +1364,10 @@ window.CG = window.CG || {};
        revealed regardless. A player must never be left looking at a bar
        that has stopped. */
     window.setTimeout(function () {
-      if (dom.btnPlay.hidden) {
-        console.warn('[preload] watchdog fired — revealing Play with ' +
-                     Math.round(CG.Preload.pct()) + '% loaded');
-        var g = document.getElementById('loadGauge');
-        if (g) g.hidden = true;
-        dom.btnPlay.hidden = false;
-        dom.btnPlay.disabled = false;
-        dom.btnPlay.classList.add('play-in');
-      }
+      if (bootReleased) return;
+      console.warn('[preload] watchdog fired at ' + Math.round(CG.Preload.pct()) +
+                   '% — releasing Play anyway');
+      releaseBoot();
     }, 75000);
 
     /* expose for console debugging / level tweaking */

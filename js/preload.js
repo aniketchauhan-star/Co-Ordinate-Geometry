@@ -278,6 +278,9 @@ CG.Preload = (function () {
     isDone: function () { return state.done; },
     pct: function () { return state.pct; },
     missing: function () { return state.missing.slice(); },
+    /* every abort THIS module performed, with its reason. Kept because it
+       is what distinguishes a real stall from Chrome's habit of
+       reporting a fully-delivered streamed fetch as ERR_ABORTED. */
     aborts: function () { return state.aborts.slice(); },
     /* byte counts actually received, per asset. The browser test compares
        these to SIZES: it is the only proof that a streamed fetch which
