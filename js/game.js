@@ -1000,6 +1000,15 @@ window.CG = window.CG || {};
     dom.originTap = document.getElementById('originTap');
 
     Grid.build();
+    /* Re-place the aircraft on every frame of a stage change: it is an
+       HTML element outside the chart's SVG, so it does not inherit the
+       chart transform and would otherwise hold stale pixels while the
+       plane unfolds beneath it. */
+    Grid.onViewChange(function () {
+      if (gameState.animationState === 'flying') return;   /* the flight owns it */
+      setAircraftPosition(gameState.aircraft.x, gameState.aircraft.y, false);
+      syncPlaneScale();
+    });
     UI.init({
       onStep: updateControls,
       onGo: onGo,

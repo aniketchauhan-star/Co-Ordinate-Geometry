@@ -191,7 +191,13 @@ CG.Audio = (function () {
      instruction, which is the one thing a learner cannot afford to miss,
      so the bed steps down while anything more important is playing.
      Factors multiply, so voice during flight ducks the most. */
-  var DUCK = { voice: 0.42, flight: 0.70 };
+  /* How far the music bed drops. These were 0.42 and 0.70, which left the
+     bed still competing with a spoken instruction and with the aircraft
+     recording. A learner has to be able to hear the question and the
+     engine without either fighting the music, so both ducks go much
+     deeper — and they multiply, so a line spoken during a flight ducks
+     furthest of all. */
+  var DUCK = { voice: 0.20, flight: 0.38 };
   var ducks = {};
 
   var media = { fly: null, reached: null };
@@ -397,7 +403,7 @@ CG.Audio = (function () {
   function surfDuckLevel() {
     var v = 1;
     Object.keys(ducks).forEach(function (k) {
-      if (ducks[k]) v *= (k === 'voice' ? 0.55 : 0.80);
+      if (ducks[k]) v *= (k === 'voice' ? 0.32 : 0.58);
     });
     return v;
   }
@@ -447,7 +453,7 @@ CG.Audio = (function () {
     if (!(reason in DUCK)) return;
     if (!!ducks[reason] === !!on) return;
     ducks[reason] = !!on;
-    if (music && musicWanted && enabled) fadeMusic(musicTarget(), on ? 260 : 520);
+    if (music && musicWanted && enabled) fadeMusic(musicTarget(), on ? 200 : 640);
     if (surf && ctx) {
       surf.duck.gain.setTargetAtTime(surfDuckLevel(), ctx.currentTime, on ? 0.20 : 0.45);
     }

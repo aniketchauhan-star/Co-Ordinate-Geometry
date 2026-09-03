@@ -288,7 +288,6 @@ button{font-family:inherit}
   left:577px;top:149px;width:766px;height:766px;
   pointer-events:none;
   border-radius:28px;
-  overflow:hidden;              /* clips the wrinkles to the rounded plate */
   /* deep water, lighter where the light falls at the bottom, with the
      supplied rim and its glow */
   background:
@@ -303,45 +302,14 @@ button{font-family:inherit}
     inset 0 1px 0 rgba(183,231,239,.26),
     var(--sh-2);
 }
-/* THE WATER'S WRINKLES, ON THE CHART
-   Lowering the panel's opacity far enough to show the water would cost
-   the graticule its contrast, because the panel is what the lines read
-   against. So the wrinkles are re-composited on top of the panel instead:
-   the ocean's own two caustic patterns, at its own two drift rates, at a
-   low opacity. The panel stays dark, the water still moves across it.
+/* The panel carried two drifting caustic bands so the water's motion
+   would read on the chart. They read as large translucent squares
+   sliding across the grid instead, so they are gone: the plate is
+   translucent (26-34% of the ocean shows through), and the ocean's own
+   swell and caustics beneath it supply the movement without anything
+   sliding over the graticule. */
 
-   Each drift is one exact gradient period, so both loop seamlessly:
-   34.7,-65.3 projected onto the 28deg axis travels 73.95px against a
-   74px period, and -53.7,-79.6 onto the -34deg axis travels 96.02px
-   against a 96px period. Change a period and the loop will jump. */
-.veil-wrinkle{
-  position:absolute;inset:-30%;
-  pointer-events:none;
-  will-change:transform;
-  backface-visibility:hidden;
-}
-.vw-a{
-  opacity:.20;
-  filter:blur(5px);
-  background-image:repeating-linear-gradient(28deg,
-      rgba(183,231,239,0) 0 30px,
-      rgba(183,231,239,.9) 36px,
-      rgba(183,231,239,0) 42px,
-      rgba(183,231,239,0) 74px);
-  animation:driftA 27s linear infinite;
-}
-.vw-b{
-  opacity:.14;
-  filter:blur(9px);
-  background-image:repeating-linear-gradient(-34deg,
-      rgba(183,231,239,0) 0 38px,
-      rgba(183,231,239,.85) 46px,
-      rgba(183,231,239,0) 54px,
-      rgba(183,231,239,0) 96px);
-  animation:driftB 37s linear infinite;
-}
-
-/* map neatline: a hairline rule set in from the outer rule, the way a
+/* map neatline:/* map neatline: a hairline rule set in from the outer rule, the way a
    chart plate is framed. No corner ticks - the top two corners are
    provably behind the islands, so ticks would only show on the bottom
    two and read as an error. */
@@ -466,16 +434,37 @@ button{font-family:inherit}
    in every stage. */
 #gridLines line{stroke:var(--grid-line);stroke-width:2}
 #gridLines line.grid-major{stroke:var(--grid-line-major);stroke-width:2.6}
-/* the minor grid is deliberately quiet, so it needs the glow to read */
-#gridLines{filter:drop-shadow(0 0 3px var(--grid-glow))}
+/* the centre lines: the chart's middle, readable before it has a name */
+#gridLines line.grid-centre{stroke:var(--grid-axis);stroke-width:3;opacity:.82}
+/* The graticule glows in its own colour. Two shadows rather than one:
+   a tight halo that thickens the line and a wide bloom that lifts it off
+   the plate, which is what carries a 34-delta minor line. */
+#gridLines{
+  filter:
+    drop-shadow(0 0 2px var(--grid-glow))
+    drop-shadow(0 0 7px var(--grid-glow))
+    drop-shadow(0 0 15px var(--grid-glow));
+}
 /* During the tutorial missions the field is a plain, even grid. The axes,
    their ticks and their arrowheads only appear once the concept reveal
    gives them names. */
 #axes,#ticks,#axisEnds{opacity:0;transition:opacity 620ms var(--ease-out)}
 #axes.axes-shown,#ticks.axes-shown,#axisEnds.axes-shown{opacity:1}
 #axes line{stroke:var(--grid-axis);stroke-width:3.4;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
-#axes{filter:drop-shadow(0 0 6px var(--grid-glow))}
-#axes line.axis-hot{stroke:#EAF9FD;stroke-width:5.2}
+#axes{
+  filter:
+    drop-shadow(0 0 3px var(--grid-glow))
+    drop-shadow(0 0 10px var(--grid-glow))
+    drop-shadow(0 0 22px var(--grid-glow));
+}
+/* the voice is naming this axis right now: it goes white, thickens, and
+   blooms, so there is no doubt which line is being talked about */
+#axes line.axis-hot{
+  stroke:#FFFFFF;stroke-width:6.4;
+  filter:drop-shadow(0 0 6px #B7E7EF) drop-shadow(0 0 18px var(--grid-glow));
+  animation:axisNamed 1600ms var(--ease-io) infinite;
+}
+@keyframes axisNamed{0%,100%{stroke-width:5.6;opacity:.9}50%{stroke-width:7.2;opacity:1}}
 #ticks line{stroke:var(--grid-axis);stroke-width:2.8;stroke-linecap:round}
 #axisEnds path{fill:var(--grid-axis);transition:opacity 420ms var(--ease-out)}
 #axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
@@ -491,18 +480,34 @@ button{font-family:inherit}
 #axisNums.shown{opacity:1}
 /* gentle: opacity 0 -> 1, scale .85 -> 1, ~190ms (requirement 8) */
 .reveal-num{animation:numPop 190ms var(--ease-out) both}
-.num-hot{animation:numHot 700ms var(--ease-out)}
+.num-hot{
+  animation:numHot 900ms var(--ease-out);
+  filter:drop-shadow(0 0 9px rgba(255,243,196,.95));
+}
 @keyframes numPop{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
-@keyframes numHot{0%{fill:var(--cream)}30%{fill:#FFFFFF;stroke:rgba(245,138,34,.95)}100%{fill:var(--cream)}}
+@keyframes numHot{
+  0%  {fill:var(--cream);transform:scale(1)}
+  25% {fill:#FFFFFF;stroke:rgba(245,138,34,.95);transform:scale(1.34)}
+  60% {transform:scale(1.08)}
+  100%{fill:var(--cream);transform:scale(1)}
+}
 .reveal-num,.num-hot{transform-box:fill-box;transform-origin:center}
 
 /* "count the spaces" hint — the distance is shown, never the number */
 .hint-run{animation:fadeIn 260ms both}
-.hint-span{stroke:#FFF3C4;stroke-width:7;stroke-linecap:round;opacity:.92;
-  animation:hintPulse 2200ms var(--ease-io) infinite}
-.hint-pip{fill:#FFF3C4;stroke:rgba(14,39,64,.55);stroke-width:2.5;
-  animation:hintPulse 2200ms var(--ease-io) infinite}
-@keyframes hintPulse{0%,100%{opacity:.55}50%{opacity:1}}
+.hint-span{
+  stroke:#FFF3C4;stroke-width:10;stroke-linecap:round;opacity:.95;
+  filter:drop-shadow(0 0 7px rgba(255,243,196,.85)) drop-shadow(0 0 18px rgba(255,196,77,.5));
+  animation:hintPulse 1800ms var(--ease-io) infinite;
+}
+/* one pip per space to count — bigger and lit, so a learner can see
+   them from across a classroom */
+.hint-pip{
+  fill:#FFFFFF;stroke:rgba(14,39,64,.55);stroke-width:2.5;
+  filter:drop-shadow(0 0 6px rgba(255,243,196,.9));
+  animation:hintPulse 1800ms var(--ease-io) infinite;
+}
+@keyframes hintPulse{0%,100%{opacity:.62}50%{opacity:1}}
 
 /* quadrant labels + sign patterns (concept reveal only) */
 .quad{animation:numPop 320ms var(--ease-out) both}
@@ -1028,7 +1033,7 @@ button{font-family:inherit}
 
 /* ---------------- reduced motion ---------------- */
 @media (prefers-reduced-motion:reduce){
-  .caustic,.swell,.glint,.cloud,.veil-wrinkle,.surf-band,.go,.wp-pulse,.wp-ping,.play-btn img,
+  .caustic,.swell,.glint,.cloud,.surf-band,.go,.wp-pulse,.wp-ping,.play-btn img,
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff{animation:none!important}
   .puff{display:none}
   *{transition-duration:1ms!important}

@@ -138,21 +138,30 @@ CG.Grid = (function () {
      emphasis layer that stays hidden until the concept reveal names
      them. */
   /* Three weights, because the palette carries three: every integer gets
-     a minor line, every fifth gets a major one, and the two axes are
-     drawn separately in #axes. Fives are worth emphasising here — the
-     steppers stop at 5, so a learner counting a route is counting in
-     exactly those blocks. Line 0 is left to the axes. */
+     a minor line, every fifth gets a major one, and the two centre lines
+     get the heaviest.
+
+     The centre lines matter before they have names. When quadrant II
+     unfolds, the line through the origin becomes the middle of the chart,
+     and the learner has to be able to see the plane split in two — so
+     x=0 and y=0 are drawn at the major weight from the start, even while
+     the #axes layer is still hidden and the words "x-axis" and "y-axis"
+     have not been said. Fives earn their weight too: the steppers stop
+     at 5, so a route is counted in exactly those blocks. */
   function drawLines(host) {
     var i, nss = { 'vector-effect': 'non-scaling-stroke' };
+    var weight = function (n) {
+      return n === 0 ? 'grid-centre' : (n % 5 === 0 ? 'grid-major' : null);
+    };
     for (i = MAX.xMin; i <= MAX.xMax; i++) {
       host.appendChild(mk('line', Object.assign(
         { x1: toX(i), y1: toY(MAX.yMax), x2: toX(i), y2: toY(MAX.yMin) }, nss),
-        i !== 0 && i % 5 === 0 ? 'grid-major' : null));
+        weight(i)));
     }
     for (i = MAX.yMin; i <= MAX.yMax; i++) {
       host.appendChild(mk('line', Object.assign(
         { x1: toX(MAX.xMin), y1: toY(i), x2: toX(MAX.xMax), y2: toY(i) }, nss),
-        i !== 0 && i % 5 === 0 ? 'grid-major' : null));
+        weight(i)));
     }
   }
 
@@ -210,6 +219,9 @@ CG.Grid = (function () {
     }
   }
 
+  var viewWatchers = [];
+  function onViewChange(fn) { if (fn) viewWatchers.push(fn); }
+
   function apply(c, v) {
     view = v;
     el.chart.setAttribute('transform',
@@ -242,6 +254,12 @@ CG.Grid = (function () {
     /* an axis only grows an arrowhead once that direction exists */
     el.arrows.xn.style.opacity = c.xMin <= -2 ? 1 : 0;
     el.arrows.yn.style.opacity = c.yMin <= -2 ? 1 : 0;
+
+    /* The aircraft lives outside this SVG, so it does not inherit the
+       chart transform. Without this it keeps the pixel position it had
+       before the stage changed — which is why it appeared to drift off
+       the origin as a quadrant unfolded. */
+    for (var w = 0; w < viewWatchers.length; w++) viewWatchers[w]();
   }
 
   function viewFor(st) {
@@ -263,14 +281,21 @@ CG.Grid = (function () {
     if (first || !animate) { apply(charted, toV); return Promise.resolve(); }
 
     /* Two overlapping phases, so it reads as a chart being unrolled
-       rather than a box being resized: the view re-centres first, then
-       the new airspace opens out behind it. */
+       rather than a box being resized: the view eases across and settles,
+       and the new airspace sweeps open behind it while it travels.
+
+       The pan uses a soft ease-out — it leaves quickly and arrives slowly,
+       which is what makes it feel like the chart is being drawn open
+       rather than snapped to a new size. The unroll trails it and lands
+       last, so the final thing the eye sees is the new quadrant
+       appearing, not the camera stopping. */
     var lerp = function (a, b, e) { return a + (b - a) * e; };
     var clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+    var easeOut = function (v) { return 1 - Math.pow(1 - v, 3); };
     var ease = function (v) { return v < .5 ? 4*v*v*v : 1 - Math.pow(-2*v+2,3)/2; };
-    return tween(940, function (e) {
-      var v = ease(clamp01(e / 0.62));          /* pan + zoom: 0 -> 62%  */
-      var g = ease(clamp01((e - 0.26) / 0.74)); /* unroll:    26% -> 100% */
+    return tween(1260, function (e) {
+      var v = easeOut(clamp01(e / 0.70));       /* pan + zoom: 0 -> 70%  */
+      var g = ease(clamp01((e - 0.18) / 0.82)); /* unroll:    18% -> 100% */
       apply({
         xMin: lerp(fromC.xMin, toC.xMin, g), xMax: lerp(fromC.xMax, toC.xMax, g),
         yMin: lerp(fromC.yMin, toC.yMin, g), yMax: lerp(fromC.yMax, toC.yMax, g)
@@ -770,6 +795,7 @@ CG.Grid = (function () {
     showRegionLabel: showRegionLabel, showRegionLabels: showRegionLabels,
     clearRegionLabels: clearRegionLabels,
     clearLesson: clearLesson,
-    panelRect: function () { return panelRect(charted, view); }
+    panelRect: function () { return panelRect(charted, view); },
+    onViewChange: onViewChange
   };
 })();
