@@ -57,6 +57,26 @@
 
   function coordText(p) { return '(' + p.x + ', ' + p.y + ')'; }
 
+  /* THREE of the learner's own destinations, spread across the
+     quadrants they visited rather than the first three in the list —
+     re-flying (3,2) then (5,4) then (-2,4) would be three journeys that
+     all look the same. Whatever they actually reached is what is used;
+     nothing is invented. */
+  function pickDemos(reached) {
+    var pts = (reached || []).filter(function (p) { return p && (p.x || p.y); });
+    if (pts.length <= 3) return pts.slice();
+    var seen = {}, out = [];
+    pts.forEach(function (p) {
+      var q = (p.x >= 0 ? 1 : 0) * 2 + (p.y >= 0 ? 1 : 0);
+      if (!seen[q]) { seen[q] = 1; out.push(p); }
+    });
+    while (out.length < 3) {
+      var p = pts[out.length];
+      if (out.indexOf(p) === -1) out.push(p); else break;
+    }
+    return out.slice(0, 3);
+  }
+
   /* =====================================================================
      ARC 2 — DISCOVER
      ===================================================================== */
@@ -74,7 +94,34 @@
 
     if (!await say(tk, { text: 'Let’s see what we discovered.', beat: CFG.beatMed })) return false;
 
-    /* --- 21. the four places the aircraft actually reached ------------ */
+    /* --- 21. FLOW 32 — RE-FLY THREE OF THEM, BEFORE ANY EXPLANATION.
+       The learner has just spent eight missions doing this; the recap
+       has to remind them of the DOING before it starts naming things.
+       So three of the places they actually reached are flown again from
+       the origin, fast, with the numbers suppressed — the shape of the
+       journey is the point here, not the counting. Their own routes,
+       not invented ones: `reached` is what they flew. */
+    var demo = pickDemos(reached);
+    if (demo.length) {
+      UI.mission({
+        text: 'Here is where you took them.',
+        voice: 'Here is where you took them.', animate: 'words'
+      });
+      for (var d = 0; d < demo.length; d++) {
+        Grid.setTarget(demo[d]);
+        if (!await CG.demoFlight(demo[d].x, demo[d].y)) return false;
+        if (!alive(tk)) return false;
+        Grid.plotPoint(demo[d].x, demo[d].y, { cls: 'plot-lesson' });
+        Audio.play('reached');
+        await wait(420); if (!alive(tk)) return false;
+      }
+      Grid.setTarget(null);
+      CG.demoHome();
+      await wait(360); if (!alive(tk)) return false;
+    }
+
+    /* and now the whole set, as markers */
+    Grid.clearLesson();
     Grid.showRecapMarkers(reached);
     Audio.play('reveal');
     if (!await say(tk, {
@@ -290,13 +337,18 @@
           Grid.fillDropZone(zoneKey, '', false);
           UI.chipWrong(chipKey);
           Audio.play('incorrect');
+          /* FLOW 50 / 55 — attempt 1 is "try again", attempt 2 names
+             the two numbers. Each activity can supply its own second
+             line, because "the first number is the x-co-ordinate" is
+             the right scaffold when the learner is labelling numbers
+             and the wrong one when they are placing points. */
+          var h2  = spec.hint2 ||
+            'The first number is the <em>x-co-ordinate</em>, and the second number is the <em>y-co-ordinate</em>. Try again.';
+          var h2v = spec.hint2Voice ||
+            'The first number is the x co-ordinate, and the second number is the y co-ordinate. Try again.';
           UI.mission({
-            text: wrongs === 1
-              ? 'Not quite. Try again.'
-              : 'The first number is the <em>x-co-ordinate</em>, and the second number is the <em>y-co-ordinate</em>. Try again.',
-            voice: wrongs === 1
-              ? 'Not quite. Try again.'
-              : 'The first number is the x co-ordinate, and the second number is the y co-ordinate. Try again.',
+            text:  wrongs === 1 ? 'Not quite. Try again.' : h2,
+            voice: wrongs === 1 ? 'Not quite. Try again.' : h2v,
             animate: 'words'
           });
         }
@@ -339,6 +391,9 @@
     for (var i = 0; i < QUAD.length; i++) {
       if (!await oneQuadrant(tk, QUAD[i])) return false;
     }
+    /* FLOW 54 — put the sign patterns to work before the CFU asks for
+       them cold: four coordinates, dragged onto their own points. */
+    if (!await pointDrag(tk)) return false;
     return await quadrantCFU(tk);
   }
 
@@ -437,6 +492,57 @@
     })) return false;
     Grid.clearLesson();
     return true;
+  }
+
+  /* =====================================================================
+     FLOW 54 / 55 — DRAG FOUR POINTS ONTO THE PLANE
+
+     The four coordinates are the PDF's own, so they are not in a
+     practice config: they are the source of truth for this activity.
+     The drop targets are grid points rather than label slots, which is
+     what pointZones gives us, and the chips carry the coordinate text
+     so matching a chip to a zone IS the exercise.
+     ===================================================================== */
+  var POINT_DRAG = [
+    { x: -4, y:  3 },
+    { x:  3, y:  1 },
+    { x:  2, y: -1 },
+    { x: -1, y: -2 }
+  ];
+
+  async function pointDrag(tk) {
+    Grid.clearLesson();
+    UI.hideCoordTag();
+    Grid.showRegionLabels(true);
+
+    var zones = POINT_DRAG.map(function (p) {
+      return { key: coordText(p), x: p.x, y: p.y, point: true };
+    });
+    var chips = POINT_DRAG.map(function (p) {
+      return { key: coordText(p), text: coordText(p) };
+    });
+
+    return await dragActivity(tk, {
+      prompt: 'Drag each point to its correct position.',
+      zones: zones,
+      chips: shuffle(chips),
+      /* the caption that lands in the zone is the coordinate itself */
+      answer: zones.reduce(function (a, z) { a[z.key] = z.key; return a; }, {}),
+      /* FLOW 55's second-attempt scaffold: name the two numbers rather
+         than repeat "try again" */
+      hint2: 'Read the first number along the <em>x-axis</em>, then the second up the <em>y-axis</em>.',
+      hint2Voice: 'Read the first number along the x-axis, then the second up the y-axis.'
+    });
+  }
+
+  /* so the cards are not already in reading order */
+  function shuffle(a) {
+    var out = a.slice(), i, j, t;
+    for (i = out.length - 1; i > 0; i--) {
+      j = Math.floor(Math.random() * (i + 1));
+      t = out[i]; out[i] = out[j]; out[j] = t;
+    }
+    return out;
   }
 
   /* =====================================================================

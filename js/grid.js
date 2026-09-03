@@ -672,9 +672,18 @@ CG.Grid = (function () {
         g.appendChild(mk('line', { x1: z.lead.x * CELL - z.x * CELL,
                                    y1: -z.lead.y * CELL + z.y * CELL, x2: 0, y2: 0 }, 'dz-lead'));
       }
-      g.appendChild(mk('rect', { x: -108, y: -30, width: 216, height: 60, rx: 12 }, 'dz-box'));
-      var t = mk('text', { x: 0, y: 9 }, 'dz-text');
-      g.appendChild(t);
+      if (z.point) {
+        /* A POINT TARGET, not a label slot. Same class on the hit shape
+           so dropZoneRect() keeps working without knowing which kind it
+           is, and the caption sits clear of the grid point rather than
+           on top of it. */
+        g.appendChild(mk('circle', { r: 30 }, 'dz-box dz-point'));
+        g.appendChild(mk('circle', { r: 9 }, 'dz-pip'));
+        g.appendChild(mk('text', { x: 0, y: z.y >= 0 ? -44 : 56 }, 'dz-text'));
+      } else {
+        g.appendChild(mk('rect', { x: -108, y: -30, width: 216, height: 60, rx: 12 }, 'dz-box'));
+        g.appendChild(mk('text', { x: 0, y: 9 }, 'dz-text'));
+      }
       el.lessonLayer.appendChild(g);
     });
   }

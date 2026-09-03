@@ -130,6 +130,68 @@ CG.UI = (function () {
     });
   }
 
+  /* =====================================================================
+     FLOW 58 — THE X / Y STEPPERS
+
+     Deliberately the same DOM as buildControls(): the same .ctrl wrapper
+     with a data-dir, the same .ctrl-label plate, the same .ctrl-val
+     output, the same .stepper of two .step-btn keys. Everything already
+     built on that structure — setValue, the lock states, the tutorial
+     highlight, the whole redesigned look — therefore works here with no
+     second implementation to keep in step.
+
+     The one real difference is the range: these values are SIGNED, so a
+     stepper runs from -RANGE to +RANGE and the label shows a co-ordinate
+     letter instead of a direction word. */
+  function buildAxisControls() {
+    el.controls.innerHTML = '';
+    ctrlMap = {};
+    [{ key: 'x', label: 'X' }, { key: 'y', label: 'Y' }].forEach(function (d) {
+      var wrap = document.createElement('div');
+      wrap.className = 'ctrl ctrl-axis';
+      wrap.dataset.dir = d.key;
+      wrap.dataset.armed = '1';
+      wrap.setAttribute('role', 'group');
+      wrap.setAttribute('aria-label', d.label + ' co-ordinate');
+
+      var label = document.createElement('div');
+      label.className = 'ctrl-label';
+      var span = document.createElement('span');
+      span.textContent = d.label;
+      label.appendChild(span);
+
+      var val = document.createElement('output');
+      val.className = 'ctrl-val';
+      val.id = 'val-' + d.key;
+      val.textContent = '0';
+      val.setAttribute('aria-live', 'polite');
+      val.setAttribute('aria-label', d.label + ' co-ordinate value');
+
+      var stepper = document.createElement('div');
+      stepper.className = 'stepper';
+      var up = document.createElement('button');
+      up.type = 'button';
+      up.className = 'step-btn';
+      up.appendChild(svgIcon('M12 6l7 9H5z'));
+      up.setAttribute('aria-label', 'Increase ' + d.label);
+      var dn = document.createElement('button');
+      dn.type = 'button';
+      dn.className = 'step-btn';
+      dn.appendChild(svgIcon('M12 18l7-9H5z'));
+      dn.setAttribute('aria-label', 'Decrease ' + d.label);
+      up.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, +1); });
+      dn.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, -1); });
+
+      stepper.appendChild(up);
+      stepper.appendChild(dn);
+      wrap.appendChild(label);
+      wrap.appendChild(val);
+      wrap.appendChild(stepper);
+      el.controls.appendChild(wrap);
+      ctrlMap[d.key] = { root: wrap, val: val, up: up, down: dn, armed: true, signed: true };
+    });
+  }
+
   function setValue(dir, v, bump) {
     var c = ctrlMap[dir];
     if (!c || !c.armed) return;
@@ -139,8 +201,11 @@ CG.UI = (function () {
       void c.val.offsetWidth;
       c.val.classList.add('bump');
     }
-    c.up.dataset.limit = v >= CG.CONFIG.maxStep ? '1' : '0';
-    c.down.dataset.limit = v <= 0 ? '1' : '0';
+    /* a signed stepper stops at -RANGE, not at zero */
+    var hi = c.signed ? CG.DIRECT_RANGE : CG.CONFIG.maxStep;
+    var lo = c.signed ? -CG.DIRECT_RANGE : 0;
+    c.up.dataset.limit = v >= hi ? '1' : '0';
+    c.down.dataset.limit = v <= lo ? '1' : '0';
     applyLock(c);
   }
 
@@ -467,6 +532,7 @@ CG.UI = (function () {
   return {
     init: init,
     buildControls: buildControls,
+    buildAxisControls: buildAxisControls,
     setValue: setValue,
     setControlsLocked: setControlsLocked,
     setGoEnabled: setGoEnabled,

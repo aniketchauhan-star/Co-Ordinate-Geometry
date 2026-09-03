@@ -15,7 +15,10 @@ window.CG = window.CG || {};
     levelIndex: 0,
     aircraft: { x: 0, y: 0 },
     target: { x: 0, y: 0 },
-    controls: { right: 0, left: 0, up: 0, down: 0 },
+    controls: { right: 0, left: 0, up: 0, down: 0, x: 0, y: 0 },
+    /* FLOW 58 — direct co-ordinate mode: x and y replace the four
+       directions, and the values they hold are SIGNED */
+    direct: null,                 /* { index } while that mode is running */
     coordinateMode: false,        /* true once X / Y notation is in play */
     inputLocked: false,
     tutorialStep: -1,
@@ -115,6 +118,9 @@ window.CG = window.CG || {};
 
   function calculateSelectedCoordinate() {
     var c = gameState.controls;
+    /* In direct mode the learner enters the co-ordinate itself, so there
+       is nothing to subtract — that is the whole point of the mode. */
+    if (gameState.direct) return { x: c.x, y: c.y };
     return { x: c.right - c.left, y: c.up - c.down };
   }
 
@@ -126,6 +132,7 @@ window.CG = window.CG || {};
   function refreshGo() {
     if (gameState.inputLocked) { UI.setGoEnabled(false); return; }
     var c = gameState.controls;
+    if (gameState.direct) { UI.setGoEnabled(c.x !== 0 || c.y !== 0); return; }
     UI.setGoEnabled((c.right + c.left + c.up + c.down) > 0);
   }
 
@@ -140,6 +147,22 @@ window.CG = window.CG || {};
      ============================================================ */
   function updateControls(dir, delta) {
     if (gameState.inputLocked) return;
+
+    /* DIRECT MODE: a signed value, and no opposite to zero — X and Y are
+       not fighting each other, they are two halves of one co-ordinate. */
+    if (gameState.direct) {
+      if (dir !== 'x' && dir !== 'y') return;
+      var R = CG.DIRECT_RANGE;
+      var v = clamp(gameState.controls[dir] + delta, -R, R);
+      if (v === gameState.controls[dir]) return;
+      gameState.controls[dir] = v;
+      UI.setValue(dir, v, true);
+      Audio.play('stepperTick');
+      refreshGo();
+      clearIdleHint();
+      return;
+    }
+
     /* a control that is on screen but not armed for this mission */
     if ((level().controls || []).indexOf(dir) === -1) return;
     var next = clamp(gameState.controls[dir] + delta, 0, CFG.maxStep);
@@ -238,7 +261,7 @@ window.CG = window.CG || {};
       });
     }
 
-    var cellMsNow = reduced ? 180 : CFG.cellDuration;
+    var cellMsNow = reduced ? 180 : (opts.cellMs || CFG.cellDuration);
     var accel = reduced ? 0 : CFG.accelFraction;
     /* three phases: fly the first leg, pivot on the spot, fly the second.
        Each leg eases in and out of its own duration, so the aircraft
@@ -413,7 +436,9 @@ window.CG = window.CG || {};
     var t = gameState.target;
     gameState.horizontalCorrect = sel.x === t.x;
     gameState.verticalCorrect = sel.y === t.y;
-    if (gameState.horizontalCorrect && gameState.verticalCorrect) showSuccess(sel);
+    var right = gameState.horizontalCorrect && gameState.verticalCorrect;
+    if (gameState.direct) { if (right) directSuccess(sel); else directIncorrect(sel); return; }
+    if (right) showSuccess(sel);
     else showIncorrect(sel);
   }
 
@@ -458,7 +483,8 @@ window.CG = window.CG || {};
       UI.mission({ text: fb.correct, voice: fb.correctVoice || fb.correct, animate: 'words' });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
       UI.hideCoordTag();
-      showComplete();
+      /* FLOW 58 — the CFU is not the end. Direct co-ordinate mode is. */
+      startDirectMode();
       return;
     }
 
@@ -877,6 +903,34 @@ window.CG = window.CG || {};
   /* the origin becomes tappable — used by the lesson arc */
   CG.originTap = function (cb) { showOriginTap(cb); };
 
+  /* ---- the discovery recap's demonstration flights -----------------
+     FLOW 32 wants three of the places the learner actually reached
+     re-flown from the origin, quickly, before any explanation starts.
+     It is the SAME flight machinery the missions use — one leg, a
+     pivot, the other leg — just at roughly two-and-a-half times the
+     speed and with the number reveals suppressed, because the point
+     here is the shape of the journey and not the counting. */
+  CG.demoFlight = async function (x, y) {
+    setHeading(0);
+    setAircraftPosition(0, 0, false);
+    Grid.clearPath();
+    Grid.clearReveal();
+    var ok = await animateAircraft(x, y, {
+      cellMs: Math.round(CFG.cellDuration * 0.40),
+      silentNumbers: true
+    });
+    gameState.animationState = 'idle';
+    return ok;
+  };
+
+  /* and putting it back where the lesson expects to find it */
+  CG.demoHome = function () {
+    setHeading(0);
+    setAircraftPosition(0, 0, true);
+    Grid.clearPath();
+    Grid.clearReveal();
+  };
+
   /* ---- the takeoff's flight controls -------------------------------
      The intro is authored in STAGE PIXELS, not grid cells, because it
      starts on a runway that has no coordinate system. These five calls
@@ -912,6 +966,136 @@ window.CG = window.CG || {};
       setAircraftPosition(0, 0, false);
     }
   };
+
+  /* ============================================================
+     FLOW 58-61 — DIRECT CO-ORDINATE MODE
+
+     The four direction controls come off and two signed steppers go on,
+     so the learner stops choosing "how far right" and starts entering a
+     co-ordinate. It reuses the mission loop wholesale — the same flight,
+     the same number reveals, the same lock — and differs only in what
+     the controls mean and what happens on a miss.
+     ============================================================ */
+  function directTarget() {
+    return CG.DIRECT_TARGETS[gameState.direct.index] || null;
+  }
+
+  function startDirectMode() {
+    clearAuto(); seqToken++; animToken++;
+    gameState.direct = { index: 0 };
+    gameState.screen = 'direct';
+    gameState.coordinateMode = true;
+    gameState.tutorialStep = -1;
+    UI.showDock(true);
+    UI.showMission(true);
+    UI.buildAxisControls();
+    Grid.showAxes(true);
+    Grid.showPermanentNumbers(true);
+    Grid.setLetter('x', true);
+    Grid.setLetter('y', true);
+    Grid.setStage(4, true);
+    loadDirectTarget();
+    UI.mission({
+      text: 'You’re ready. Guide the aircraft to its position.',
+      sub: 'Enter the co-ordinate itself now — <span class="coord">X</span> then <span class="coord">Y</span>.',
+      voice: 'You are ready. Guide the aircraft to its position.',
+      animate: 'words'
+    });
+  }
+
+  function loadDirectTarget() {
+    var t = directTarget();
+    if (!t) { showComplete(); return; }
+    animToken++; seqToken++; clearAuto(); clearIdleHint();
+    gameState.target = { x: t.x, y: t.y };
+    gameState.attemptNumber = 0;
+    gameState.animationState = 'idle';
+    gameState.revealedNumbers = { x: [], y: [] };
+    Grid.clearPath(); Grid.clearReveal(); Grid.clearFx();
+    Grid.clearPulseLines(); Grid.clearRoutePoints(); Grid.clearHint();
+    UI.hideCoordTag();
+    Grid.setTarget(gameState.target);
+    refreshTargetGlow(true);
+    UI.setLevelPill(gameState.direct.index + 1, CG.DIRECT_TARGETS.length);
+    resetControlValues();
+    setHeading(0);
+    setAircraftPosition(0, 0, true);
+    setPlaneMood('bob');
+    lockInput(false);
+  }
+
+  async function directSuccess(sel) {
+    var tk = ++seqToken;
+    Audio.play('success');
+    Grid.successFx(sel);                     /* the same ring the missions use */
+    setPlaneMood('settle');
+    locationCallout(sel);
+    UI.mission({
+      text: 'Perfect landing!',
+      sub: 'You reached <span class="coord">' + coordText(sel) + '</span>.',
+      voice: 'Perfect landing.',
+      animate: 'words'
+    });
+    await wait(CFG.beatLong); if (tk !== seqToken) return;
+    UI.hideCoordTag();
+    gameState.direct.index++;
+    if (gameState.direct.index >= CG.DIRECT_TARGETS.length) { showComplete(); return; }
+    Audio.play('levelTransition');
+    loadDirectTarget();
+    UI.mission({
+      text: 'Next aircraft. Guide it to its position.',
+      voice: 'Next aircraft. Guide it to its position.',
+      animate: 'words'
+    });
+  }
+
+  /* FLOW 61 — the aircraft has already flown to whatever the learner
+     entered, because they have to see where their own co-ordinate led.
+     Then: a wobble, a brief red flash, ONE pulse of where it should have
+     gone, and it FLIES back to the origin rather than teleporting. */
+  async function directIncorrect(sel) {
+    var tk = ++seqToken;
+    var t = gameState.target;
+    Audio.play('incorrect');
+    setPlaneMood('lost');
+    Grid.errorFx(sel);                       /* marks where they actually went */
+    UI.mission({
+      text: gameState.attemptNumber === 1
+        ? 'Not quite. Try again!'
+        : 'First find <span class="coord">x</span> along the bottom. Then move to <span class="coord">y</span>.',
+      voice: gameState.attemptNumber === 1
+        ? 'Not quite. Try again.'
+        : 'First find x along the bottom. Then move to y.',
+      animate: 'words'
+    });
+    await wait(CFG.beatMed); if (tk !== seqToken) return;
+
+    /* ONE pulse of where it should have gone — not a loop, and not a
+       label: the co-ordinate was on screen the whole time. */
+    Grid.pingPoint(t.x, t.y);
+    await wait(CFG.beatShort); if (tk !== seqToken) return;
+    Grid.clearPing();
+
+    /* the flight home, at the same speed as the demo flights */
+    setPlaneMood(null);
+    var back = await animateAircraft(-sel.x, -sel.y, {
+      cellMs: Math.round(CFG.cellDuration * 0.45),
+      silentNumbers: true
+    });
+    if (!back || tk !== seqToken) return;
+    gameState.animationState = 'idle';
+    Grid.clearPath(); Grid.clearReveal();
+    setHeading(0);
+    setAircraftPosition(0, 0, false);
+    setPlaneMood('bob');
+    resetControlValues();
+    lockInput(false);
+    UI.mission({
+      text: 'Enter the co-ordinate again.',
+      voice: 'Enter the co-ordinate again.',
+      animate: 'words'
+    });
+  }
 
   /* ============================================================
      SCREENS

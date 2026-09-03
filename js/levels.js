@@ -187,6 +187,28 @@ CG.DIRECTIONS = [
   { key: 'down',  label: 'DOWN',  axis: 'y', sign: -1, glyph: 'M12 20l8-9H4z' }
 ];
 
+/* =====================================================================
+   FLOW 58-61 — DIRECT CO-ORDINATE MODE
+
+   The finale. The four direction controls come off and are replaced by
+   one signed X stepper and one signed Y stepper, so the learner is no
+   longer choosing "how far right" — they are entering a co-ordinate.
+
+   THESE TARGET VALUES ARE IMPLEMENTATION EXAMPLES, NOT FROM THE PDF.
+   The source specifies the mode and its feedback but names no targets,
+   so rather than pretend otherwise they live here, clearly labelled and
+   trivially editable. One per quadrant, so the mode exercises all four
+   sign patterns the learner has just discovered.                       */
+CG.DIRECT_TARGETS = [
+  { x:  4, y:  3 },
+  { x: -3, y:  2 },
+  { x: -2, y: -4 },
+  { x:  5, y: -2 }
+];
+
+/* the signed range the X and Y steppers travel through */
+CG.DIRECT_RANGE = 6;
+
 CG.CONFIG = {
   maxStep: 5,          /* highest value a single direction stepper can reach */
 
@@ -214,5 +236,5 @@ CG.CONFIG = {
   retryDelay: 3200,    /* wait before the aircraft glides home to retry */
   quadrantBeat: 9500,  /* the four sign patterns need reading time      */
 
-  idleHintDelay: 7000  /* ms of inactivity before the hand nudge appears */
+  idleHintDelay: 5000  /* ms of inactivity before the hand nudge appears */
 };

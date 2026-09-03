@@ -1624,6 +1624,19 @@ button{font-family:inherit}
   font:900 27px/1 var(--font-num);fill:#fff;text-anchor:middle;
   font-variant-numeric:tabular-nums;
 }
+
+/* ---- POINT DROP TARGETS (FLOW 54) ---------------------------------
+   The same .dz machinery, but the target IS a grid point rather than a
+   slot beside one, so the dashed hit ring is a circle and the caption
+   moves clear of the point instead of sitting on it. .dz-box stays on
+   the hit shape so dropZoneRect() does not need to know the difference. */
+.dz-point{r:30}
+.dz-pip{fill:rgba(255,255,255,.55);stroke:none}
+.dz-filled .dz-point{
+  fill:rgba(168,240,90,.20);stroke:var(--ok);stroke-dasharray:none;
+}
+.dz-filled .dz-pip{fill:var(--ok)}
+.dz-wrong .dz-point{fill:rgba(255,194,77,.20);stroke:var(--retry)}
 @keyframes dzShake{
   0%,100%{transform:translateX(0)}
   25%{transform:translateX(-7px)}
