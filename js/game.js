@@ -371,7 +371,14 @@ window.CG = window.CG || {};
 
     var ok = await animateAircraft(sel.x, sel.y);
     gameState.animationState = 'idle';
-    if (!ok) return;                                /* cancelled by reset */
+    if (!ok) {
+      /* The flight was cancelled — by a level change, a reset, or a newer
+         flight taking over. Each of those re-establishes the controls
+         itself. But if none has, the learner would be left staring at a
+         dead dock with no way to try again, so never return still locked. */
+      if (gameState.screen === 'playing' && gameState.inputLocked) lockInput(false);
+      return;
+    }
 
     /* FLOW 11: the aircraft always flies to the SELECTED position — the
        learner has to see where their own numbers led. */
