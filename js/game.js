@@ -926,12 +926,13 @@ window.CG = window.CG || {};
     Audio.surfStart();                     /* and the shore break behind it   */
     dom.btnPlay.disabled = true;
 
-    /* THE RUNWAY GOES UP FIRST, AND THE START SCREEN DISSOLVES OVER IT.
-       Fading the start screen out and only then showing the runway
-       reveals the game's own ocean underneath for half a second — you
-       see the airspace before you have taken off for it, and it reads
-       as the game starting twice. Raising the runway on this same frame
-       makes it one cross-dissolve with nothing behind it. */
+    /* THE INTRO STATE IS ENTERED FIRST, AND THE START SCREEN DISSOLVES
+       OVER IT. Fading the start screen out and only then setting up
+       reveals the game itself underneath for half a second — the grid,
+       the dock, the headlands — which reads as the game starting twice.
+       Entering the intro state on this same frame hides all of that and
+       puts the inbound aircraft in place, so the dissolve lands on the
+       opening shot rather than on the game. */
     beginFlightDeck();
     dom.screenStart.classList.add('leaving');
     window.setTimeout(function () {

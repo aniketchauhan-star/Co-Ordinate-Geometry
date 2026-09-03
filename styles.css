@@ -1130,11 +1130,17 @@ button{font-family:inherit}
 #rotateHint span{font-size:16px;font-weight:700;opacity:.7}
 
 /* ===================================================================
-   THE TAKEOFF  (intro only)
+   THE ARRIVAL  (intro only)
 
-   Five beats, one continuous flight: engines run up on the runway, the
-   roll, rotation, a circuit over open water while the headlands arrive,
-   and the handoff into the game.
+   Five beats, one continuous flight: four seconds inbound above the
+   sea, the runway fading up ahead, touchdown, the rollout, and the
+   dissolve into the game.
+
+   THE GROUND RUNS BACKWARD compared with a takeoff. The aircraft lands
+   TOWARD the camera, which moves the vanishing point away, so the
+   dolly contracts the runway rather than expanding it and the ground
+   sweeps UP the frame. Everything that trails the aircraft — tyre
+   smoke, speed lines, cloud — therefore travels up too.
 
    GEOMETRY, MEASURED FROM runway.png ITSELF
    The artwork is 1672x941 - exactly 16:9 - so it fills the 1920x1080
@@ -1176,12 +1182,17 @@ button{font-family:inherit}
   0%,100%{opacity:.30;transform:translateY(0) scaleY(1)}
   50%    {opacity:.64;transform:translateY(-12px) scaleY(1.10)}
 }
-/* Off the moment the brakes release. The haze is painted at a fixed
-   point on screen, so once the ground starts dollying underneath it it
-   would be the one thing in frame standing still. */
+/* The haze is painted at a fixed point on screen, so it can only be on
+   when the ground is not moving underneath it — otherwise it is the one
+   thing in frame standing still. On a landing that means it is off for
+   the whole flight and the whole rollout, and comes on once the
+   aircraft has stopped and is idling. intro.js carries .rolling from
+   the first frame and drops it at the STOP beat. */
 .layer-runway.rolling .rw-heat{animation:none;opacity:0;transition:opacity 260ms linear}
 
-/* Tyre smoke, spawned at the wheels once per beat down the roll. */
+/* Tyre smoke off the mains: a burst at touchdown, then trailing puffs
+   thinning out through the rollout. It drifts UP the frame because the
+   aircraft is travelling down it — smoke goes behind you, not ahead. */
 .rw-wake{position:absolute;inset:0}
 .rw-puff{
   position:absolute;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;
@@ -1189,23 +1200,29 @@ button{font-family:inherit}
     rgba(255,255,255,.58),rgba(214,232,240,.22) 56%,rgba(214,232,240,0) 76%);
   animation:rwPuff 900ms var(--ease-out) both;
 }
+/* the touchdown burst: bigger, and it hangs a little longer */
+.rw-puff.big{
+  width:118px;height:118px;margin:-59px 0 0 -59px;
+  animation-duration:1150ms;
+}
 @keyframes rwPuff{
   from{transform:scale(.32);opacity:.88}
-  to  {transform:scale(2.5) translateY(70px);opacity:0}
+  to  {transform:scale(2.5) translateY(-70px);opacity:0}
 }
 
-/* Speed lines along the tarmac. They only appear once the roll is
-   genuinely fast, so they read as velocity and not as texture. */
+/* Speed lines along the tarmac. They run only while the rollout is
+   genuinely fast — past that they read as texture rather than
+   velocity — and they sweep UP the frame, with the ground. */
 .rw-streak{
   position:absolute;width:3px;height:150px;border-radius:2px;
   background:linear-gradient(to bottom,
     rgba(255,255,255,0),rgba(255,255,255,.62),rgba(255,255,255,0));
-  animation:rwStreak 430ms linear both;
 }
-@keyframes rwStreak{
-  0%  {transform:translateY(-150px) scaleY(.6);opacity:0}
+.rw-streak.up{animation:rwStreakUp 430ms linear both}
+@keyframes rwStreakUp{
+  0%  {transform:translateY(150px) scaleY(.6);opacity:0}
   20% {opacity:.78}
-  100%{transform:translateY(830px) scaleY(1.7);opacity:0}
+  100%{transform:translateY(-830px) scaleY(1.7);opacity:0}
 }
 
 /* ---- the cinematic layers ----------------------------------------
@@ -1324,7 +1341,7 @@ button{font-family:inherit}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still
      cross-dissolve; everything that would move is stopped here. */
-  .rw-heat,.rw-puff,.rw-streak,.cine-puff,.cine-call,.cine-call b,
+  .rw-heat,.rw-puff,.rw-puff.big,.rw-streak,.rw-streak.up,.cine-puff,.cine-call,.cine-call b,
   .cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
   .rw-puff,.rw-streak,.cine-puff{display:none}
