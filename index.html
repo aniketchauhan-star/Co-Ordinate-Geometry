@@ -72,7 +72,6 @@
       <div class="cloud cloud-2"><i></i><i></i><i></i></div>
       <div class="cloud cloud-3"><i></i><i></i><i></i></div>
     </div>
-
     <!-- Layer 6 - THE RUNWAY (intro only)
          Covers the whole stage during the takeoff, then falls away
          beneath the climbing aircraft to reveal the ocean already
@@ -91,6 +90,7 @@
       <!-- tyre dust, spawned per-wheel down the roll -->
       <div class="rw-wake" id="rwWake"></div>
     </div>
+
 
     <!-- Layers 4-8 — navigation grid, axes, trail, numbers, target -->
     <svg class="layer layer-field" id="field" viewBox="0 0 1920 1080" aria-hidden="true">
@@ -147,7 +147,6 @@
         <img id="plane" data-src="assets/airplane.webp" alt="Aircraft" draggable="false">
       </div>
     </div>
-
     <!-- Layers 8 and 10 - INTRO CINEMATIC (intro only)
          Two layers, one either side of the aircraft, because depth is
          the whole point: cloud that passes BEHIND the aircraft reads as
@@ -158,6 +157,7 @@
       <p class="cine-call" id="cineCall" hidden><b></b><span></span></p>
       <div class="cine-flash" id="cineFlash"></div>
     </div>
+
 
     <!-- Layers 7-10 — interface -->
     <div class="layer layer-ui" id="ui">
@@ -223,8 +223,10 @@
           <p class="load-gauge-pct"><span id="loadGaugePct">0</span>%</p>
         </div>
         <button class="play-btn" id="btnPlay" type="button" aria-label="Play" disabled hidden>
+          <!-- ITEM 15: no "PLAY" label. The supplied artwork already
+               says press me; the word was a second label for the same
+               idea. The accessible name lives on the button instead. -->
           <img data-src="assets/start%20button.webp" alt="" draggable="false">
-          <span class="play-label">PLAY</span>
         </button>
       </div>
     </div>
@@ -273,9 +275,9 @@
      Images are WebP, audio is Ogg/Opus. Chosen per asset rather than
      uniformly, because the two kinds of artwork behave very differently:
 
-       background / runway / start screen   lossy q82
-         Painted, fully opaque, mostly smooth gradient. 8.2MB of PNG
-         becomes 421KB. Measured at 35.6-40.9 dB PSNR — and, more to the
+       background / start screen   lossy q82
+         Painted, fully opaque, mostly smooth gradient. Measured at
+         35.6-40.9 dB PSNR — and, more to the
          point, the grid-line-vs-panel luma delta this project is built
          around reads 62.05 off the WebP against 62.02 off the PNG, so
          none of the art-direction work moved.
@@ -310,6 +312,7 @@
 <script src="js/ui.js"></script>
 <script src="js/lesson.js"></script>
 <script src="js/intro.js"></script>
+<script src="js/arrival.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

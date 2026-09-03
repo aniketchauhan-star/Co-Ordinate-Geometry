@@ -511,9 +511,12 @@ window.CG = window.CG || {};
     var q;
     Grid.clearReveal();
     for (q = 1; q <= Math.abs(sel.x); q++) Grid.highlightRevealed('x', Math.sign(sel.x) * q, true);
-    Grid.pulseLine('x', sel.x);        /* the line the number refers to */
+    /* ITEM 16 — light the SPAN of the x-axis the aircraft covered, with
+       a pip per space and an arrowhead pointing the way it went. Not
+       the whole axis, and not a column through the endpoint. */
+    Grid.glowAxisSpan('x', sel.x);
     Grid.clearRoutePoints();
-    Grid.markLeg('x', sel.x);          /* and the spaces it counted     */
+    Grid.markLeg('x', sel.x);          /* the spaces it counted, in place */
     UI.mission({
       text: 'First, you moved <em>' + Math.abs(sel.x) + '</em> spaces ' + dirWord('x', sel.x) + '.',
       voice: 'First, you moved ' + CG.Voice.numWord(Math.abs(sel.x)) + ' spaces ' +
@@ -523,7 +526,7 @@ window.CG = window.CG || {};
     await wait(CFG.beatMed); if (tk !== seqToken) return;
 
     for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
-    Grid.pulseLine('y', sel.y);
+    Grid.glowAxisSpan('y', sel.y);
     Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
       text: 'Then, you moved <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
@@ -535,7 +538,7 @@ window.CG = window.CG || {};
 
     /* first success only: the movement is named as X and Y */
     if (level().coordinateReveal) {
-      Grid.pulseLine('x', sel.x);
+      Grid.glowAxisSpan('x', sel.x);
       Grid.clearRoutePoints();
       Grid.markLeg('x', sel.x);
       UI.mission({
@@ -547,7 +550,7 @@ window.CG = window.CG || {};
       });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
-      Grid.pulseLine('y', sel.y);
+      Grid.glowAxisSpan('y', sel.y);
       Grid.markLeg('y', sel.y, sel.x);
       UI.mission({
         text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
@@ -936,11 +939,11 @@ window.CG = window.CG || {};
   };
 
   /* ---- the takeoff's flight controls -------------------------------
-     The intro is authored in STAGE PIXELS, not grid cells, because it
-     starts on a runway that has no coordinate system. These five calls
-     are everything it needs, and they route through the game's own
-     heading and bank maths, so the aircraft carries exactly the weight
-     in the cinematic that it carries in play. */
+     The approach is authored in STAGE PIXELS, not grid cells, because
+     it begins below the stage where there is no chart yet. These five
+     calls are everything it needs, and they route through the game's
+     own heading and bank maths, so the aircraft carries exactly the
+     weight in the approach that it carries in play. */
   CG.planeControl = {
     atStage: function (px, py) {
       dom.planeHolder.classList.remove('snap');
@@ -1111,8 +1114,8 @@ window.CG = window.CG || {};
       releaseBoot();
     };
     if (!CG.Intro) { toIntro(); return; }
-    gameState.screen = 'intro';
-    dom.stage.dataset.screen = 'intro';
+    gameState.screen = 'approach';
+    dom.stage.dataset.screen = 'approach';
     Grid.setStage(1, false);
     Grid.showAxes(false);
     CG.Intro.run().then(toIntro);
@@ -1130,6 +1133,10 @@ window.CG = window.CG || {};
     dom.btnPlay.disabled = false;
     void dom.btnPlay.offsetWidth;
     dom.btnPlay.classList.add('play-in');
+    /* the expanding rings start only once the button is really there —
+       a beacon around an empty slot would be pointing at nothing */
+    var slot = dom.btnPlay.parentNode;
+    if (slot) slot.classList.add('rings-live');
   }
 
   /* ============================================================
@@ -1156,10 +1163,13 @@ window.CG = window.CG || {};
     Audio.surfStart();                     /* and the shore break behind it   */
     dom.btnPlay.disabled = true;
 
-    /* The approach has already played, so START is now what the PDF
-       says it is on page 5: a dissolve straight into the first mission.
-       The world is already up behind the introduction screen, which is
-       why this is a plain cross-fade with nothing to assemble. */
+    /* TWO CINEMATICS, AT THE TWO MOMENTS THEY BELONG TO.
+       js/intro.js already played at boot: the aircraft climbing into
+       frame while the world materialised around it (FLOW §E). START now
+       plays the second, js/arrival.js — out over the sea, a fade, the
+       runway, the landing — and hands over to the first mission. */
+    var slot = dom.btnPlay.parentNode;
+    if (slot) slot.classList.remove('rings-live');
     dom.screenStart.classList.add('leaving');
     beginFlightDeck();
     window.setTimeout(function () {
@@ -1174,6 +1184,7 @@ window.CG = window.CG || {};
      it is also why the intro can be skipped at any point without
      landing the player in a half-assembled game. */
   function beginFlightDeck() {
+    dom.stage.classList.remove('intro-land');
     gameState.coordinateMode = false;
     gameState.tutorialStep = -1;
     Grid.showPermanentNumbers(false);
@@ -1182,11 +1193,17 @@ window.CG = window.CG || {};
     Grid.showQuadrants(null);
     Grid.showAxes(false);
     Grid.setStage(1, false);
-    dom.stage.classList.remove('intro-land');
 
-    dom.stage.dataset.screen = 'playing';
-    UI.playDockEntry();                    /* slide-up, once per session */
-    loadLevel(0);
+    function toGame() {
+      dom.stage.dataset.screen = 'playing';
+      UI.playDockEntry();                  /* slide-up, once per session */
+      loadLevel(0);
+    }
+
+    if (!CG.Arrival) { toGame(); return; } /* the game still runs without it */
+    gameState.screen = 'intro';
+    dom.stage.dataset.screen = 'intro';
+    CG.Arrival.run().then(toGame);
   }
 
   function playAgain() {
@@ -1248,9 +1265,9 @@ window.CG = window.CG || {};
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startGame(); }
       return;
     }
-    /* the takeoff has its own capture-phase handler: any key skips it,
-       and none of them may reach the stepper underneath */
-    if (gameState.screen === 'intro') return;
+    /* both cinematics have their own capture-phase handler: any key
+       skips them, and none may reach the stepper underneath */
+    if (gameState.screen === 'intro' || gameState.screen === 'approach') return;
     if (gameState.screen === 'complete') return;
     var tag = (ev.target && ev.target.tagName) || '';
     if (tag === 'INPUT') return;

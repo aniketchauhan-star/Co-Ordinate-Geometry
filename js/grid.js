@@ -361,6 +361,62 @@ CG.Grid = (function () {
 
      It spans only the charted area, not the full canonical grid, so a
      pulse cannot reach into airspace that has not unfolded yet. */
+  /* ===================================================================
+     ITEM 16 — THE AXIS SPAN THE AIRCRAFT ACTUALLY COVERED
+
+     Not the whole axis, and not the perpendicular line through the
+     point: the SEGMENT from the origin out to where the aircraft went.
+     When the voice says "you moved three spaces right", the thing that
+     lights is exactly those three spaces of the x-axis, with a pip on
+     each integer it crossed and an arrowhead at the far end pointing
+     the way it travelled.
+
+     That is why this is drawn on the axis itself rather than reusing
+     pulseLine: a full-height line through x=3 says "this column",
+     which is a different statement from "this is how far it went".
+     ===================================================================*/
+  var AXIS_STEP = 240;            /* ms between one pip and the next */
+
+  function glowAxisSpan(axis, value) {
+    clearAxisSpan();
+    if (!value) return;
+    var g = mk('g', null, 'axis-span'), i;
+    var n = Math.abs(value), sgn = value < 0 ? -1 : 1;
+
+    /* the lit segment, origin outwards */
+    var seg = axis === 'x'
+      ? { x1: toX(0), y1: toY(0), x2: toX(value), y2: toY(0) }
+      : { x1: toX(0), y1: toY(0), x2: toX(0),     y2: toY(value) };
+    seg['vector-effect'] = 'non-scaling-stroke';
+    g.appendChild(mk('line', seg, 'axis-span-line'));
+
+    /* an arrowhead at the far end, pointing the way it went — up or
+       down, left or right, so the direction is on screen and not only
+       in the sentence */
+    var head = axis === 'x'
+      ? (sgn > 0 ? 'M0,-11 L20,0 L0,11 Z' : 'M0,-11 L-20,0 L0,11 Z')
+      : (sgn > 0 ? 'M-11,0 L0,-20 L11,0 Z' : 'M-11,0 L0,20 L11,0 Z');
+    var hx = axis === 'x' ? toX(value) : toX(0);
+    var hy = axis === 'x' ? toY(0)     : toY(value);
+    g.appendChild(mk('path', { d: head, transform: 'translate(' + hx + ',' + hy + ')' },
+                     'axis-span-head'));
+
+    /* a pip on every integer it crossed, in the order it crossed them */
+    for (i = 1; i <= n; i++) {
+      var px = axis === 'x' ? toX(i * sgn) : toX(0);
+      var py = axis === 'x' ? toY(0)       : toY(i * sgn);
+      var pip = mk('circle', { cx: px, cy: py, r: 7 }, 'axis-pip');
+      pip.style.animationDelay = ((i - 1) * AXIS_STEP) + 'ms';
+      g.appendChild(pip);
+    }
+    el.pulse.appendChild(g);
+  }
+
+  function clearAxisSpan() {
+    var n = el.pulse.querySelectorAll('.axis-span'), i;
+    for (i = 0; i < n.length; i++) n[i].parentNode.removeChild(n[i]);
+  }
+
   function pulseLine(axis, value) {
     clearPulseLines();
     if (!value) return;                      /* 0 is the axis itself */
@@ -373,7 +429,8 @@ CG.Grid = (function () {
     el.pulse.appendChild(line);
   }
 
-  function clearPulseLines() { if (el.pulse) el.pulse.innerHTML = ''; }
+  function clearPulseLines() {
+    clearAxisSpan(); if (el.pulse) el.pulse.innerHTML = ''; }
 
   /* ---------------- origin beacon ---------------- */
   function drawOrigin() {
@@ -856,6 +913,7 @@ CG.Grid = (function () {
     getCharted: function () { return Object.assign({}, charted); },
     showHint: showHint,
     pulseLine: pulseLine,
+    glowAxisSpan: glowAxisSpan, clearAxisSpan: clearAxisSpan,
     clearPulseLines: clearPulseLines,
     clearHint: clearHint,
     setTarget: setTarget,

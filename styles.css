@@ -480,11 +480,45 @@ button{font-family:inherit}
    instead of one. A tight halo that thickens the line and a soft bloom
    that lifts it off the plate is the whole effect. */
 #gridLines line{stroke:var(--grid-line);stroke-width:2.2}
-#gridLines{
-  filter:
-    drop-shadow(0 0 3px var(--grid-glow))
-    drop-shadow(0 0 12px var(--grid-glow));
+/* ITEM 16 — THE GRATICULE NO LONGER GLOWS. Only the two axes do.
+
+   This reverses an earlier instruction to give every grid line the same
+   glow: that made the grid uniform, which it still is in colour and
+   weight, but it also meant thirteen to forty-two blooming lines
+   competing with the two that carry the lesson. The axes are the
+   subject; the graticule is the paper it is drawn on. */
+#gridLines{filter:none}
+/* ===================================================================
+   ITEM 16 — THE SPAN THE AIRCRAFT COVERED
+
+   Drawn on the axis itself, from the origin out to where it went, with
+   a pip on every integer it crossed and an arrowhead at the far end.
+   The pips arrive in sequence, so the count is read in the order the
+   aircraft flew it rather than appearing all at once.
+   =================================================================== */
+.axis-span-line{
+  fill:none;stroke:#FFFFFF;stroke-width:6;stroke-linecap:round;
+  filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 16px var(--grid-glow));
+  animation:spanDraw 520ms var(--ease-out) both;
 }
+@keyframes spanDraw{from{opacity:0}to{opacity:1}}
+.axis-span-head{
+  fill:#FFFFFF;
+  filter:drop-shadow(0 0 6px var(--grid-glow));
+  animation:spanDraw 520ms var(--ease-out) 200ms both;
+}
+.axis-pip{
+  fill:var(--grid-axis);stroke:#FFFFFF;stroke-width:2.5;
+  filter:drop-shadow(0 0 6px var(--grid-glow));
+  transform-box:fill-box;transform-origin:center;
+  animation:pipIn 300ms var(--ease-out) both;
+}
+@keyframes pipIn{
+  0%  {opacity:0;transform:scale(.4)}
+  70% {opacity:1;transform:scale(1.25)}
+  100%{opacity:1;transform:scale(1)}
+}
+
 /* If you want the 100/255 floor met, this is the one line to change:
    stroke:var(--grid-axis) at full opacity measures 111.5. It costs the
    graticule its recession — every line would then be as bright as the
@@ -1211,8 +1245,8 @@ button{font-family:inherit}
 .screen[hidden]{display:none}
 
 /* The runway is already up underneath by the time this runs — see
-   startGame() — so this is a cross-dissolve onto the runway, not a fade
-   to whatever the game happens to be showing. */
+   the approach has already played and the world is already up, so this
+   is a cross-dissolve straight into the first mission. */
 .screen-start{transition:opacity 600ms var(--ease-out)}
 
 /* ===================================================================
@@ -1237,6 +1271,9 @@ button{font-family:inherit}
   display:grid;place-items:center;
   width:340px;min-height:132px;
 }
+/* while loading there is no artwork behind it, so the stage's own
+   turquoise is the ground and the gauge is the only thing on it */
+.stage[data-screen="loading"] .screen-start{background:#2BC4E4}
 .load-gauge{
   /* narrower than the slot: it sits over the aircraft in the title art,
      so it covers as little of it as it can and still be legible */
@@ -1275,9 +1312,53 @@ button{font-family:inherit}
   margin:0;font-size:20px;font-weight:900;color:var(--ctl-navy);
   font-variant-numeric:tabular-nums;
 }
-/* the reveal: one pop, once, when everything is genuinely local */
+/* ===================================================================
+   THE START BUTTON  (ITEM 15)
+
+   No word on it. The supplied button artwork already reads as "press
+   me", and "PLAY" underneath it was a second label for the same idea —
+   so the text is gone and the button carries itself.
+
+   In its place: a slow breath, a warm glow, and two rings that expand
+   out of it and fade. The rings are ::before/::after on the slot rather
+   than on the button, so the button's own transform stays free for
+   hover and press — putting them on the button would have meant its
+   scale animation dragging the rings around with it.
+   =================================================================== */
 .play-btn[hidden]{display:none}
 .play-btn.play-in{animation:playPop 460ms cubic-bezier(.18,.86,.24,1.06) both}
+
+/* the breath, and the glow that goes with it */
+.play-btn:not([hidden]) img{
+  animation:playIdle 3200ms ease-in-out 400ms infinite,
+            playGlow  3200ms ease-in-out 400ms infinite;
+}
+@keyframes playGlow{
+  0%,100%{filter:drop-shadow(0 10px 20px rgba(8,45,70,.45))
+                 drop-shadow(0 0 10px rgba(255,243,196,.30))}
+  50%    {filter:drop-shadow(0 10px 20px rgba(8,45,70,.45))
+                 drop-shadow(0 0 22px rgba(255,243,196,.70))}
+}
+
+/* THE RINGS. Two, offset by half the cycle, so one is always leaving
+   as the other starts — a steady beacon rather than a blink. They are
+   pointer-events:none so they can never take the click. */
+.play-slot::before,
+.play-slot::after{
+  content:"";
+  position:absolute;left:50%;top:50%;
+  width:190px;height:190px;margin:-95px 0 0 -95px;
+  border-radius:50%;
+  border:3px solid rgba(255,243,196,.85);
+  pointer-events:none;opacity:0;
+}
+.play-slot.rings-live::before{animation:playRing 2600ms ease-out infinite}
+.play-slot.rings-live::after {animation:playRing 2600ms ease-out 1300ms infinite}
+@keyframes playRing{
+  0%  {transform:scale(.86);opacity:0}
+  18% {opacity:.55}
+  100%{transform:scale(1.75);opacity:0}
+}
 @keyframes playPop{
   0%  {opacity:0;transform:scale(.82)}
   62% {opacity:1;transform:scale(1.04)}
@@ -1307,10 +1388,6 @@ button{font-family:inherit}
   animation:playIdle 3200ms ease-in-out 1200ms infinite;   /* slow idle pulse */
 }
 @keyframes playIdle{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
-.play-label{
-  font-size:27px;font-weight:900;letter-spacing:.16em;color:var(--cream-hi);
-  text-shadow:0 3px 0 rgba(14,39,64,.75),0 6px 14px rgba(8,45,70,.5);
-}
 .play-btn:disabled{cursor:default}
 .play-btn:hover:not(:disabled){transform:scale(1.05)}
 .play-btn:active:not(:disabled){transform:scale(.94);transition-duration:var(--t-press)}
@@ -1351,6 +1428,15 @@ button{font-family:inherit}
 /* loading */
 
 /* hidden gameplay layers while on start/loading */
+/* LOADING — a bare stage. FLOW §E has the environment materialise
+   AROUND the arriving aircraft, so neither the environment nor the
+   title artwork (which is a picture of that environment) may be up
+   while the assets load. Only the gauge is. */
+.stage[data-screen="loading"] .layer-bg,
+.stage[data-screen="loading"] .layer-water,
+.stage[data-screen="loading"] .layer-terrain,
+.stage[data-screen="loading"] .layer-clouds,
+.stage[data-screen="loading"] .start-art,
 .stage[data-screen="loading"] .layer-field,
 .stage[data-screen="loading"] .layer-ui,
 .stage[data-screen="loading"] .chart-veil,
@@ -1375,6 +1461,17 @@ img:not([src]){visibility:hidden}
    so it is the one game layer left visible. The chart, the dock and the
    panel tint are all still to come; the terrain and its cloud cover are
    held back until landfall, when they fly in. */
+/* TWO CINEMATIC STATES, because the two need opposite things.
+
+   APPROACH (boot, js/intro.js) — every world layer's opacity is driven
+   PER FRAME as the world materialises, so the stylesheet must not fight
+   it. Only the interface and the title artwork are held back. */
+.stage[data-screen="approach"] .layer-ui,
+.stage[data-screen="approach"] .start-art{opacity:0;pointer-events:none}
+
+/* ARRIVAL (on START, js/arrival.js) — the world is already up and
+   staying up; what is held back is the chart, the dock and the panel
+   tint, plus the headlands until landfall releases them. */
 .stage[data-screen="intro"] .layer-field,
 .stage[data-screen="intro"] .layer-ui,
 .stage[data-screen="intro"] .chart-veil,
@@ -1621,10 +1718,9 @@ img:not([src]){visibility:hidden}
    WHAT DOES APPLY: sixteen elements carry both a filter and an
    animation, which is sixteen compositing layers the GPU holds
    textures for, and six carry will-change on top of that. The ones
-   that belong to the intro (.layer-runway, .layer-cine*, .rw-heat) and
-   to the start screen (.play-btn img) are inside containers that go to
-   display:none when finished, which releases their layers outright —
-   opacity:0 would not have.
+   that belong to the start screen (.play-btn img and its rings) are
+   inside a container that goes to display:none when finished, which
+   releases their layers outright — opacity:0 would not have.
 
    The ambient ones — water, caustics, glint, surf — animate for as long
    as the page is open, and there is no state in which they are not
@@ -1635,8 +1731,8 @@ img:not([src]){visibility:hidden}
 .stage.page-idle .caustic,
 .stage.page-idle .glint,
 .stage.page-idle .surf-band,
-.stage.page-idle .cloud,
 .stage.page-idle .rw-heat,
+.stage.page-idle .cloud,
 .stage.page-idle #plane,
 .stage.page-idle .go.armed{animation-play-state:paused}
 /* and hand the compositor back its hints while paused */
@@ -1650,14 +1746,16 @@ img:not([src]){visibility:hidden}
 @media (prefers-reduced-motion:reduce){
   .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-line,.go,.wp-pulse,.wp-ping,.play-btn img,
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff,
-  .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label{animation:none!important}
-  .puff{display:none}
-  /* THE TAKEOFF. intro.js shortens the timeline to a still
-     cross-dissolve; everything that would move is stopped here. */
+  .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label,
+  .play-slot::before,.play-slot::after,
+  .axis-span-line,.axis-span-head,.axis-pip,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,.cine-call,.cine-call b,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
   .rw-puff,.cine-puff{display:none}
+  .puff{display:none}
+  /* THE TAKEOFF. intro.js shortens the timeline to a still
+     cross-dissolve; everything that would move is stopped here. */
   *{transition-duration:1ms!important}
   .plane-holder{transition:transform 200ms linear!important}
 }

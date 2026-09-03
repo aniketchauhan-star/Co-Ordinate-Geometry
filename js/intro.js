@@ -165,8 +165,6 @@ CG.Intro = (function () {
     });
     if (el.plane) el.plane.classList.remove('flying');
 
-    CG.Audio.duck('flight', false);
-    CG.Audio.engineStop();
     if (CG.planeControl) CG.planeControl.home();
     if (settle) { settle(); settle = null; }
   }
@@ -208,12 +206,19 @@ CG.Intro = (function () {
       setOpacity(el.land, 0); setOpacity(el.cloud, 0);
       setOpacity(el.veil, 0); setOpacity(el.field, 0);
 
-      CG.Audio.duck('flight', true);
-      CG.Audio.engineStart();
-      if (el.plane) el.plane.classList.add('flying');
+      /* THE APPROACH IS SILENT, and it has to be.
 
-      later(BEAT.ocean, function () { CG.Audio.play('reveal'); });
-      later(BEAT.grid,  function () { CG.Audio.play('levelTransition'); });
+         §E opens with "begin with game music... after allowed user
+         interaction", and this plays BEFORE the introduction screen —
+         so there has been no interaction yet. Browsers block audio
+         started without a gesture, and §D forbids speech before the
+         learner's first one. Both point the same way: the music and the
+         shore break begin on START, which is the first gesture, and
+         this is four seconds of picture.
+
+         (If the sound mattered more than the order, the approach would
+         have to move to after START — see startGame().) */
+      if (el.plane) el.plane.classList.add('flying');
 
       /* THE BACKSTOP. requestAnimationFrame stops completely in a
          backgrounded tab, so without this a player who switches away
