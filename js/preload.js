@@ -59,7 +59,9 @@ CG.Preload = (function () {
     done: false,
     pct: 0,
     missing: [],
-    blobs: {}
+    blobs: {},
+    bytes: {},
+    aborts: []
   };
 
   /* ---- URL matching ------------------------------------------------
@@ -95,6 +97,7 @@ CG.Preload = (function () {
   function swap(key, blob) {
     var url = URL.createObjectURL(blob);
     state.blobs[key] = url;
+    state.bytes[key] = blob.size;      /* checked against SIZES by the browser test */
     elementsFor(key).forEach(function (el) {
       var original = originalOf(el);
       var playing = !el.paused && el.currentTime > 0;
@@ -143,6 +146,7 @@ CG.Preload = (function () {
       function armStall() {
         if (stall) window.clearTimeout(stall);
         stall = window.setTimeout(function () {
+          state.aborts.push(key + ' (stall)');
           if (ctl) { try { ctl.abort(); } catch (e) {} }
           finish(false);
         }, STALL_MS);
@@ -150,6 +154,7 @@ CG.Preload = (function () {
 
       if (typeof fetch !== 'function') { finish(false); return; }
       hard = window.setTimeout(function () {
+        state.aborts.push(key + ' (hard cap)');
         if (ctl) { try { ctl.abort(); } catch (e) {} }
         finish(false);
       }, HARD_MS);
@@ -253,6 +258,11 @@ CG.Preload = (function () {
     isDone: function () { return state.done; },
     pct: function () { return state.pct; },
     missing: function () { return state.missing.slice(); },
+    aborts: function () { return state.aborts.slice(); },
+    /* byte counts actually received, per asset. The browser test compares
+       these to SIZES: it is the only proof that a streamed fetch which
+       Chrome reports as ERR_ABORTED still delivered every byte. */
+    bytes: function () { var o = {}, k; for (k in state.bytes) o[k] = state.bytes[k]; return o; },
     /* exposed for the test harness and for tools/sizes.py to check */
     SIZES: SIZES,
     queueOrder: queue

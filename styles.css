@@ -1348,10 +1348,22 @@ button{font-family:inherit}
 /* hidden gameplay layers while on start/loading */
 .stage[data-screen="loading"] .layer-field,
 .stage[data-screen="loading"] .layer-ui,
+.stage[data-screen="loading"] .chart-veil,
 .stage[data-screen="loading"] .plane-holder,
 .stage[data-screen="start"] .layer-field,
 .stage[data-screen="start"] .layer-ui,
+/* the panel tint belongs to the chart, so it has no business being up
+   while the loading gauge is. It used to be covered by the full-screen
+   loader; with the gauge on the start screen instead, the dark plate
+   showed through for as long as the start artwork took to arrive. */
+.stage[data-screen="start"] .chart-veil,
 .stage[data-screen="start"] .plane-holder{opacity:0;pointer-events:none}
+
+/* An <img> waiting for its blob has no src at all, and a src-less image
+   paints the browser's broken icon plus its alt text — a flash of
+   "Co-ordinate Geometry" in the top-left corner on every boot. Nothing
+   to show is better than something wrong. */
+img:not([src]){visibility:hidden}
 
 /* THE INTRO STATE
    During the takeoff the aircraft is the one thing that must be seen,
