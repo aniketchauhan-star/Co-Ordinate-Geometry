@@ -1101,8 +1101,25 @@ window.CG = window.CG || {};
     });
   }
 
+  /* FLOW §E — the aircraft arrives before its world does, and before the
+     introduction. Nothing here is interactive: it plays, and then the
+     introduction screen comes up with START. */
+  function runApproach() {
+    var toIntro = function () {
+      dom.stage.dataset.screen = 'start';
+      gameState.screen = 'start';
+      releaseBoot();
+    };
+    if (!CG.Intro) { toIntro(); return; }
+    gameState.screen = 'intro';
+    dom.stage.dataset.screen = 'intro';
+    Grid.setStage(1, false);
+    Grid.showAxes(false);
+    CG.Intro.run().then(toIntro);
+  }
+
   /* The single point at which the game becomes startable — reached
-     either by the preloader finishing or by the boot watchdog. Both the
+     either by the approach finishing or by the boot watchdog. Both the
      button and the flag are set here so the two can never disagree. */
   function releaseBoot() {
     if (bootReleased) return;
@@ -1139,15 +1156,12 @@ window.CG = window.CG || {};
     Audio.surfStart();                     /* and the shore break behind it   */
     dom.btnPlay.disabled = true;
 
-    /* THE INTRO STATE IS ENTERED FIRST, AND THE START SCREEN DISSOLVES
-       OVER IT. Fading the start screen out and only then setting up
-       reveals the game itself underneath for half a second — the grid,
-       the dock, the headlands — which reads as the game starting twice.
-       Entering the intro state on this same frame hides all of that and
-       puts the inbound aircraft in place, so the dissolve lands on the
-       opening shot rather than on the game. */
-    beginFlightDeck();
+    /* The approach has already played, so START is now what the PDF
+       says it is on page 5: a dissolve straight into the first mission.
+       The world is already up behind the introduction screen, which is
+       why this is a plain cross-fade with nothing to assemble. */
     dom.screenStart.classList.add('leaving');
+    beginFlightDeck();
     window.setTimeout(function () {
       dom.screenStart.hidden = true;
       dom.btnPlay.disabled = false;
@@ -1170,16 +1184,9 @@ window.CG = window.CG || {};
     Grid.setStage(1, false);
     dom.stage.classList.remove('intro-land');
 
-    function toGame() {
-      dom.stage.dataset.screen = 'playing';
-      UI.playDockEntry();                  /* slide-up, once per session */
-      loadLevel(0);
-    }
-
-    if (!CG.Intro) { toGame(); return; }   /* the game still runs without it */
-    gameState.screen = 'intro';
-    dom.stage.dataset.screen = 'intro';
-    CG.Intro.run().then(toGame);
+    dom.stage.dataset.screen = 'playing';
+    UI.playDockEntry();                    /* slide-up, once per session */
+    loadLevel(0);
   }
 
   function playAgain() {
@@ -1315,13 +1322,18 @@ window.CG = window.CG || {};
     window.addEventListener('keydown', onKeyDown);
     fitStage();
 
-    /* THE LOADING BAR LIVES ON THE START SCREEN, in the button's place.
-       The old full-screen loader is gone: the start art is up almost at
-       once (it is 202KB and seventh in a smallest-first queue), so the
-       player watches the airspace being prepared rather than a blank
-       plate. The button is revealed only at 100%. */
-    dom.stage.dataset.screen = 'start';
-    gameState.screen = 'start';
+    /* THE ORDER IS THE PDF'S: loading, then the aircraft's approach,
+       then the introduction, then the game.
+
+       FLOW §E asks for the environment to materialise AROUND the
+       aircraft — so the environment cannot already be on screen while
+       the assets load, and neither can the title artwork, which is a
+       picture of that environment. The gauge therefore sits on a bare
+       stage, and each screen is shown exactly once. (This supersedes an
+       earlier instruction to have the title art up early in the load:
+       the two cannot both be true.) */
+    dom.stage.dataset.screen = 'loading';
+    gameState.screen = 'loading';
 
     var gauge = document.getElementById('loadGauge');
     var fill  = document.getElementById('loadGaugeFill');
@@ -1342,7 +1354,7 @@ window.CG = window.CG || {};
         console.warn('[assets] ' + res.missing.length + ' asset(s) could not be fetched; ' +
                      'the game runs on their original URLs: ' + res.missing.join(', '));
       }
-      releaseBoot();
+      runApproach();
     });
 
     /* ---- §4: stop compositing when nobody is looking ----------------
