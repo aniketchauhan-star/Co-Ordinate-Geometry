@@ -7,7 +7,7 @@
      - fade -
      RUNWAY    the aircraft is at the START of the strip, comes down it,
                touches down, rolls out and stops at the far end
-     - fade -
+     - fade -   two seconds; the game assembles underneath it
      GAME
 
    WHY IT IS CUT AND NOT DISSOLVED
@@ -69,8 +69,17 @@ CG.Intro = (function () {
     runway:   4300,    /* veil peak: the runway scene begins           */
     touch:    5000,    /* the wheels meet the tarmac                   */
     stop:     7200,    /* rolled out to a standstill                   */
-    close:    7700,    /* the second fade, into the game               */
-    end:      8500
+    close:    7700,    /* the second fade begins — 2000ms, end to end   */
+    /* THE HANDOVER, at the veil's peak rather than at its end. The
+       game's own reveals take up to 620ms (the panel tint; the dock is
+       360, the chart 420, the interface 460), and if control changes
+       hands only once the veil has cleared then all of that fades in
+       AFTERWARDS, in the open — which is the translucent stuff arriving
+       after the transition is supposed to be over. Handing over here
+       puts every one of those reveals underneath the veil, finished and
+       solid before it lifts. */
+    hand:     8660,
+    end:      9700     /* the veil reaches zero and is taken away      */
   };
 
   /* ---- geometry, measured out of runway.png ------------------------
@@ -268,8 +277,8 @@ CG.Intro = (function () {
          pops. Then the aircraft moves to its station while invisible
          and fades back in on it, the 180-degree turn onto north
          included. Nothing has to bend to make that join. */
-      u = clamp01((t - BEAT.close) / (BEAT.end - BEAT.close));
-      var OUT = 0.42, DARK = 0.22, h = station();
+      u = clamp01((t - BEAT.close) / (BEAT.hand - BEAT.close));
+      var OUT = 0.62, h = station();
       f.phase = 'close';
       if (u < OUT) {
         f.x = CENTRELINE;
@@ -278,9 +287,12 @@ CG.Intro = (function () {
         f.o = 1 - easeIO(u / OUT);
         f.runway = { o: f.o };
       } else {
+        /* Across to the station, and it stays at zero from here: the
+           veil is what brings the aircraft back, along with the rest of
+           the game, so it is never faded in twice. */
         f.x = h.x; f.y = h.y; f.w = h.w;
         f.deg = 0;                       /* on station it faces north */
-        f.o = easeIO(clamp01(((u - OUT) / (1 - OUT) - DARK) / (1 - DARK)));
+        f.o = 0;
         f.runway = { o: 0 };
       }
     }
@@ -393,7 +405,7 @@ CG.Intro = (function () {
        artwork inside it, and fading only the image would leave the haze
        shimmering over the open sea in the first scene. */
     if (f.runway && el.runway) el.runway.style.opacity = f.runway.o.toFixed(3);
-    if (f.t >= BEAT.end) { finish(false); return; }
+    if (f.t >= BEAT.hand) { finish(false); return; }
     raf = window.requestAnimationFrame(tick);
   }
 
@@ -428,20 +440,24 @@ CG.Intro = (function () {
     });
     if (el.back) el.back.hidden = true;
 
-    /* THE CLOSING VEIL IS DELIBERATELY ALLOWED TO OUTLIVE THE
-       CINEMATIC. Cutting it at the instant control changes hands snaps
-       it off at around 29% opacity — measured — instead of letting it
-       fall away over the game it has just revealed, which is the whole
-       point of a dissolve. The layer is pointer-events:none, so nothing
-       underneath is blocked while it finishes. A plain timer rather
-       than later(): clearTimers() must not take this one. */
+    /* THE VEIL FINISHES ITS OWN FADE AND THEN GOES, and it is the last
+       thing on screen either way: everything the game reveals is
+       already solid underneath it by the time control changes hands.
+       So there is never a translucent layer sitting over a playable
+       game — only a veil on its way to zero, reaching it exactly when
+       it is removed.
+
+       The remaining time is read from the beat table rather than
+       written down, so retiming the fade cannot leave the veil being
+       cut off part-way. A plain timer, not later(): clearTimers() must
+       not take this one. */
     var veiling = !!(el.flash && el.flash.classList.contains('go'));
     if (el.front) {
       if (veiling) {
         window.setTimeout(function () {
           el.front.hidden = true;
           el.flash.classList.remove('mid', 'go');
-        }, 1100);
+        }, BEAT.end - BEAT.hand);
       } else {
         el.front.hidden = true;
         if (el.flash) el.flash.classList.remove('mid', 'go');
@@ -595,7 +611,7 @@ CG.Intro = (function () {
          switches away comes back to a game that never started. A timer
          is throttled there but never stopped, and finish() is
          idempotent, so whichever of the two arrives first wins. */
-      later(BEAT.end + 60, function () { finish(false); });
+      later(BEAT.hand + 60, function () { finish(false); });
 
       t0 = Date.now();
       if (CG.planeControl) CG.planeControl.free(true);

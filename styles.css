@@ -1291,23 +1291,32 @@ button{font-family:inherit}
    it has just revealed instead of being cut off at 29%. */
 .cine-flash{
   position:absolute;inset:0;opacity:0;
+  /* ONE KNOB FOR BOTH FADES. Each has to hide a change of place, where
+     the whole frame is different on the other side, so each needs to
+     get close to opaque — and they should get equally close, or the
+     two transitions in one cinematic read as different effects. */
+  --peak:.92;
   background:radial-gradient(150% 120% at 50% 46%,
     rgba(255,255,255,.66),rgba(183,231,239,.54) 44%,rgba(120,200,222,.42) 100%);
 }
-/* THE MID FADE — sea to runway. It has a harder job than the closing
-   one: a change of PLACE, where the whole frame is different on the
-   other side. So it goes to 88%, and it peaks at 43% of 700ms — 301ms
-   in — which is the frame intro.js swaps the scene on. */
-.cine-flash.mid{animation:cineMid 700ms var(--ease-io) both}
-@keyframes cineMid{0%{opacity:0}43%{opacity:.88}100%{opacity:0}}
 
-/* THE CLOSING FADE — runway to game. Only 40%, because everything that
-   moves across it (the aircraft, the runway itself) fades out on its
-   own; this just softens the join. 1500ms against a 800ms beat,
-   deliberately: it is still decaying when control changes hands, so it
-   falls away over the game it has revealed instead of being cut off. */
-.cine-flash.go{animation:cineDissolve 1500ms var(--ease-io) both}
-@keyframes cineDissolve{0%{opacity:0}30%{opacity:.40}100%{opacity:0}}
+/* THE MID FADE — sea to runway. 700ms, peaking at 43% — 301ms in —
+   which is the frame intro.js cuts the scene on. */
+.cine-flash.mid{animation:cineMid 700ms var(--ease-io) both}
+@keyframes cineMid{0%{opacity:0}43%{opacity:var(--peak)}100%{opacity:0}}
+
+/* THE CLOSING FADE — runway to game. Two seconds, and a genuine dip:
+   up over 840ms, held for 280, down over 880.
+
+   THE HOLD IS THE POINT. Control passes to the game at 960ms, inside
+   that hold, and the game's own reveals — the panel tint at 620ms, the
+   interface at 460, the chart at 420, the dock at 360 — all run to
+   completion underneath the veil. By the time it starts lifting there
+   is nothing left that is still fading in, and when it reaches zero it
+   is removed on the same frame. Nothing translucent is ever left over a
+   game you can play. */
+.cine-flash.go{animation:cineOut 2000ms var(--ease-io) both}
+@keyframes cineOut{0%{opacity:0}42%,56%{opacity:var(--peak)}100%{opacity:0}}
 
 /* ---- landfall ------------------------------------------------------
    The headlands fly in from off-frame to the exact positions they hold
