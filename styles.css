@@ -466,7 +466,9 @@ button{font-family:inherit}
 }
 @keyframes axisNamed{0%,100%{stroke-width:5.6;opacity:.9}50%{stroke-width:7.2;opacity:1}}
 #ticks line{stroke:var(--grid-axis);stroke-width:2.8;stroke-linecap:round}
+#ticks{filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 12px var(--grid-glow))}
 #axisEnds path{fill:var(--grid-axis);transition:opacity 420ms var(--ease-out)}
+#axisEnds{filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow))}
 #axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
 
 
@@ -476,7 +478,10 @@ button{font-family:inherit}
   stroke:rgba(14,39,64,.66);stroke-width:4.5;paint-order:stroke fill;
   text-anchor:middle;dominant-baseline:middle;
 }
-#axisNums{opacity:0;transition:opacity 520ms var(--ease-out)}
+#axisNums{
+  opacity:0;transition:opacity 520ms var(--ease-out);
+  filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow));
+}
 #axisNums.shown{opacity:1}
 /* gentle: opacity 0 -> 1, scale .85 -> 1, ~190ms (requirement 8) */
 .reveal-num{animation:numPop 190ms var(--ease-out) both}
@@ -496,18 +501,42 @@ button{font-family:inherit}
 /* "count the spaces" hint — the distance is shown, never the number */
 .hint-run{animation:fadeIn 260ms both}
 .hint-span{
-  stroke:#FFF3C4;stroke-width:10;stroke-linecap:round;opacity:.95;
+  stroke:#FFF3C4;stroke-width:10;stroke-linecap:round;opacity:0;
   filter:drop-shadow(0 0 7px rgba(255,243,196,.85)) drop-shadow(0 0 18px rgba(255,196,77,.5));
-  animation:hintPulse 1800ms var(--ease-io) infinite;
+  /* one segment per space, drawn as that space is counted */
+  animation:hintSpanIn 420ms var(--ease-out) forwards;
 }
+@keyframes hintSpanIn{from{opacity:0}to{opacity:.95}}
 /* one pip per space to count — bigger and lit, so a learner can see
-   them from across a classroom */
+   them from across a classroom. Each arrives on its own beat (the delay
+   is set per pip in grid.js), then they settle into a shared pulse. */
 .hint-pip{
   fill:#FFFFFF;stroke:rgba(14,39,64,.55);stroke-width:2.5;
   filter:drop-shadow(0 0 6px rgba(255,243,196,.9));
-  animation:hintPulse 1800ms var(--ease-io) infinite;
+  transform-box:fill-box;transform-origin:center;
+  /* One animation only. A perpetual pulse listed after the entrance
+     would win the opacity cascade and every pip would appear at once,
+     which is exactly what the stagger is here to prevent. */
+  animation:hintPipIn 460ms var(--ease-out) both;
 }
-@keyframes hintPulse{0%,100%{opacity:.62}50%{opacity:1}}
+@keyframes hintPipIn{
+  0%  {opacity:0;transform:scale(.2)}
+  62% {opacity:1;transform:scale(1.5)}
+  100%{opacity:1;transform:scale(1)}
+}
+
+/* the grid line reached by each step, lit right across the chart so the
+   space just counted is unmistakable */
+.hint-line{
+  stroke:#FFF3C4;stroke-width:3.2;opacity:0;
+  filter:drop-shadow(0 0 8px rgba(255,243,196,.8));
+  animation:hintLineIn 520ms var(--ease-out) forwards;
+}
+@keyframes hintLineIn{
+  0%  {opacity:0}
+  40% {opacity:.95}
+  100%{opacity:.5}
+}
 
 /* quadrant labels + sign patterns (concept reveal only) */
 .quad{animation:numPop 320ms var(--ease-out) both}

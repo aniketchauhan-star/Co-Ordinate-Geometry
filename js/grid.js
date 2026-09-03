@@ -308,19 +308,44 @@ CG.Grid = (function () {
   /* ---------------- "count the spaces" hint (FLOW 13/14) ----------------
      Highlights the distance from the origin to the target along one axis,
      with a pip on every interval — the learner still has to count. */
+  /* "Count the spaces up." — and then it counts them, one at a time.
+     Each space gets its own grid line lit and its own pip, staggered so
+     the learner's eye is walked along the route in step with the voice
+     instead of being shown the whole distance at once. */
+  var HINT_STEP = 520;                   /* ms between one space and the next */
+
   function showHint(axis, value) {
     clearHint();
     if (!value) return;
     var n = Math.abs(value), sgn = value < 0 ? -1 : 1, i;
     var g = mk('g', null, 'hint-run');
-    if (axis === 'x') {
-      g.appendChild(mk('line', { x1: toX(0), y1: toY(0), x2: toX(value), y2: toY(0),
-                                 'vector-effect': 'non-scaling-stroke' }, 'hint-span'));
-      for (i = 1; i <= n; i++) g.appendChild(mk('circle', { cx: toX(i * sgn), cy: toY(0), r: 9 }, 'hint-pip'));
-    } else {
-      g.appendChild(mk('line', { x1: toX(0), y1: toY(0), x2: toX(0), y2: toY(value),
-                                 'vector-effect': 'non-scaling-stroke' }, 'hint-span'));
-      for (i = 1; i <= n; i++) g.appendChild(mk('circle', { cx: toX(0), cy: toY(i * sgn), r: 9 }, 'hint-pip'));
+    var nss = { 'vector-effect': 'non-scaling-stroke' };
+
+    for (i = 1; i <= n; i++) {
+      var at = i * sgn;
+      var span, line, pip;
+      if (axis === 'x') {
+        /* the segment just crossed */
+        span = mk('line', Object.assign({ x1: toX(at - sgn), y1: toY(0),
+                                          x2: toX(at), y2: toY(0) }, nss), 'hint-span');
+        /* and the grid line reached, lit across the chart */
+        line = mk('line', Object.assign({ x1: toX(at), y1: toY(MAX.yMax),
+                                          x2: toX(at), y2: toY(MAX.yMin) }, nss), 'hint-line');
+        pip = mk('circle', { cx: toX(at), cy: toY(0), r: 10 }, 'hint-pip');
+      } else {
+        span = mk('line', Object.assign({ x1: toX(0), y1: toY(at - sgn),
+                                          x2: toX(0), y2: toY(at) }, nss), 'hint-span');
+        line = mk('line', Object.assign({ x1: toX(MAX.xMin), y1: toY(at),
+                                          x2: toX(MAX.xMax), y2: toY(at) }, nss), 'hint-line');
+        pip = mk('circle', { cx: toX(0), cy: toY(at), r: 10 }, 'hint-pip');
+      }
+      var delay = ((i - 1) * HINT_STEP) + 'ms';
+      line.style.animationDelay = delay;
+      span.style.animationDelay = delay;
+      pip.style.animationDelay = delay;
+      g.appendChild(line);
+      g.appendChild(span);
+      g.appendChild(pip);
     }
     el.hint.appendChild(g);
   }

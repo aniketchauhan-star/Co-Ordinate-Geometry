@@ -43,20 +43,29 @@ CG.STAGES = {
      stage takes the largest cell its shape allows inside the play box
      (1792 x 768):
 
-       stage 1   cell 102  ->   714 x 714   height-limited
-       stage 2   cell 102  ->  1224 x 714   SAME cell: a pure sideways
-                                            unfold with no zoom at all
-       stage 3   cell  59  ->   708 x 708   the unfold that also zooms out
+       stage 1   cell 116  ->   696 x 696   SQUARE
+       stage 2   cell 116  ->  1392 x 696   exactly 2:1, and the SAME
+                                            cell: a pure sideways unfold
+                                            with no zoom at all
+       stage 3   cell  59  ->   708 x 708   SQUARE again; the one zoom
 
-     Each is sized to leave 26px for the panel edge on every side, so the
-     panel can carry the same shape as the grid it holds.
+     In stage 1 the origin sits ON the grid's bottom-left corner, so the
+     aircraft starts in the corner of its own airspace the way the PDF
+     shows it. That is what fixes stage 1's cell size: the aircraft at
+     (0,0) hangs half its body below the origin, and it has to clear the
+     control dock at y=940. 116 is the largest cell that does, while
+     still leaving 26px for the panel edge on every side.
+
+     When quadrant II unfolds the origin slides to the bottom CENTRE —
+     the new airspace is all to the left — and only when the plane opens
+     downwards does it move up to the middle.
 
      So 1 -> 2 is motion without scale, and 2 -> 3 is the one zoom in the
      whole game. The origin stays put from 1 to 2 (804) and only moves
      when the airspace opens below it (787 -> 532).
      --------------------------------------------------------------------- */
-  1: { cell: 102, origin: { x: 705, y: 787 }, extent: { xMin: -1, xMax: 6, yMin: -1, yMax: 6 } },
-  2: { cell: 102, origin: { x: 960, y: 787 }, extent: { xMin: -6, xMax: 6, yMin: -1, yMax: 6 } },
+  1: { cell: 116, origin: { x: 612, y: 870 }, extent: { xMin: 0,  xMax: 6, yMin: 0,  yMax: 6 } },
+  2: { cell: 116, origin: { x: 960, y: 870 }, extent: { xMin: -6, xMax: 6, yMin: 0,  yMax: 6 } },
   3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6, xMax: 6, yMin: -6, yMax: 6 } },
   /* quadrant IV opens no new airspace beyond stage 3 — x and y already
      span both signs — so it shares the geometry and nothing lurches. */
