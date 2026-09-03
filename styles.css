@@ -1305,6 +1305,18 @@ button{font-family:inherit}
   background:radial-gradient(150% 120% at 50% 46%,
     rgba(255,255,255,.66),rgba(183,231,239,.54) 44%,rgba(120,200,222,.42) 100%);
 }
+/* THE MID FADE — sea to runway. It has a harder job than the closing
+   one: a change of PLACE, where the whole frame is different on the
+   other side. So it goes to 88%, and it peaks at 43% of 700ms — 301ms
+   in — which is the frame intro.js swaps the scene on. */
+.cine-flash.mid{animation:cineMid 700ms var(--ease-io) both}
+@keyframes cineMid{0%{opacity:0}43%{opacity:.88}100%{opacity:0}}
+
+/* THE CLOSING FADE — runway to game. Only 40%, because everything that
+   moves across it (the aircraft, the runway itself) fades out on its
+   own; this just softens the join. 1500ms against a 800ms beat,
+   deliberately: it is still decaying when control changes hands, so it
+   falls away over the game it has revealed instead of being cut off. */
 .cine-flash.go{animation:cineDissolve 1500ms var(--ease-io) both}
 @keyframes cineDissolve{0%{opacity:0}30%{opacity:.40}100%{opacity:0}}
 
@@ -1342,7 +1354,7 @@ button{font-family:inherit}
   /* THE TAKEOFF. intro.js shortens the timeline to a still
      cross-dissolve; everything that would move is stopped here. */
   .rw-heat,.rw-puff,.rw-puff.big,.rw-streak,.rw-streak.up,.cine-puff,.cine-call,.cine-call b,
-  .cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
+  .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
   .rw-puff,.rw-streak,.cine-puff{display:none}
   .runway-art{transform:none!important}
