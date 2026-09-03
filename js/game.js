@@ -1334,6 +1334,10 @@ window.CG = window.CG || {};
     /* expose for console debugging / level tweaking */
     CG.state = gameState;
     CG.loadLevel = loadLevel;
+    /* the same narrow surface loadLevel is exposed on: it lets the
+       direct-co-ordinate finale be entered without playing eight
+       missions and a lesson arc first */
+    CG.startDirectMode = startDirectMode;
   }
 
   if (document.readyState === 'loading') {
