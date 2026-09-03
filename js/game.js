@@ -1325,6 +1325,36 @@ window.CG = window.CG || {};
       dom.btnPlay.classList.add('play-in');
     });
 
+    /* ---- §4: stop compositing when nobody is looking ----------------
+       The water, caustics, glint and surf animate for the whole life of
+       the page, and each one is a composited layer the GPU holds a
+       texture for. There is no state in which they are unwanted while
+       the page is visible — but a backgrounded tab is exactly that
+       state, and browsers do not always stop CSS animations in one.
+       Pausing them and dropping will-change hands the memory back. */
+    document.addEventListener('visibilitychange', function () {
+      dom.stage.classList.toggle('page-idle', document.hidden);
+    });
+
+    /* ---- §3: the button can never be withheld for ever --------------
+       CG.Preload already treats every failure, stall and abort as done,
+       so its promise is meant to settle no matter what. This is the
+       backstop for the case that reasoning is wrong: after the hard cap
+       every transfer is bounded by, plus a margin, the button is
+       revealed regardless. A player must never be left looking at a bar
+       that has stopped. */
+    window.setTimeout(function () {
+      if (dom.btnPlay.hidden) {
+        console.warn('[preload] watchdog fired — revealing Play with ' +
+                     Math.round(CG.Preload.pct()) + '% loaded');
+        var g = document.getElementById('loadGauge');
+        if (g) g.hidden = true;
+        dom.btnPlay.hidden = false;
+        dom.btnPlay.disabled = false;
+        dom.btnPlay.classList.add('play-in');
+      }
+    }, 75000);
+
     /* expose for console debugging / level tweaking */
     CG.state = gameState;
     CG.loadLevel = loadLevel;

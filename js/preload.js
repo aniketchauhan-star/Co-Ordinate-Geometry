@@ -235,16 +235,36 @@ CG.Preload = (function () {
     };
 
     report();
-    var next = 0;
-    function worker() {
-      if (next >= keys.length) return Promise.resolve();
-      var k = keys[next++];
-      return fetchOne(k, weight[k], onBytes).then(worker);
-    }
-    var lanes = [];
-    for (var i = 0; i < Math.min(CONCURRENCY, keys.length); i++) lanes.push(worker());
 
-    state.promise = Promise.all(lanes).then(function () {
+    /* TWO PHASES, because being FIRST IN THE QUEUE IS NOT THE SAME AS
+       BEING FIRST TO ARRIVE. With five lanes open, the start artwork
+       shares the link with four other transfers and lands about a fifth
+       of the way in — measured on a 900kbps link, the gauge read 16%
+       with the title screen still blank. Given the whole pipe to itself
+       it arrives in under two seconds.
+
+       Total time barely moves (the link is the limit either way); what
+       changes is that the screen the player is looking at fills up
+       first, which is the entire reason the spec asks for smallest-first
+       in the first place. */
+    function drain(list, lanes) {
+      var next = 0;
+      function worker() {
+        if (next >= list.length) return Promise.resolve();
+        var k = list[next++];
+        return fetchOne(k, weight[k], onBytes).then(worker);
+      }
+      var running = [];
+      for (var i = 0; i < Math.min(lanes, list.length); i++) running.push(worker());
+      return Promise.all(running);
+    }
+
+    var first = keys.filter(function (k) { return FIRST.indexOf(k) !== -1; });
+    var rest  = keys.filter(function (k) { return FIRST.indexOf(k) === -1; });
+
+    state.promise = drain(first, 2).then(function () {
+      return drain(rest, CONCURRENCY);
+    }).then(function () {
       state.done = true;
       state.pct = 100;
       if (onProgress) onProgress(100);

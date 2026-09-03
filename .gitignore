@@ -1,0 +1,19 @@
+# macOS junk — these were committed before; they are 6KB each and serve
+# nothing but Finder's window positions.
+.DS_Store
+**/.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# editor / OS
+*.swp
+*~
+Thumbs.db
+
+# dependencies, if any are ever added
+node_modules/
+
+# scratch
+*.log
+tmp/

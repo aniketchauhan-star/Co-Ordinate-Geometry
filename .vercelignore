@@ -1,0 +1,13 @@
+# Paths a static host does not need to publish. Nothing in the game
+# requests any of these, so they cost nothing in downloaded payload
+# either way — this file is for hosts that support pruning the upload.
+#
+# Netlify:  set the publish directory, or use this list in your build.
+# Vercel:   see .vercelignore (same contents).
+# GitHub Pages serves the whole branch; the masters are simply never
+# requested, so the payload a browser downloads is unaffected.
+
+_masters/          # untouched source artwork and audio — see its README
+tools/             # the size-table generator, a dev script
+.gitignore
+.deployignore

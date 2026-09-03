@@ -9,11 +9,9 @@
   --cream:#FFF0CC;
   --cream-hi:#FFFBEF;
   --orange:#F58A22;
-  --orange-dk:#C96A0D;
   --green:#48BE37;
   --green-dk:#2F8E23;
   --lime:#7BE034;
-  --coral-dk:#B92F2F;
 
   /* ---- THE CHART PALETTE ---------------------------------------------
      Supplied art direction. The background hues carry alpha rather than
@@ -60,10 +58,7 @@
      UP and GO. Say the word if you want a specific value.              */
   --dock-bg: #0E1B31;
   --dock-2: #2E4463;
-  --dock-inner: #172942;
   --dock-rim: #44769C;
-  --go: #168BD7;
-  --go-dk: #0866B3;
   --ui-text: #F3F7FA;
 
   /* ---- SEMANTIC vs DIRECTION -----------------------------------------
@@ -165,7 +160,6 @@
 
   /* one scale, ratio ~1.27, in design px on the 1920x1080 canvas */
   --fs-hero:60px;   /* MISSION COMPLETE                */
-  --fs-xl:38px;     /* GO                              */
   --fs-lg:30px;     /* mission instruction, callouts   */
   --fs-md:23px;     /* mission sub-line, buttons       */
   --fs-sm:21px;     /* control labels                  */
@@ -1230,12 +1224,23 @@ button{font-family:inherit}
    thing the player sees and it should already look like the game.
    =================================================================== */
 .play-slot{
-  position:absolute;left:50%;top:68%;transform:translate(-50%,-50%);
+  /* EXACTLY where the button used to be — (960, 600) in design space,
+     the coordinates it carried before it moved in here. That is what
+     makes the reveal a swap in place rather than a jump: the eye is
+     already looking at this spot.
+
+     Design px, not vw: the stage is a fixed 1920x1080 canvas scaled by
+     one transform, so px here are already responsive and a viewport
+     unit would change this panel's proportion against the artwork as
+     the window resized. */
+  position:absolute;left:960px;top:600px;transform:translate(-50%,-50%);
   display:grid;place-items:center;
-  width:clamp(280px,34vw,420px);min-height:132px;
+  width:340px;min-height:132px;
 }
 .load-gauge{
-  width:100%;
+  /* narrower than the slot: it sits over the aircraft in the title art,
+     so it covers as little of it as it can and still be legible */
+  width:300px;
   display:grid;justify-items:center;gap:12px;
   padding:20px 26px;
   border-radius:22px;
@@ -1599,6 +1604,44 @@ img:not([src]){visibility:hidden}
 /* the shore break does NOT fly in with the islands - it is painted at
    their final coastline - so it waits until they have seated */
 .stage.intro-land .surf{animation:fadeIn 620ms 940ms var(--ease-out) both}
+
+/* ===================================================================
+   GPU COMPOSITING  (§4)
+
+   WHAT DOES NOT APPLY HERE, and why it is worth writing down: the
+   ghosting failure §4 describes needs a 3D-rotated face whose animated,
+   filtered children get their own layers and so ignore the parent's
+   backface-visibility. This project has NO 3D transforms — no rotateX,
+   rotateY, rotate3d or perspective anywhere (asserted in the test
+   suite, so it cannot be introduced quietly). The two
+   backface-visibility declarations are rasterisation hints on the water
+   overlays, not face culling. There is likewise nothing to "window":
+   one screen, no navigation.
+
+   WHAT DOES APPLY: sixteen elements carry both a filter and an
+   animation, which is sixteen compositing layers the GPU holds
+   textures for, and six carry will-change on top of that. The ones
+   that belong to the intro (.layer-runway, .layer-cine*, .rw-heat) and
+   to the start screen (.play-btn img) are inside containers that go to
+   display:none when finished, which releases their layers outright —
+   opacity:0 would not have.
+
+   The ambient ones — water, caustics, glint, surf — animate for as long
+   as the page is open, and there is no state in which they are not
+   wanted. So the saving available is the other axis: stop compositing
+   entirely when nobody is looking at it.
+   =================================================================== */
+.stage.page-idle .swell,
+.stage.page-idle .caustic,
+.stage.page-idle .glint,
+.stage.page-idle .surf-band,
+.stage.page-idle .cloud,
+.stage.page-idle .rw-heat,
+.stage.page-idle #plane,
+.stage.page-idle .go.armed{animation-play-state:paused}
+/* and hand the compositor back its hints while paused */
+.stage.page-idle .layer-water > *,
+.stage.page-idle .cloud{will-change:auto}
 
 /* ---------------- reduced motion ---------------- */
 /* ONE block, deliberately. A second @media (prefers-reduced-motion)
