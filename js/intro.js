@@ -1,30 +1,33 @@
 /* ===================================================================
    CO-ORDINATE GEOMETRY — THE TAKEOFF
    -------------------------------------------------------------------
-   The transition between pressing PLAY and the first mission, in five
-   beats and one continuous flight:
+   Press PLAY and you are on the runway. Four beats, and the aircraft
+   flies in a straight line the whole way:
 
-     SPOOL    engines run up while the aircraft is held on the runway
-     ROLL     brakes off; the ground rushes past
-     ROTATE   the wheels leave the tarmac and the runway falls away
-     CRUISE   a circuit over open water, cloud rushing the camera
-     LANDFALL the headlands fly in, and the aircraft settles on station
+     HOLD     engines run up while the aircraft is held on the runway
+     ROLL     brakes off, straight up the centreline
+     ROTATE   the wheels leave, and the runway dissolves to open water
+     SEA      four seconds of straight, slow cruise above the sea
+     CLOSE    a soft dissolve, and the game is there
 
-   TWO DECISIONS WORTH KNOWING ABOUT
+   THREE THINGS THAT ARE THE WAY THEY ARE ON PURPOSE
 
-   1. THE CAMERA TRACKS THE AIRCRAFT, so the aircraft barely changes
-      size during the roll and the GROUND does the moving. The runway
-      artwork is very nearly an overhead view - measured, its tarmac is
-      258px wide at the far threshold against 300px at the near one, a
-      ratio of 0.86 - so shrinking the aircraft to sell speed would
-      contradict the art. Scaling the ground away from its own vanishing
-      point does not.
+   1. THE RUNWAY IS UP ON THE SAME FRAME AS THE CLICK, and the start
+      screen dissolves over the top of it. Fading the start screen out
+      first and only then showing the runway reveals the game's own
+      ocean underneath for half a second — you see the airspace before
+      you have taken off for it.
 
-   2. NOTHING IS DUPLICATED AND NOTHING IS CUT. The ocean, the
-      headlands and the aircraft in this cinematic are the game's own
-      layers, at the game's own coordinates. That is why the handoff can
-      be a reveal rather than a cut, and why the aircraft can fly the
-      whole way from the runway onto its station without a join.
+   2. THE AIRCRAFT NEVER TURNS. It holds a heading of zero from the
+      first frame to the last, so there is no bank, no circuit and no
+      pirouette onto its station.
+
+   3. IT FADES OUT TO CROSS THE GAP. Its station is at the chart's
+      origin, which is nowhere near the runway centreline, and no
+      straight line joins the two. So rather than bend the flight into
+      a curve, the aircraft fades out where it is, moves while it is
+      invisible, and fades back in on station under the closing
+      dissolve. That is a scene change, which is what this is.
 
    frame(t) is a pure function of the clock: it returns the complete
    visual state at time t and touches nothing. tick() is the only thing
@@ -37,73 +40,53 @@ CG.Intro = (function () {
   'use strict';
 
   /* ---- the beat table ---------------------------------------------
-     Milliseconds from the first frame. Shorten the whole cinematic by
-     scaling these; the flight, the sound and the effects all read their
-     timing from here, so nothing drifts out of step. */
+     Milliseconds from the click. The whole cinematic reads its timing
+     from here, so nothing can drift out of step; scale these to make it
+     shorter. SEA to CLOSE is deliberately exactly four seconds. */
   var BEAT = {
     spool:  0,
-    roll:   900,     /* brakes off                                    */
-    rotate: 2180,    /* wheels off                                    */
-    cruise: 2860,    /* established in the climb                      */
-    land:   4520,    /* the headlands arrive                          */
-    finals: 5820,    /* turning onto station                          */
-    flash:  6840,    /* the handoff bloom                             */
-    end:    7200     /* control passes to the game                    */
+    roll:   800,     /* brakes off                                    */
+    rotate: 2500,    /* wheels off; the runway starts to dissolve     */
+    sea:    3300,    /* established above open water                  */
+    close:  7300,    /* 4000ms of sea, then the closing dissolve      */
+    end:    8200
   };
 
   /* ---- runway geometry, measured out of runway.png -----------------
-     Stage pixels on the 1920x1080 canvas. */
-  var CENTRELINE = 954;    /* x = 0.497w: the tarmac's centre         */
+     Stage pixels on the 1920x1080 canvas. The artwork is 1672x941 —
+     exactly 16:9 — so it fills the canvas with no crop, and reading its
+     pixels gives the tarmac centreline at x = 0.497w and the strip
+     running from y = 53px (far threshold) to y = 1041px (near one). */
+  var CENTRELINE = 954;
   /* Where an aircraft waits. The painted near threshold is at y=1041,
-     but a 182px aircraft is 212px tall, so holding it any lower than
-     this crops its tail against the bottom of the frame on the very
-     first frame of the game — which reads as a mistake, not a choice.
-     At 958 it is still 92% of the way down the strip. */
-  var HOLD_Y     = 958;
-  var ROTATE_Y   = 700;    /* where the wheels leave                  */
+     but a 182px aircraft is 212px tall, so holding it any lower crops
+     its tail against the bottom of the frame on the very first frame of
+     the game. At 958 it is still 92% of the way down the strip. */
+  var HOLD_Y   = 958;
+  var ROTATE_Y = 700;    /* where the wheels leave                    */
 
-  /* ---- the airborne circuit ----------------------------------------
-     Waypoints in stage pixels, flown as one arc-length-parameterised
-     Catmull-Rom spline so the aircraft holds a real speed through the
-     corners instead of slowing down in them.
+  /* ---- the cruise above the sea ------------------------------------
+     Dead straight up the same centreline, and slow: 220px over four
+     seconds is 55px/s, against the game's own cruise of 175px/s. The
+     aircraft is almost stationary in frame on purpose — the cloud
+     streaming down past it is what carries the speed, which is how a
+     tracking shot works. It shrinks as it climbs away. */
+  var SEA = { y0: 470, y1: 250, w0: 210, w1: 150 };
 
-     THE LAST FOUR ARE THE ARRIVAL, and they are a measured compromise.
-     The aircraft has to finish ON (624,870) - stage 1's origin - and it
-     is coming in from the east, so something has to give: a tight hook
-     onto the pad arrives almost pointing north but jerks in the frame,
-     while a straight run in is smooth but arrives pointing due west and
-     needs a 90-degree pirouette on the spot.
-
-     Searched across eight tails, this one is the knee of that curve: no
-     frame turns more than 6.7 degrees, and it arrives 45 degrees off
-     north - which is the same order of straighten the game already
-     performs after every landing, and it happens standing still. */
-  var WAY = [
-    { x: CENTRELINE, y: 560 },   /* liftoff                            */
-    { x: CENTRELINE, y: 300 },   /* climbing out                       */
-    { x: 1090,       y: 150 },   /* right turn, into the upper ocean   */
-    { x: 1400,       y: 190 },   /* crossing the top                   */
-    { x: 1560,       y: 470 },   /* down the seaward side              */
-    { x: 1400,       y: 760 },   /* turning back                       */
-    { x: 1150,       y: 930 },   /* low across the south              */
-    { x: 900,        y: 956 },
-    { x: 740,        y: 930 },   /* rolling out onto finals            */
-    { x: 650,        y: 890 },
-    { x: 624,        y: 870 }    /* on station: stage 1's origin       */
-  ];
-
-  /* Wingspan along the circuit, keyed to distance flown rather than to
-     time, so it cannot drift out of step with the path. 95.2px is what
-     syncPlaneScale() asks for at stage 1 (0.85 x a 112px cell), so the
-     aircraft is already the right size the instant the game takes it. */
-  var WSPAN = [
-    [0.00, 216], [0.14, 168], [0.34, 146],
-    [0.60, 132], [0.84, 116], [1.00, 95.2]
-  ];
+  /* Where the game wants the aircraft: stage 1's origin, at the
+     wingspan syncPlaneScale() asks for. Read from the same config the
+     game reads so the two cannot drift apart. */
+  function station() {
+    var s = (CG.STAGES && CG.STAGES[1]) || { cell: 112, origin: { x: 624, y: 870 } };
+    return {
+      x: s.origin.x,
+      y: s.origin.y,
+      w: Math.max(88, Math.min(108, 0.85 * s.cell))
+    };
+  }
 
   /* ---- easing ------------------------------------------------------ */
   function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
-  function easeIn(u)  { return Math.pow(clamp01(u), 1.9); }
   function easeOut(u) { u = clamp01(u); return 1 - Math.pow(1 - u, 3); }
   function easeIO(u)  {
     u = clamp01(u);
@@ -111,169 +94,135 @@ CG.Intro = (function () {
   }
   function mix(a, b, u) { return a + (b - a) * u; }
 
-  /* ---- the spline --------------------------------------------------
-     Uniform Catmull-Rom, then a cumulative length table so that a
-     normalised DISTANCE maps to a point. Without that table the
-     aircraft would crawl through the tight corners and sprint down the
-     straights, which is exactly backwards. */
-  var LUT = null;
+  /* ---- velocity-matched easing --------------------------------------
+     Three eases in a row do not make a smooth flight. Each one opens
+     and closes at whatever velocity its own curve happens to have, so
+     the joins lurch: measured, an easeOut on the rotation opened at
+     834px/s against the roll's 252px/s exit — a 3.3x jump at exactly
+     the moment the wheels leave the tarmac, which is the one frame the
+     player is actually watching.
 
-  function crAt(i, t) {
-    var p0 = WAY[Math.max(0, i - 1)], p1 = WAY[i];
-    var p2 = WAY[Math.min(WAY.length - 1, i + 1)];
-    var p3 = WAY[Math.min(WAY.length - 1, i + 2)];
-    var t2 = t * t, t3 = t2 * t;
-    return {
-      x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * t +
-           (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-           (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
-      y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * t +
-           (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-           (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
-    };
-  }
+     hermite(u, m0, m1) is the cubic through (0,0) and (1,1) whose
+     slopes at each end are m0 and m1, expressed as multiples of the
+     phase's own average speed. Give a phase the slope its neighbour
+     hands over at and the velocity is continuous across the join.
 
-  function buildLUT() {
-    var segs = WAY.length - 1, per = 90, pts = [], len = [0], i, j, p, d;
-    for (i = 0; i < segs; i++) {
-      for (j = 0; j < per; j++) pts.push(crAt(i, j / per));
-    }
-    pts.push({ x: WAY[WAY.length - 1].x, y: WAY[WAY.length - 1].y });
-    for (i = 1; i < pts.length; i++) {
-      d = Math.sqrt(Math.pow(pts[i].x - pts[i - 1].x, 2) +
-                    Math.pow(pts[i].y - pts[i - 1].y, 2));
-      len.push(len[i - 1] + d);
-    }
-    LUT = { pts: pts, len: len, total: len[len.length - 1] };
-    return LUT;
-  }
-
-  /* point at normalised arc length s (0..1) */
-  function pathAt(s) {
-    var L = LUT || buildLUT();
-    var want = clamp01(s) * L.total, lo = 0, hi = L.len.length - 1, mid;
-    while (lo < hi - 1) {
-      mid = (lo + hi) >> 1;
-      if (L.len[mid] <= want) lo = mid; else hi = mid;
-    }
-    var span = L.len[hi] - L.len[lo];
-    var u = span > 0 ? (want - L.len[lo]) / span : 0;
-    return {
-      x: mix(L.pts[lo].x, L.pts[hi].x, u),
-      y: mix(L.pts[lo].y, L.pts[hi].y, u)
-    };
-  }
-
-  /* Heading from the path's own tangent, in the game's convention:
-     grid y is up, and the supplied art points north at 0deg. Stage y
-     runs the other way, hence the negated dy. */
-  function headingAt(s) {
-    var e = 0.0022;
-    var a = pathAt(Math.max(0, s - e)), b = pathAt(Math.min(1, s + e));
-    var dx = b.x - a.x, dy = -(b.y - a.y);
-    if (!dx && !dy) return 0;
-    return Math.atan2(dx, dy) * 180 / Math.PI;
-  }
-
-  /* HOW HARD IT IS TURNING, in degrees, at distance s along the path.
-
-     The subtraction MUST go the short way round. Taken raw it wraps
-     where the circuit crosses due south: measured, one 21-degree turn
-     read as a 339-degree one, which pinned the wings at full
-     foreshortening for the rest of the flight. */
-  function turnRate(s) {
-    var d = 0.018;
-    var a = headingAt(Math.max(0, s - d)), b = headingAt(Math.min(1, s + d));
-    return Math.abs(((b - a + 540) % 360) - 180);
-  }
-
-  /* Bank, as the wing foreshortening the game already uses. Measured
-     across this path the turn rate runs from about 5 degrees on the
-     straights to 52 at the tightest corner, so the mapping is a square
-     root rather than a straight line: proportional banking leaves the
-     gentle turns at 3% and invisible, while the root spreads a readable
-     roll across the whole range and still only reaches the clamp at the
-     one corner that earns it. */
-  var BANK_MAX = 0.16, BANK_REF = 55;
-  function bankAt(s) {
-    return Math.min(BANK_MAX, BANK_MAX * Math.sqrt(turnRate(s) / BANK_REF));
-  }
-
-  function spanAt(s) {
-    var i;
-    for (i = 1; i < WSPAN.length; i++) {
-      if (s <= WSPAN[i][0]) {
-        return mix(WSPAN[i - 1][1], WSPAN[i][1],
-          easeIO((s - WSPAN[i - 1][0]) / (WSPAN[i][0] - WSPAN[i - 1][0])));
-      }
-    }
-    return WSPAN[WSPAN.length - 1][1];
-  }
-
-  /* THE SPEED PROFILE. Mostly linear with an easing tail, so the
-     aircraft leaves the climb briskly and decelerates onto its station
-     rather than either coasting throughout or stopping dead. */
-  function distanceFlown(u) {
+     The slopes below are DERIVED from the beat table and the distances,
+     never written down, so retiming any beat keeps the joins smooth
+     instead of quietly reintroducing a lurch. */
+  function hermite(u, m0, m1) {
     u = clamp01(u);
-    return 0.72 * u + 0.28 * (1 - Math.pow(1 - u, 2));
+    var a = m0 - 2 + m1, b = 3 - 2 * m0 - m1;
+    return ((a * u + b) * u + m0) * u;
+  }
+
+  /* px/ms, signed the way the phase travels */
+  function rate(dist, ms) { return dist / ms; }
+
+  /* The roll accelerates to 1.7x its own average — the same shape it
+     always had — and that exit velocity is what the rotation must open
+     at. The rotation then has to close at the cruise speed, or the
+     aircraft arrives over the sea still climbing hard. */
+  var ROLL_PEAK = 1.7;
+  function slopes() {
+    var rollD  = (HOLD_Y - 6) - ROTATE_Y,  rollMs  = BEAT.rotate - BEAT.roll;
+    var rotD   = ROTATE_Y - SEA.y0,        rotMs   = BEAT.sea - BEAT.rotate;
+    var seaD   = SEA.y0 - SEA.y1,          seaMs   = BEAT.close - BEAT.sea;
+    var vLift   = ROLL_PEAK * rate(rollD, rollMs);
+    var vCruise = rate(seaD, seaMs);
+    return {
+      roll: [0, ROLL_PEAK],
+      rot:  [vLift / rate(rotD, rotMs), vCruise / rate(rotD, rotMs)]
+    };
   }
 
   /* ===================================================================
      frame(t) — the complete visual state at time t, and nothing else.
      Pure: no DOM, no side effects, no clock of its own.
+
+     o is the aircraft's opacity; runway is null once it has gone.
+     deg is zero everywhere, because the aircraft never turns.
      =================================================================== */
   function frame(t) {
-    var u, e, s, p, f = { t: t, phase: '', bank: 0, runway: null };
+    var u, e, f = { t: t, phase: '', deg: 0, bank: 0, o: 1, runway: null };
 
     if (t < BEAT.roll) {
-      /* HELD ON THE BRAKES. The creep is 8px over most of a second:
-         enough to read as an aircraft straining, not as one moving. */
+      /* HELD ON THE BRAKES. 6px of creep over most of a second: enough
+         to read as an aircraft straining, not as one moving. */
       u = clamp01(t / (BEAT.roll - BEAT.spool));
       f.phase = 'spool';
       f.x = CENTRELINE;
-      f.y = mix(HOLD_Y, HOLD_Y - 8, u);
+      /* eased so it settles to a standstill, which is the velocity the
+         roll then opens from */
+      f.y = mix(HOLD_Y, HOLD_Y - 6, easeOut(u));
       f.w = mix(182, 180, u);
-      f.deg = 0;
       f.runway = { k: mix(1.02, 1.04, u), y: 0, o: 1 };
 
     } else if (t < BEAT.rotate) {
-      /* THE ROLL. easeIn is the acceleration. The aircraft covers 250px
-         of frame while the ground covers 595px - a ratio of 2.4 - and
-         that is the whole point: the camera is travelling with it, so
-         the ground is what moves. */
+      /* THE ROLL, straight up the centreline over 1.7 seconds. It
+         accelerates to 1.7x its own average and hands that velocity
+         straight to the rotation. The aircraft covers 252px of frame
+         while the ground covers 545px — the camera is travelling with
+         it, so the ground is what moves. */
       u = clamp01((t - BEAT.roll) / (BEAT.rotate - BEAT.roll));
-      e = easeIn(u);
+      var sl = slopes();
+      e = hermite(u, sl.roll[0], sl.roll[1]);
       f.phase = 'roll';
       f.x = CENTRELINE;
-      f.y = mix(HOLD_Y - 8, ROTATE_Y, e);
+      f.y = mix(HOLD_Y - 6, ROTATE_Y, e);
       f.w = mix(180, 172, e);
-      f.deg = 0;
-      f.runway = { k: mix(1.04, 1.46, e), y: mix(0, 180, e), o: 1 };
+      f.runway = { k: mix(1.04, 1.40, e), y: mix(0, 150, e), o: 1 };
 
-    } else if (t < BEAT.cruise) {
-      /* ROTATION. The aircraft grows - it is climbing toward the camera
-         - while the ground falls away beneath it at 1176px/s. */
-      u = clamp01((t - BEAT.rotate) / (BEAT.cruise - BEAT.rotate));
-      e = easeOut(u);
+    } else if (t < BEAT.sea) {
+      /* ROTATION. The aircraft grows — it is climbing toward the camera
+         — while the runway DISSOLVES rather than being yanked away: a
+         cross-fade onto the open water already painted beneath it. */
+      u = clamp01((t - BEAT.rotate) / (BEAT.sea - BEAT.rotate));
+      var sr = slopes();
+      e = hermite(u, sr.rot[0], sr.rot[1]);
       f.phase = 'rotate';
       f.x = CENTRELINE;
-      f.y = mix(ROTATE_Y, WAY[0].y, e);
-      f.w = mix(172, WSPAN[0][1], e);
-      f.deg = 0;
-      f.runway = { k: mix(1.46, 1.72, e), y: mix(180, 980, e), o: 1 - e };
+      f.y = mix(ROTATE_Y, SEA.y0, e);
+      /* Wingspan gets its own, firmer curve. The aircraft growing is
+         the pitch-up, so this is the one thing that should have some
+         snap in it — but hermite still, not easeOut, whose 3x opening
+         slope made it pop. */
+      f.w = mix(172, SEA.w0, hermite(u, 0.6, 0.15));
+      f.runway = { k: mix(1.40, 1.52, e), y: mix(150, 300, e), o: 1 - easeIO(u) };
+
+    } else if (t < BEAT.close) {
+      /* FOUR SECONDS ABOVE THE SEA, dead straight and linear — a cruise
+         holds its speed, and easing it would have the aircraft coasting
+         to a halt in mid-air. Both neighbours arrive and leave at
+         near-zero velocity, so the joins are smooth anyway.
+
+         The bob is windowed by sin(pi*u), which is zero at both ends:
+         without that window the aircraft would step by however much the
+         bob happened to be worth at each boundary. */
+      u = clamp01((t - BEAT.sea) / (BEAT.close - BEAT.sea));
+      var win = Math.sin(u * Math.PI);
+      var secs = (t - BEAT.sea) / 1000;
+      f.phase = 'sea';
+      f.x = CENTRELINE + Math.sin(secs * 2 * Math.PI * 0.19 + 1.1) * 4 * win;
+      f.y = mix(SEA.y0, SEA.y1, u) + Math.sin(secs * 2 * Math.PI * 0.30) * 5 * win;
+      f.w = mix(SEA.w0, SEA.w1, u);
 
     } else {
-      /* AIRBORNE: the circuit, from liftoff to station. */
-      u = clamp01((t - BEAT.cruise) / (BEAT.flash - BEAT.cruise));
-      s = distanceFlown(u);
-      p = pathAt(s);
-      f.phase = t < BEAT.land ? 'cruise' : (t < BEAT.finals ? 'landfall' : 'finals');
-      f.x = p.x;
-      f.y = p.y;
-      f.w = spanAt(s);
-      f.deg = headingAt(s);
-      /* the same wing foreshortening the game uses in play */
-      f.bank = bankAt(s);
+      /* THE CLOSING DISSOLVE. The aircraft fades out where it is, moves
+         to its station while it is invisible, and fades back in on it
+         as the game arrives. Nothing has to bend to make that join. */
+      u = clamp01((t - BEAT.close) / (BEAT.end - BEAT.close));
+      var OUT = 0.42, DARK = 0.22, h = station();
+      f.phase = 'close';
+      if (u < OUT) {
+        f.x = CENTRELINE + 0;         /* held where the cruise left it */
+        f.y = SEA.y1;
+        f.w = SEA.w1;
+        f.o = 1 - easeIO(u / OUT);
+      } else {
+        f.x = h.x; f.y = h.y; f.w = h.w;
+        f.o = easeIO(clamp01(((u - OUT) / (1 - OUT) - DARK) / (1 - DARK)));
+      }
     }
     return f;
   }
@@ -298,13 +247,9 @@ CG.Intro = (function () {
   }
 
   function later(ms, fn) { timers.push(window.setTimeout(fn, ms)); }
+  function clearTimers() { timers.forEach(window.clearTimeout); timers = []; }
 
-  function clearTimers() {
-    timers.forEach(window.clearTimeout);
-    timers = [];
-  }
-
-  /* ---- the effects, all spawned rather than authored one by one ---- */
+  /* ---- the effects, spawned rather than authored one by one -------- */
 
   function puff(x, y) {
     if (reduced || !el.wake) return;
@@ -321,25 +266,27 @@ CG.Intro = (function () {
   function streak() {
     if (reduced || !el.wake) return;
     var d = document.createElement('div');
-    /* inside the measured tarmac: x 42.3% to 57.1% of 1920 */
     d.className = 'rw-streak';
+    /* inside the measured tarmac: x 42.3% to 57.1% of 1920 */
     d.style.left = Math.round(812 + Math.random() * 284) + 'px';
     d.style.top = Math.round(60 + Math.random() * 220) + 'px';
     el.wake.appendChild(d);
     window.setTimeout(function () {
       if (d.parentNode) d.parentNode.removeChild(d);
-    }, 480);
+    }, 620);
   }
 
-  /* Cloud rushing the camera. `front` decides which side of the
-     aircraft it passes, which is the whole depth cue. */
+  /* Cloud drifting DOWN past the aircraft, which is what makes an
+     almost-stationary aircraft read as one flying north. `front`
+     decides which side of it each puff passes, and that is the whole
+     depth cue. Every one of them finishes before the closing dissolve,
+     so none is ever snapped away mid-drift. */
   var CLOUDS = [
-    { at: 120,  x: 1180, y: 300, dx:  520, dy: 700, k: 3.0, o: 0.62, d: 1900, front: true  },
-    { at: 380,  x:  700, y: 240, dx: -680, dy: 640, k: 2.6, o: 0.48, d: 2200, front: false },
-    { at: 760,  x: 1420, y: 420, dx:  640, dy: 520, k: 3.4, o: 0.58, d: 1700, front: true  },
-    { at: 1180, x:  900, y: 520, dx: -300, dy: 880, k: 2.2, o: 0.40, d: 2400, front: false },
-    { at: 1620, x: 1300, y: 640, dx:  480, dy: 640, k: 3.1, o: 0.55, d: 1800, front: true  },
-    { at: 2040, x: 1050, y: 180, dx:  120, dy: 900, k: 2.4, o: 0.44, d: 2100, front: false }
+    { at:    0, x: 1180, y: 300, dx:  180, dy: 760, k: 1.9, o: 0.44, d: 2800, front: true  },
+    { at:  240, x:  720, y: 240, dx: -220, dy: 700, k: 1.7, o: 0.36, d: 2900, front: false },
+    { at:  560, x: 1420, y: 480, dx:  260, dy: 640, k: 2.1, o: 0.40, d: 2600, front: true  },
+    { at:  800, x:  880, y: 560, dx: -120, dy: 820, k: 1.6, o: 0.30, d: 2900, front: false },
+    { at: 1000, x: 1060, y: 180, dx:   60, dy: 880, k: 1.8, o: 0.34, d: 2700, front: false }
   ];
 
   function cloud(c) {
@@ -364,6 +311,13 @@ CG.Intro = (function () {
     }, c.d + 60);
   }
 
+  function call(text) {
+    if (!el.call) return;
+    el.call.hidden = false;
+    el.call.classList.remove('out');
+    el.call.querySelector('span').textContent = text;
+  }
+
   /* ---- the writing end -------------------------------------------- */
   function tick() {
     var f = frame(Date.now() - t0);
@@ -372,6 +326,7 @@ CG.Intro = (function () {
       pc.atStage(f.x, f.y);
       pc.width(f.w);
       pc.heading(f.deg, f.bank);
+      pc.opacity(f.o);
     }
     if (f.runway && el.art) {
       el.art.style.transform =
@@ -390,9 +345,9 @@ CG.Intro = (function () {
     window.removeEventListener('keydown', onKey, true);
     if (el.stage) el.stage.removeEventListener('pointerdown', onPoint, true);
 
-    /* A skip must not leave a 1.5s headland fly-in to play over the top
-       of the first mission, so the class comes off and the islands are
-       simply there. */
+    /* A skip must not leave the headlands still flying in over the top
+       of the first mission, so the class comes off and they are simply
+       there. */
     if (skipped && el.stage) el.stage.classList.remove('intro-land');
 
     if (el.runway) {
@@ -413,20 +368,20 @@ CG.Intro = (function () {
     });
     if (el.back) el.back.hidden = true;
 
-    /* THE BLOOM IS DELIBERATELY ALLOWED TO OUTLIVE THE CINEMATIC.
-       Its 640ms decay is still running when control changes hands, and
-       cutting it there snaps it off at 24% opacity - measured - instead
-       of letting it fall away over the game it has just revealed, which
-       is the entire point of a bloom. The layer is pointer-events:none,
-       so nothing underneath is blocked while it finishes. A plain timer
-       rather than later(): clearTimers() must not take this one. */
-    var blooming = !!(el.flash && el.flash.classList.contains('go'));
+    /* THE CLOSING VEIL IS DELIBERATELY ALLOWED TO OUTLIVE THE
+       CINEMATIC. Cutting it at the instant control changes hands snaps
+       it off at around 29% opacity — measured — instead of letting it
+       fall away over the game it has just revealed, which is the whole
+       point of a dissolve. The layer is pointer-events:none, so nothing
+       underneath is blocked while it finishes. A plain timer rather
+       than later(): clearTimers() must not take this one. */
+    var veiling = !!(el.flash && el.flash.classList.contains('go'));
     if (el.front) {
-      if (blooming) {
+      if (veiling) {
         window.setTimeout(function () {
           el.front.hidden = true;
           el.flash.classList.remove('go');
-        }, 700);
+        }, 1100);
       } else {
         el.front.hidden = true;
         if (el.flash) el.flash.classList.remove('go');
@@ -447,8 +402,8 @@ CG.Intro = (function () {
   function onPoint() { finish(true); }
 
   /* ---- the reduced-motion cut --------------------------------------
-     The same five beats' worth of story with nothing moving: the
-     runway, the clearance, the bloom, the game. */
+     The same story with nothing moving: the runway, the clearance, and
+     then the game. */
   function runStill() {
     if (el.runway) el.runway.hidden = false;
     if (el.art) { el.art.style.transform = 'none'; el.art.style.opacity = '1'; }
@@ -456,31 +411,14 @@ CG.Intro = (function () {
       CG.planeControl.atStage(CENTRELINE, HOLD_Y);
       CG.planeControl.width(182);
       CG.planeControl.heading(0, 0);
+      CG.planeControl.opacity(1);
     }
-    say();
     call('CLEARED FOR TAKEOFF · RUNWAY 09');
-    later(760, function () {
+    later(900, function () {
       if (el.stage) el.stage.classList.add('intro-land');
       CG.Audio.play('landfall');
     });
-    later(1120, function () { finish(false); });
-  }
-
-  function call(text) {
-    if (!el.call) return;
-    el.call.hidden = false;
-    el.call.classList.remove('out');
-    el.call.querySelector('span').textContent = text;
-  }
-
-  /* FLOW 01. It is spoken HERE, at the top of the takeoff, and not at
-     the handoff: loadLevel() cancels the voice before speaking the
-     first mission, so a line started any later than this is cut off
-     part-way through its own sentence. */
-  function say() {
-    if (!CG.Voice) return;
-    CG.Voice.say('You are the air traffic controller. ' +
-                 'Guide each aircraft to its target.');
+    later(1300, function () { finish(false); });
   }
 
   /* ===================================================================
@@ -507,22 +445,27 @@ CG.Intro = (function () {
     return new Promise(function (resolve) {
       settle = resolve;
 
+      /* The runway goes up on THIS frame, before anything has had a
+         chance to fade, so the start screen dissolves onto it rather
+         than onto the game's own ocean. */
+      el.runway.hidden = false;
+      if (el.art) el.art.style.opacity = '1';
+
       if (reduced) { runStill(); return; }
 
-      el.runway.hidden = false;
-      if (el.art) { el.art.style.opacity = '1'; }
-
-      /* SPOOL — engines against the brakes, and the clearance */
+      /* HOLD — engines against the brakes, and the clearance. There is
+         no voice line anywhere in the takeoff: the caption is what says
+         where you are, and the game does its own talking once it has
+         control. */
       CG.Audio.duck('flight', true);          /* the bed steps back */
       CG.Audio.play('spoolUp');
-      later(140, function () { call('CLEARED FOR TAKEOFF · RUNWAY 09'); });
-      later(420, say);
+      later(240, function () { call('CLEARED FOR TAKEOFF · RUNWAY 09'); });
 
-      /* ROLL — the engine bed proper, plus tyre smoke and speed lines.
-         Every delay below is measured from the first frame, never from
-         the beat it belongs to: nesting one later() inside another adds
-         the two offsets together and silently pushes the effect out of
-         step with the flight it is supposed to be attached to. */
+      /* ROLL — the engine bed, tyre smoke and speed lines. Every delay
+         below is measured from the first frame, never from the beat it
+         belongs to: nesting one later() inside another adds the two
+         offsets together and silently pushes the effect out of step
+         with the flight it is attached to. */
       later(BEAT.roll, function () {
         CG.Audio.engineStart();
         /* The haze sits at a fixed point on screen while the ground it
@@ -531,18 +474,18 @@ CG.Intro = (function () {
         if (el.runway) el.runway.classList.add('rolling');
       });
       var n;
-      for (n = 0; n < 11; n++) {
-        later(BEAT.roll + n * 110, function () {
+      for (n = 0; n < 13; n++) {
+        later(BEAT.roll + n * 130, function () {
           var f = frame(Date.now() - t0);
           puff(CENTRELINE - 34, f.y + 26);      /* one per main wheel */
           puff(CENTRELINE + 34, f.y + 26);
         });
       }
-      /* speed lines wait 380ms: they should read as velocity, and at
+      /* speed lines wait 500ms: they should read as velocity, and at
          walking pace they would only read as texture */
-      for (n = 0; n < 14; n++) later(BEAT.roll + 380 + n * 70, streak);
+      for (n = 0; n < 12; n++) later(BEAT.roll + 500 + n * 90, streak);
 
-      /* ROTATE — the wheels leave, the runway goes */
+      /* ROTATE — the wheels leave; the runway dissolves to open water */
       later(BEAT.rotate, function () {
         CG.Audio.play('takeoffRush');
         if (el.call) el.call.classList.add('out');
@@ -550,21 +493,26 @@ CG.Intro = (function () {
       });
       later(BEAT.rotate + 340, function () { if (el.call) el.call.hidden = true; });
 
-      /* CRUISE — cloud rushing the camera, and the runway is done with */
-      later(BEAT.cruise, function () { if (el.runway) el.runway.hidden = true; });
+      /* SEA — four seconds above open water, cloud drifting past */
+      later(BEAT.sea, function () { if (el.runway) el.runway.hidden = true; });
       CLOUDS.forEach(function (c) {
-        later(BEAT.cruise + c.at, function () { cloud(c); });
+        later(BEAT.sea + c.at, function () { cloud(c); });
       });
 
-      /* LANDFALL — the headlands fly in to the positions they keep */
-      later(BEAT.land, function () {
+      /* LANDFALL — the headlands come into view just before the
+         dissolve, so land arriving is what motivates the cut */
+      later(BEAT.close - 500, function () {
         if (el.stage) el.stage.classList.add('intro-land');
         CG.Audio.play('landfall');
       });
 
-      /* HANDOFF — a bloom, and the aircraft is on station */
-      later(BEAT.flash, function () {
-        if (el.flash) { el.flash.classList.remove('go'); void el.flash.offsetWidth; el.flash.classList.add('go'); }
+      /* CLOSE — the soft dissolve into the game */
+      later(BEAT.close, function () {
+        if (el.flash) {
+          el.flash.classList.remove('go');
+          void el.flash.offsetWidth;
+          el.flash.classList.add('go');
+        }
         CG.Audio.play('reveal');
         CG.Audio.engineStop();
         CG.Audio.duck('flight', false);
@@ -590,13 +538,13 @@ CG.Intro = (function () {
     /* exposed so the whole timeline can be checked without rendering */
     frame: frame,
     BEAT: BEAT,
-    WAY: WAY,
-    WSPAN: WSPAN,
-    turnRate: turnRate,
-    bankAt: bankAt,
     CLOUDS: CLOUDS,
-    pathAt: pathAt,
-    headingAt: headingAt,
-    pathLength: function () { return (LUT || buildLUT()).total; }
+    SEA: SEA,
+    station: station,
+    hermite: hermite,
+    slopes: slopes,
+    CENTRELINE: CENTRELINE,
+    HOLD_Y: HOLD_Y,
+    ROTATE_Y: ROTATE_Y
   };
 })();

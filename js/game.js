@@ -732,9 +732,15 @@ window.CG = window.CG || {};
      TUTORIAL (short, progressive, never repeated)
      ============================================================ */
   var TUTORIAL = [
+    /* FLOW 01's framing line lives HERE, folded into the tutorial's own
+       opening line and spoken as one sentence. It cannot be spoken over
+       the takeoff — that transition has no voice at all — and it cannot
+       be spoken at the handoff either, because loadLevel() cancels the
+       voice before this very step, so a line begun any earlier is cut
+       off part-way through its own sentence. */
     { text: 'Guide the aircraft to the target.',
       sub: 'That glowing waypoint is its destination.',
-      voice: 'Guide the aircraft to the target.',
+      voice: 'You are the air traffic controller. Guide the aircraft to the target.',
       highlight: 'target', auto: 3800 },
     { text: 'Choose how many spaces to move RIGHT.',
       voice: 'Choose how many spaces to move right.',
@@ -888,6 +894,10 @@ window.CG = window.CG || {};
       dom.stage.style.setProperty('--plane-w', px.toFixed(1) + 'px');
     },
     heading: function (deg, bank) { applyHeading(deg, bank); },
+    /* On the img, not the holder: the holder carries a 460ms opacity
+       transition for the screen states, which would lag a value being
+       driven every frame. */
+    opacity: function (v) { dom.plane.style.opacity = v.toFixed(3); },
     /* per-frame driving needs the spin transition out of the way;
        putting it back is what lets the arrival straighten ease */
     free: function (on) { dom.planeSpin.classList.toggle('free', !!on); },
@@ -896,6 +906,7 @@ window.CG = window.CG || {};
        same eased pivot the game uses after every landing. */
     home: function () {
       dom.planeSpin.classList.remove('free');
+      dom.plane.style.opacity = '';      /* back to the stylesheet */
       setHeading(0);
       syncPlaneScale();
       setAircraftPosition(0, 0, false);
@@ -914,12 +925,19 @@ window.CG = window.CG || {};
     Audio.musicStart();                    /* the bed, from the first gesture */
     Audio.surfStart();                     /* and the shore break behind it   */
     dom.btnPlay.disabled = true;
+
+    /* THE RUNWAY GOES UP FIRST, AND THE START SCREEN DISSOLVES OVER IT.
+       Fading the start screen out and only then showing the runway
+       reveals the game's own ocean underneath for half a second — you
+       see the airspace before you have taken off for it, and it reads
+       as the game starting twice. Raising the runway on this same frame
+       makes it one cross-dissolve with nothing behind it. */
+    beginFlightDeck();
     dom.screenStart.classList.add('leaving');
     window.setTimeout(function () {
       dom.screenStart.hidden = true;
       dom.btnPlay.disabled = false;
-      beginFlightDeck();
-    }, 520);
+    }, 600);
   }
 
   /* The opening state is set up BEFORE the takeoff plays, so the chart

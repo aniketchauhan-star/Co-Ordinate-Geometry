@@ -1021,7 +1021,10 @@ button{font-family:inherit}
 .screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:30}
 .screen[hidden]{display:none}
 
-.screen-start{transition:opacity 520ms var(--ease-out)}
+/* The runway is already up underneath by the time this runs — see
+   startGame() — so this is a cross-dissolve onto the runway, not a fade
+   to whatever the game happens to be showing. */
+.screen-start{transition:opacity 600ms var(--ease-out)}
 .screen-start.leaving{opacity:0;pointer-events:none}
 .start-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   opacity:0;animation:artIn 900ms var(--ease-out) 120ms forwards}
@@ -1269,15 +1272,24 @@ button{font-family:inherit}
   to  {opacity:0;transform:translate(-50%,-12px)}
 }
 
-/* The handoff. A bloom, not a blast: 42% peak, tinted with the chart's
-   own axis colour so it belongs to the grid it hands over to. */
+/* THE CLOSING DISSOLVE — a wash, not a flash.
+
+   It has a job beyond looking nice: the aircraft's station is nowhere
+   near the runway centreline, so it fades out, moves while invisible,
+   and fades back in underneath this. That means the veil has to cover
+   the WHOLE frame rather than falling off at the edges like a bloom,
+   or the move shows in the corners. Hence the flat outer stop.
+
+   1500ms against a 900ms closing beat, deliberately: it is still
+   decaying when control changes hands, so it falls away over the game
+   it has just revealed instead of being cut off at 29%. */
 .cine-flash{
   position:absolute;inset:0;opacity:0;
-  background:radial-gradient(120% 90% at 50% 46%,
-    rgba(255,255,255,.94),rgba(183,231,239,.44) 46%,rgba(183,231,239,0) 78%);
+  background:radial-gradient(150% 120% at 50% 46%,
+    rgba(255,255,255,.66),rgba(183,231,239,.54) 44%,rgba(120,200,222,.42) 100%);
 }
-.cine-flash.go{animation:cineFlash 640ms var(--ease-out) both}
-@keyframes cineFlash{0%{opacity:0}22%{opacity:.42}100%{opacity:0}}
+.cine-flash.go{animation:cineDissolve 1500ms var(--ease-io) both}
+@keyframes cineDissolve{0%{opacity:0}30%{opacity:.40}100%{opacity:0}}
 
 /* ---- landfall ------------------------------------------------------
    The headlands fly in from off-frame to the exact positions they hold
@@ -1286,15 +1298,18 @@ button{font-family:inherit}
    element's own base transform - mtn-r is mirrored and rotated - or the
    animation would silently unmirror the right-hand island. */
 @keyframes mtnInL{
-  0%  {opacity:0;transform:translate(-300px,-240px) scale(.84)}
+  0%  {opacity:0;transform:translate(-140px,-112px) scale(.94)}
   100%{opacity:1;transform:translate(0,0) scale(1)}
 }
 @keyframes mtnInR{
-  0%  {opacity:0;transform:translate(300px,-254px) scale(.84) scaleX(-1) rotate(4deg)}
+  0%  {opacity:0;transform:translate(140px,-120px) scale(.94) scaleX(-1) rotate(4deg)}
   100%{opacity:1;transform:translate(0,0) scale(1) scaleX(-1) rotate(4deg)}
 }
-.stage.intro-land .mtn-l{animation:mtnInL 1500ms cubic-bezier(.18,.86,.24,1) both}
-.stage.intro-land .mtn-r{animation:mtnInR 1500ms cubic-bezier(.18,.86,.24,1) both}
+/* Small offsets and a long, soft ease: land coming into view, not land
+   being thrown at the camera. It reads under the closing dissolve, so
+   it only has to motivate the cut, not carry it. */
+.stage.intro-land .mtn-l{animation:mtnInL 1800ms cubic-bezier(.25,.9,.30,1) both}
+.stage.intro-land .mtn-r{animation:mtnInR 1800ms cubic-bezier(.25,.9,.30,1) both}
 /* the shore break does NOT fly in with the islands - it is painted at
    their final coastline - so it waits until they have seated */
 .stage.intro-land .surf{animation:fadeIn 620ms 940ms var(--ease-out) both}
