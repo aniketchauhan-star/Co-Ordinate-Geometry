@@ -125,17 +125,20 @@
     Grid.showRecapMarkers(reached);
     Audio.play('reveal');
     if (!await say(tk, {
-      text: 'You used two directions to locate every aircraft.',
+      /* FLOW 33 says FOUR directions, and it is right to: the learner
+         pressed RIGHT, LEFT, UP and DOWN. The pairing into two axes is
+         the next two lines' job, not this one's. */
+      text: 'You used four directions to locate every aircraft.',
       beat: CFG.beatLong
     })) return false;
 
-    /* --- 22/23. name the two directions, without naming the axes ----- */
+    /* --- 22/23. pair them, without naming the axes yet ------------- */
     Grid.showAxes(true);
     Grid.highlightAxis('x');
-    if (!await say(tk, { text: 'First, you moved left or right.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'Either you moved left and right.', beat: CFG.beatMed })) return false;
 
     Grid.highlightAxis('y');
-    if (!await say(tk, { text: 'Then, you moved up or down.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'Or you moved up and down.', beat: CFG.beatMed })) return false;
 
     Grid.highlightAxis(null);
     Grid.clearRecapMarkers();
@@ -513,7 +516,11 @@
   async function pointDrag(tk) {
     Grid.clearLesson();
     UI.hideCoordTag();
-    Grid.showRegionLabels(true);
+    /* the quadrant names and sign patterns stay up: the learner has just
+       discovered them, and this activity is where they get used */
+    Grid.showRegionLabels(QUAD.map(function (sg) {
+      return { q: sg.q, roman: sg.roman, signs: sg.signs };
+    }));
 
     var zones = POINT_DRAG.map(function (p) {
       return { key: coordText(p), x: p.x, y: p.y, point: true };

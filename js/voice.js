@@ -111,7 +111,7 @@ CG.Voice = (function () {
       u.onerror = function () { duck(false); };
       u.voice = voice;
       u.lang = (voice && voice.lang) || 'en-GB';
-      u.rate = 0.80;      /* unhurried, classroom pace */
+      u.rate = 0.90;      /* unhurried classroom pace, inside FLOW 11's 0.88-0.95 */
       u.pitch = 1.0;
       u.volume = 0.9;
       synth.speak(u);
