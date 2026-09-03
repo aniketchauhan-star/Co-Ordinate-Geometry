@@ -75,11 +75,20 @@ CG.Preload = (function () {
     return a === b || a.slice(-b.length) === b;
   }
   function elementsFor(key) {
-    var out = [], all = document.querySelectorAll('img[src], audio[src], video[src]'), i;
+    var out = [], i;
+    /* data-src: images that have NOT started their own request.
+       src: the audio elements, which carry preload="none" and so have
+       not started one either. */
+    var all = document.querySelectorAll('img[data-src], img[src], audio[src], video[src]');
     for (i = 0; i < all.length; i++) {
-      if (sameAsset(all[i].getAttribute('src'), key)) out.push(all[i]);
+      var el = all[i];
+      var u = el.getAttribute('data-src') || el.getAttribute('src');
+      if (sameAsset(u, key)) out.push(el);
     }
     return out;
+  }
+  function originalOf(el) {
+    return el.getAttribute('data-src') || el.getAttribute('src');
   }
 
   /* ---- the blob swap, and the way back ----------------------------- */
@@ -87,7 +96,7 @@ CG.Preload = (function () {
     var url = URL.createObjectURL(blob);
     state.blobs[key] = url;
     elementsFor(key).forEach(function (el) {
-      var original = el.getAttribute('src');
+      var original = originalOf(el);
       var playing = !el.paused && el.currentTime > 0;
       /* one-time: a blob the browser will not decode must not cost the
          player the asset, so put the file URL back and carry on */
@@ -120,7 +129,15 @@ CG.Preload = (function () {
         /* whatever happened, this asset is accounted for in full: the
            bar must reach 100% even when the network does not cooperate */
         onBytes(key, weight, true);
-        if (!ok) state.missing.push(key);
+        if (!ok) {
+          state.missing.push(key);
+          /* THE FAILURE PATH STILL HAS TO PRODUCE A PICTURE. The element
+             never started its own request, so falling back means handing
+             it the plain file URL and letting the browser try normally. */
+          elementsFor(key).forEach(function (el) {
+            if (!el.getAttribute('src')) el.setAttribute('src', originalOf(el));
+          });
+        }
         resolve(ok);
       }
       function armStall() {
@@ -174,12 +191,26 @@ CG.Preload = (function () {
     });
   }
 
+  /* ---- the queue ---------------------------------------------------
+     Smallest-first, EXCEPT that the two start-screen files go first
+     regardless of size. Pure smallest-first put the start art seventh:
+     on a throttled link that is several seconds of gauge on a bare
+     background. The spec's reason for smallest-first is that visible art
+     must not be starved behind the big files — promoting the art that is
+     visible RIGHT NOW serves that reason better than the rule does. */
+  var FIRST = ['assets/start%20screen.webp', 'assets/start%20button.webp'];
+  function queue() {
+    var rest = Object.keys(SIZES).filter(function (k) { return FIRST.indexOf(k) === -1; });
+    rest.sort(function (a, b) { return SIZES[a] - SIZES[b]; });
+    return FIRST.filter(function (k) { return k in SIZES; }).concat(rest);
+  }
+
   /* ---- the run ----------------------------------------------------- */
   function run(onProgress) {
     if (state.started) return state.promise;
     state.started = true;
 
-    var keys = Object.keys(SIZES).sort(function (a, b) { return SIZES[a] - SIZES[b]; });
+    var keys = queue();
     var weight = {}, loaded = {}, complete = {};
     keys.forEach(function (k) { weight[k] = SIZES[k]; loaded[k] = 0; complete[k] = false; });
 
@@ -224,8 +255,6 @@ CG.Preload = (function () {
     missing: function () { return state.missing.slice(); },
     /* exposed for the test harness and for tools/sizes.py to check */
     SIZES: SIZES,
-    queueOrder: function () {
-      return Object.keys(SIZES).sort(function (a, b) { return SIZES[a] - SIZES[b]; });
-    }
+    queueOrder: queue
   };
 })();

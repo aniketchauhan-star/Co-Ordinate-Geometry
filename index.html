@@ -13,8 +13,15 @@
   <!-- ============ 16:9 GAME STAGE (design canvas 1920x1080) ============ -->
   <div class="stage" id="stage" data-screen="loading">
 
-    <!-- Layer 0 — ocean artwork -->
-    <img class="layer layer-bg" id="bgImg" src="assets/background.webp" alt="" draggable="false">
+    <!-- Layer 0 — ocean artwork.
+
+         EVERY <img> BELOW CARRIES data-src, NOT src. js/preload.js
+         fetches each file, hands the element a blob: URL, and only then
+         does it load. With a plain src the element starts its own
+         request, the preloader makes a second one, and swapping in the
+         blob aborts the first — six wasted, aborted requests on every
+         boot. Measured, then fixed. -->
+    <img class="layer layer-bg" id="bgImg" data-src="assets/background.webp" alt="" draggable="false">
 
     <!-- Layer 1 — living water: swell, caustics and a slow glint sweep.
          All of it is an overlay; the artwork itself is never distorted. -->
@@ -31,8 +38,8 @@
 
     <!-- Layer 4 — static coastal terrain -->
     <div class="layer layer-terrain" aria-hidden="true">
-      <img class="mtn mtn-l" src="assets/mountain.webp" alt="" draggable="false">
-      <img class="mtn mtn-r" src="assets/mountain.webp" alt="" draggable="false">
+      <img class="mtn mtn-l" data-src="assets/mountain.webp" alt="" draggable="false">
+      <img class="mtn mtn-r" data-src="assets/mountain.webp" alt="" draggable="false">
 
       <!-- SHORE BREAK
            The path is the island's own coastline, traced out of
@@ -78,7 +85,7 @@
          near one). The aircraft's roll is anchored to those numbers, so
          it tracks the painted runway instead of a guess. -->
     <div class="layer layer-runway" id="layerRunway" hidden aria-hidden="true">
-      <img class="runway-art" id="runwayArt" src="assets/runway%20.webp" alt="" draggable="false">
+      <img class="runway-art" id="runwayArt" data-src="assets/runway%20.webp" alt="" draggable="false">
       <!-- heat coming off the tarmac while the engines run up -->
       <div class="rw-heat"></div>
       <!-- tyre dust, spawned per-wheel down the roll -->
@@ -137,7 +144,7 @@
     <!-- Layer 9 — aircraft -->
     <div class="plane-holder" id="planeHolder">
       <div class="plane-spin" id="planeSpin">
-        <img id="plane" src="assets/airplane.webp" alt="Aircraft" draggable="false">
+        <img id="plane" data-src="assets/airplane.webp" alt="Aircraft" draggable="false">
       </div>
     </div>
 
@@ -205,7 +212,7 @@
 
     <!-- Start screen -->
     <div class="screen screen-start" id="screenStart">
-      <img class="start-art" src="assets/start%20screen.webp" alt="Co-ordinate Geometry" draggable="false">
+      <img class="start-art" data-src="assets/start%20screen.webp" alt="Co-ordinate Geometry" draggable="false">
       <!-- The bar sits exactly where the button will, so the reveal is a
            swap in place rather than a layout shift. hidden until 100%. -->
       <div class="play-slot">
@@ -216,7 +223,7 @@
           <p class="load-gauge-pct"><span id="loadGaugePct">0</span>%</p>
         </div>
         <button class="play-btn" id="btnPlay" type="button" aria-label="Play" disabled hidden>
-          <img src="assets/start%20button.webp" alt="" draggable="false">
+          <img data-src="assets/start%20button.webp" alt="" draggable="false">
           <span class="play-label">PLAY</span>
         </button>
       </div>
