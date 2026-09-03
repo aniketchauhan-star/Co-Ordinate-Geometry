@@ -525,8 +525,9 @@
     var zones = POINT_DRAG.map(function (p) {
       return { key: coordText(p), x: p.x, y: p.y, point: true };
     });
+    /* dragTray reads `label`, not `text` — chipLabel() does too */
     var chips = POINT_DRAG.map(function (p) {
-      return { key: coordText(p), text: coordText(p) };
+      return { key: coordText(p), label: coordText(p) };
     });
 
     return await dragActivity(tk, {
