@@ -520,35 +520,44 @@ CG.Audio = (function () {
     src.stop(t0 + dur + 0.02);
   }
 
-  /* Engines running up on the brakes: two detuned saws climbing through
-     a lowpass, so what rises is the body and not the note. */
+  /* Engines spooling: two detuned saws travelling through a lowpass, so
+     what moves is the body and not the note. f and lp are [from, to],
+     which is what makes it work in both directions — running up on the
+     brakes, or winding down after a landing. */
   function spool(o) {
     if (!enabled) return;
     var c = ensure();
     if (!c) return;
     var t0 = c.currentTime, dur = o.dur, i, osc;
+    var up = o.lp[1] > o.lp[0];
     var lp = c.createBiquadFilter();
     lp.type = 'lowpass';
     lp.Q.value = 4;
-    lp.frequency.setValueAtTime(200, t0);
-    lp.frequency.linearRampToValueAtTime(1150, t0 + dur);
+    lp.frequency.setValueAtTime(o.lp[0], t0);
+    lp.frequency.linearRampToValueAtTime(o.lp[1], t0 + dur);
     var g = c.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.linearRampToValueAtTime(o.vol, t0 + dur * 0.80);
-    g.gain.linearRampToValueAtTime(o.vol * 0.86, t0 + dur);
+    /* the level follows the filter: a run-up swells, a wind-down sags */
+    g.gain.setValueAtTime(up ? 0.0001 : o.vol, t0);
+    if (up) {
+      g.gain.linearRampToValueAtTime(o.vol, t0 + dur * 0.80);
+      g.gain.linearRampToValueAtTime(o.vol * 0.86, t0 + dur);
+    } else {
+      g.gain.linearRampToValueAtTime(o.vol * 0.55, t0 + dur * 0.70);
+    }
     g.gain.linearRampToValueAtTime(0.0001, t0 + dur + 0.35);
     for (i = 0; i < 2; i++) {
       osc = c.createOscillator();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(38 + i * 1.7, t0);   /* detuned: it beats */
-      osc.frequency.linearRampToValueAtTime(126 + i * 5, t0 + dur);
+      osc.frequency.setValueAtTime(o.f[0] + i * 1.7, t0);   /* detuned: it beats */
+      osc.frequency.linearRampToValueAtTime(o.f[1] + i * 5, t0 + dur);
       osc.connect(lp);
       osc.start(t0);
       osc.stop(t0 + dur + 0.4);
     }
     lp.connect(g); g.connect(master);
-    /* the intake hiss riding on top */
-    rush({ dur: dur, from: 300, to: 1900, vol: o.vol * 0.50, q: 0.6, attack: 0.85 });
+    /* the intake hiss riding on top, travelling the same way */
+    rush({ dur: dur, from: o.lp[0] * 1.5, to: o.lp[1] * 1.6,
+           vol: o.vol * 0.50, q: 0.6, attack: up ? 0.85 : 0.12 });
   }
 
   var cues = {
@@ -584,13 +593,30 @@ CG.Audio = (function () {
     reveal: function () {
       voice({ freq: 880, to: 1320, dur: 0.20, type: 'triangle', vol: 0.16 });
     },
-    /* ---- the intro takeoff --------------------------------------- */
-    /* engines running up while the aircraft is held on the runway */
-    spoolUp: function () { spool({ dur: 1.5, vol: 0.20 }); },
-    /* the wheels leaving the tarmac */
-    takeoffRush: function () {
-      rush({ dur: 1.25, from: 260, peak: 2100, to: 520, vol: 0.26, q: 0.55, attack: 0.22 });
-      voice({ freq: 150, to: 74, dur: 0.90, type: 'sine', vol: 0.14 });
+    /* ---- the intro landing --------------------------------------- */
+    /* Coming over the threshold: airframe only, no engine — an aircraft
+       on final approach is at idle, and that quiet is what makes the
+       touchdown land. */
+    airframeRush: function () {
+      rush({ dur: 1.10, from: 300, peak: 1900, to: 480, vol: 0.22, q: 0.55, attack: 0.26 });
+    },
+    /* THE WHEELS MEETING THE TARMAC — a bright tyre chirp with a hard
+       decay, over a low thump through the airframe. Two layers, because
+       a landing is heard in two places at once: the contact and the
+       weight coming down onto it. */
+    touchdown: function () {
+      rush({ dur: 0.34, from: 1500, peak: 2700, to: 900, vol: 0.30, q: 1.6, attack: 0.06 });
+      voice({ freq: 96, to: 52, dur: 0.42, type: 'sine', vol: 0.30, attack: 0.004 });
+      voice({ freq: 152, to: 82, dur: 0.24, type: 'triangle', vol: 0.13, attack: 0.004 });
+    },
+    /* reverse thrust, swelling and falling away through the rollout */
+    reverseThrust: function () {
+      rush({ dur: 1.50, from: 380, peak: 1500, to: 300, vol: 0.24, q: 0.5, attack: 0.18 });
+      voice({ freq: 84, to: 58, dur: 1.20, type: 'sawtooth', vol: 0.09, attack: 0.22 });
+    },
+    /* engines winding down once it has come to a stop */
+    spoolDown: function () {
+      spool({ dur: 1.7, vol: 0.18, f: [122, 40], lp: [1050, 200] });
     },
     /* land ahead: the airspace opening up as the headlands arrive */
     landfall: function () {
