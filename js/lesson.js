@@ -167,6 +167,8 @@
     /* --- the first number ------------------------------------------- */
     if (!await say(tk, { text: 'First, move along the <em>x-axis</em>.', beat: CFG.beatShort })) return false;
     Grid.measure('x', P.x, P.y);
+    Grid.pulseLine('x', P.x);          /* the line that number names */
+    Grid.markLeg('x', P.x);            /* and the units it counted    */
     Audio.play('reveal');
     if (!await say(tk, {
       text: 'The point is <em>2</em> units to the right.', beat: CFG.beatMed
@@ -179,9 +181,13 @@
     /* --- the second number ------------------------------------------ */
     if (!await say(tk, { text: 'Now move along the <em>y-axis</em>.', beat: CFG.beatShort })) return false;
     Grid.measure('y', P.x, P.y);
+    Grid.pulseLine('y', P.y);
+    Grid.markLeg('y', P.y, P.x);
     Audio.play('reveal');
     if (!await say(tk, { text: 'The point is <em>3</em> units up.', beat: CFG.beatMed })) return false;
 
+    Grid.clearPulseLines();
+    Grid.clearRoutePoints();
     tagAt(P, '(2, 3)');
     Audio.play('reveal');
     if (!await say(tk, { text: 'So, the second number is <em>3</em>.', beat: CFG.beatMed })) return false;
@@ -191,6 +197,7 @@
 
     /* --- 37/38. formalise each co-ordinate -------------------------- */
     tagAt(P, '(2, 3)', 'x');
+    Grid.pulseLine('x', P.x);
     if (!await say(tk, { text: 'The first number gives the <em>x-co-ordinate</em>.', beat: CFG.beatMed })) return false;
     if (!await say(tk, {
       text: 'The x-co-ordinate is the distance of the point from the <em>y-axis</em>.',
@@ -198,6 +205,7 @@
     })) return false;
 
     tagAt(P, '(2, 3)', 'y');
+    Grid.pulseLine('y', P.y);
     if (!await say(tk, { text: 'The second number gives the <em>y-co-ordinate</em>.', beat: CFG.beatMed })) return false;
     if (!await say(tk, {
       text: 'The y-co-ordinate is the distance of the point from the <em>x-axis</em>.',
@@ -205,6 +213,7 @@
     })) return false;
 
     /* --- 39. the order ---------------------------------------------- */
+    Grid.clearPulseLines();
     tagAt(P, '(2, 3)', 'both');
     if (!await say(tk, {
       text: 'We write the co-ordinates of a point in the order <span class="coord">(x, y)</span>.',

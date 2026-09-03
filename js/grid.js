@@ -71,6 +71,7 @@ CG.Grid = (function () {
     el.nums = document.getElementById('axisNums');
     el.ends = document.getElementById('axisEnds');
     el.hint = document.getElementById('hintLayer');
+    el.pulse = document.getElementById('pulseLayer');
     el.path = document.getElementById('pathLayer');
     el.trail = document.getElementById('trailLayer');
     el.reveal = document.getElementById('revealLayer');
@@ -179,7 +180,12 @@ CG.Grid = (function () {
      the visible tint and the clip that stops the grid at the rounded
      corner are driven from the same rect, so they can never disagree. */
   var PLAY = { x: 64, y: 148, w: 1792, h: 768 };
-  var PANEL_PAD = 26;
+  /* The origin beacon sits ON the grid's corner in stage 1, and its ring
+     is r25 in canonical units. For that ring to stay inside a rounded
+     panel the margin has to exceed the ring plus the corner arc's own
+     encroachment, R(1 - 1/sqrt2) = 8.2px. At 26 the ring was being
+     sliced by the corner; 38 clears it with room to spare. */
+  var PANEL_PAD = 38;
   /* canonical px of slack around the charted rect: half the widest line
      (the axes, 3.4 screen px) at the smallest stage scale, rounded up */
   var STROKE_PAD = 6;
@@ -351,6 +357,28 @@ CG.Grid = (function () {
   }
   function clearHint() { clear(el.hint); }
 
+  /* ---------------- the line being spoken about ----------------
+     When the voice names a number — "you moved 3 spaces right", "it is 2
+     units up" — the grid line at that coordinate lights and pulses for
+     as long as the sentence lasts. The number in the sentence and the
+     line on the chart are the same fact, and this is what says so.
+
+     It spans only the charted area, not the full canonical grid, so a
+     pulse cannot reach into airspace that has not unfolded yet. */
+  function pulseLine(axis, value) {
+    clearPulseLines();
+    if (!value) return;                      /* 0 is the axis itself */
+    var nss = { 'vector-effect': 'non-scaling-stroke' };
+    var line = axis === 'x'
+      ? mk('line', Object.assign({ x1: toX(value), y1: toY(charted.yMax),
+                                   x2: toX(value), y2: toY(charted.yMin) }, nss), 'pulse-line')
+      : mk('line', Object.assign({ x1: toX(charted.xMin), y1: toY(value),
+                                   x2: toX(charted.xMax), y2: toY(value) }, nss), 'pulse-line');
+    el.pulse.appendChild(line);
+  }
+
+  function clearPulseLines() { if (el.pulse) el.pulse.innerHTML = ''; }
+
   /* ---------------- origin beacon ---------------- */
   function drawOrigin() {
     var g = mk('g', { transform: 'translate(' + toX(0) + ',' + toY(0) + ')' }, 'beacon');
@@ -427,6 +455,42 @@ CG.Grid = (function () {
      flight loop, so the route grows exactly as fast as the aircraft */
   function addPathDot(x, y) {
     el.path.appendChild(mk('circle', { cx: toX(x), cy: toY(y), r: 3.6 }, 'path-dot'));
+  }
+
+  /* The points along one leg of the route, lit while the voice is
+     counting them — not while the aircraft is flying. During the flight
+     the trail alone shows the route; these appear only when a sentence
+     names that distance, and they arrive one at a time so the eye is
+     walked along the count in step with the words. */
+  var LEG_STEP = 260;                    /* ms between one point and the next */
+
+  function markPoint(x, y, delay) {
+    var g = mk('g', { transform: 'translate(' + toX(x) + ',' + toY(y) + ')' }, 'route-point');
+    g.appendChild(mk('circle', { r: 13 }, 'rp-halo'));
+    g.appendChild(mk('circle', { r: 6.5 }, 'rp-core'));
+    if (delay) {
+      g.style.animationDelay = delay + 'ms';
+      g.querySelector('.rp-halo').style.animationDelay = (delay + 420) + 'ms';
+    }
+    el.trail.appendChild(g);
+    return g;
+  }
+
+  /* markLeg('x', 3) lights (1,0) (2,0) (3,0); markLeg('y', 2, 3) lights
+     (3,1) (3,2). Signs are followed, so a leg to the left or downwards
+     counts outwards from the origin the same way. */
+  function markLeg(axis, value, fixed) {
+    if (!value) return;
+    var n = Math.abs(value), sgn = value < 0 ? -1 : 1, other = fixed || 0, i;
+    for (i = 1; i <= n; i++) {
+      if (axis === 'x') markPoint(i * sgn, other, (i - 1) * LEG_STEP);
+      else markPoint(other, i * sgn, (i - 1) * LEG_STEP);
+    }
+  }
+
+  function clearRoutePoints() {
+    var n = el.trail.querySelectorAll('.route-point');
+    for (var i = 0; i < n.length; i++) n[i].parentNode.removeChild(n[i]);
   }
 
   function puff(x, y) {
@@ -775,7 +839,7 @@ CG.Grid = (function () {
   function clearLesson() {
     clearPoints(); clearMeasures(); clearDropZones();
     clearTapPoints(); clearRecapMarkers(); clearRegions();
-    clearRegionLabels(); showRightAngle(false);
+    clearRegionLabels(); showRightAngle(false); clearPulseLines();
     el.field.classList.remove('field-live');
   }
 
@@ -786,6 +850,8 @@ CG.Grid = (function () {
     setStage: setStage,
     getCharted: function () { return Object.assign({}, charted); },
     showHint: showHint,
+    pulseLine: pulseLine,
+    clearPulseLines: clearPulseLines,
     clearHint: clearHint,
     setTarget: setTarget,
     highlightTarget: highlightTarget,
@@ -795,6 +861,8 @@ CG.Grid = (function () {
     hideOriginLabel: hideOriginLabel,
     clearPath: clearPath,
     addPathDot: addPathDot,
+    markLeg: markLeg,
+    clearRoutePoints: clearRoutePoints,
     puff: puff,
     markNumber: markNumber,
     highlightRevealed: highlightRevealed,

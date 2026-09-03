@@ -43,11 +43,20 @@ CG.STAGES = {
      stage takes the largest cell its shape allows inside the play box
      (1792 x 768):
 
-       stage 1   cell 116  ->   696 x 696   SQUARE
-       stage 2   cell 116  ->  1392 x 696   exactly 2:1, and the SAME
-                                            cell: a pure sideways unfold
-                                            with no zoom at all
-       stage 3   cell  59  ->   708 x 708   SQUARE again; the one zoom
+       stage 1   cell 112  ->   672 x 672    36 cells
+       stage 2   cell 112  ->  1344 x 672    72 cells — the SAME cell,
+                                             so it is a pure sideways
+                                             unfold with no zoom at all
+       stage 3   cell  59  ->  1652 x 708   336 cells
+
+     Every unfold makes the chart bigger and gives it more squares:
+     451k -> 903k -> 1170k px of grid, and 36 -> 72 -> 336 cells. The
+     third stage fills the width rather than closing back into a square,
+     because a four-quadrant SQUARE is bounded by the 768px height and
+     would be barely half the width of stage 2 — the chart would visibly
+     shrink at the exact moment the airspace doubles. Restoring the
+     square is a one-line change: set stage 3/4 extent to xMin -6,
+     xMax 6.
 
      In stage 1 the origin sits ON the grid's bottom-left corner, so the
      aircraft starts in the corner of its own airspace the way the PDF
@@ -64,12 +73,12 @@ CG.STAGES = {
      whole game. The origin stays put from 1 to 2 (804) and only moves
      when the airspace opens below it (787 -> 532).
      --------------------------------------------------------------------- */
-  1: { cell: 116, origin: { x: 612, y: 870 }, extent: { xMin: 0,  xMax: 6, yMin: 0,  yMax: 6 } },
-  2: { cell: 116, origin: { x: 960, y: 870 }, extent: { xMin: -6, xMax: 6, yMin: 0,  yMax: 6 } },
-  3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6, xMax: 6, yMin: -6, yMax: 6 } },
-  /* quadrant IV opens no new airspace beyond stage 3 — x and y already
-     span both signs — so it shares the geometry and nothing lurches. */
-  4: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6, xMax: 6, yMin: -6, yMax: 6 } }
+  1: { cell: 112, origin: { x: 624, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
+  2: { cell: 112, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
+  3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -14, xMax: 14, yMin: -6, yMax: 6 } },
+  /* quadrant IV opens no new airspace beyond stage 3, so it shares the
+     geometry and nothing lurches. */
+  4: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -14, xMax: 14, yMin: -6, yMax: 6 } }
 };
 
 /* ============================================================

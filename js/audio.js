@@ -474,6 +474,83 @@ CG.Audio = (function () {
     }
   }
 
+  /* ---- takeoff cues -------------------------------------------------
+     The supplied recording is a steady cruise loop, so the two moments
+     the intro needs from it are missing: engines running up against the
+     brakes, and the rush as the wheels leave the tarmac. Both are
+     synthesised here.
+
+     Both are BODIES, not notes. A jet is broadband and weighted low, so
+     the pitch you hear is the filter opening, never an oscillator
+     sweeping a scale — a rising tone reads as a cartoon slide whistle. */
+
+  /* Brown-ish noise through a swept bandpass: the airframe rush. */
+  function rush(o) {
+    if (!enabled) return;
+    var c = ensure();
+    if (!c) return;
+    var t0 = c.currentTime + (o.delay || 0);
+    var dur = o.dur;
+    var len = Math.floor(c.sampleRate * dur);
+    var buf = c.createBuffer(1, len, c.sampleRate);
+    var d = buf.getChannelData(0), last = 0, i;
+    for (i = 0; i < len; i++) {
+      last = (last + (Math.random() * 2 - 1) * 0.11) * 0.985;
+      d[i] = last * 3.2;
+    }
+    var src = c.createBufferSource();
+    src.buffer = buf;
+    var bp = c.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = o.q || 0.7;
+    bp.frequency.setValueAtTime(o.from, t0);
+    /* o.peak gives the doppler arc: open up, then fall away behind us */
+    if (o.peak) {
+      bp.frequency.linearRampToValueAtTime(o.peak, t0 + dur * 0.42);
+      bp.frequency.linearRampToValueAtTime(o.to, t0 + dur);
+    } else {
+      bp.frequency.linearRampToValueAtTime(o.to, t0 + dur);
+    }
+    var g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(o.vol, t0 + dur * (o.attack || 0.3));
+    g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp); bp.connect(g); g.connect(master);
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  }
+
+  /* Engines running up on the brakes: two detuned saws climbing through
+     a lowpass, so what rises is the body and not the note. */
+  function spool(o) {
+    if (!enabled) return;
+    var c = ensure();
+    if (!c) return;
+    var t0 = c.currentTime, dur = o.dur, i, osc;
+    var lp = c.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.Q.value = 4;
+    lp.frequency.setValueAtTime(200, t0);
+    lp.frequency.linearRampToValueAtTime(1150, t0 + dur);
+    var g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(o.vol, t0 + dur * 0.80);
+    g.gain.linearRampToValueAtTime(o.vol * 0.86, t0 + dur);
+    g.gain.linearRampToValueAtTime(0.0001, t0 + dur + 0.35);
+    for (i = 0; i < 2; i++) {
+      osc = c.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(38 + i * 1.7, t0);   /* detuned: it beats */
+      osc.frequency.linearRampToValueAtTime(126 + i * 5, t0 + dur);
+      osc.connect(lp);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.4);
+    }
+    lp.connect(g); g.connect(master);
+    /* the intake hiss riding on top */
+    rush({ dur: dur, from: 300, to: 1900, vol: o.vol * 0.50, q: 0.6, attack: 0.85 });
+  }
+
   var cues = {
     uiClick:     function () { voice({ freq: 620, to: 880, dur: 0.09, type: 'triangle', vol: 0.30 }); },
     stepperTick: function () { voice({ freq: 1180, to: 1500, dur: 0.05, type: 'square', vol: 0.10 }); },
@@ -506,6 +583,21 @@ CG.Audio = (function () {
     },
     reveal: function () {
       voice({ freq: 880, to: 1320, dur: 0.20, type: 'triangle', vol: 0.16 });
+    },
+    /* ---- the intro takeoff --------------------------------------- */
+    /* engines running up while the aircraft is held on the runway */
+    spoolUp: function () { spool({ dur: 1.5, vol: 0.20 }); },
+    /* the wheels leaving the tarmac */
+    takeoffRush: function () {
+      rush({ dur: 1.25, from: 260, peak: 2100, to: 520, vol: 0.26, q: 0.55, attack: 0.22 });
+      voice({ freq: 150, to: 74, dur: 0.90, type: 'sine', vol: 0.14 });
+    },
+    /* land ahead: the airspace opening up as the headlands arrive */
+    landfall: function () {
+      [261.63, 392.00, 523.25, 659.25].forEach(function (f, i) {
+        voice({ freq: f, dur: 1.15, type: 'triangle', vol: 0.13, attack: 0.22, delay: i * 0.13 });
+      });
+      rush({ dur: 1.60, from: 900, to: 220, vol: 0.10, q: 0.5, attack: 0.25 });
     }
   };
 

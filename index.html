@@ -72,7 +72,7 @@
         <!-- the gameplay panel: a rounded rectangle in stage coordinates.
              Everything on the chart is clipped to it, so the grid stops
              cleanly at the panel's rounded corners. -->
-        <clipPath id="panelClip"><rect x="577" y="149" width="766" height="766" rx="28" ry="28"></rect></clipPath>
+        <clipPath id="panelClip"><rect x="586" y="160" width="748" height="748" rx="28" ry="28"></rect></clipPath>
         <clipPath id="chartedClip"><rect id="chartedRect" x="0" y="0" width="0" height="0"></rect></clipPath>
         <filter id="beaconGlow" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur>
@@ -97,6 +97,9 @@
         </g>
         <g id="axisEnds"></g>
         <g id="hintLayer"></g>
+        <!-- the line being spoken about right now: glows and pulses for
+             exactly as long as the voice is naming that number -->
+        <g id="pulseLayer"></g>
       <!-- 6: flight trail -->
       <g id="trailLayer"></g>
       <g id="pathLayer"></g>

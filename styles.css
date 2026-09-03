@@ -285,7 +285,7 @@ button{font-family:inherit}
   /* geometry is set by grid.js: the panel tracks the charted area so it
      unfolds with the plane (square -> rectangle -> square). These are
      only the first-paint values, before the first setStage. */
-  left:577px;top:149px;width:766px;height:766px;
+  left:586px;top:160px;width:748px;height:748px;
   pointer-events:none;
   border-radius:28px;
   /* deep water, lighter where the light falls at the bottom, with the
@@ -497,6 +497,53 @@ button{font-family:inherit}
   100%{fill:var(--cream);transform:scale(1)}
 }
 .reveal-num,.num-hot{transform-box:fill-box;transform-origin:center}
+
+/* THE POINTS THE AIRCRAFT REACHES
+   Each whole-number crossing lights as the aircraft arrives, pulses three
+   times to announce itself, then stays lit as part of the route. Three
+   pulses rather than an endless loop: it has to catch the eye at the
+   moment of arrival, not keep competing for attention afterwards. */
+.route-point{
+  transform-box:fill-box;transform-origin:center;
+  animation:rpIn 420ms var(--ease-out) both;
+}
+.rp-halo{
+  fill:var(--grid-glow);
+  animation:rpPulse 1300ms var(--ease-io) 420ms 3;
+  transform-box:fill-box;transform-origin:center;
+}
+.rp-core{
+  fill:var(--grid-axis);
+  filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 13px var(--grid-glow));
+}
+@keyframes rpIn{
+  0%  {opacity:0;transform:scale(.3)}
+  60% {opacity:1;transform:scale(1.35)}
+  100%{opacity:1;transform:scale(1)}
+}
+@keyframes rpPulse{
+  0%,100%{transform:scale(1);   opacity:.55}
+  50%    {transform:scale(1.75);opacity:.15}
+}
+
+/* THE LINE BEING SPOKEN ABOUT
+   Lit in the axis colour and pulsing, for exactly as long as the voice is
+   naming that number. A perpetual pulse is wrong for idle furniture, but
+   this is not idle — it exists only while a sentence is being said, and
+   it is cleared the moment the sentence ends. */
+.pulse-line{
+  stroke:var(--grid-axis);
+  stroke-linecap:round;
+  filter:
+    drop-shadow(0 0 6px var(--grid-glow))
+    drop-shadow(0 0 16px var(--grid-glow))
+    drop-shadow(0 0 30px var(--grid-glow));
+  animation:linePulse 1150ms var(--ease-io) infinite;
+}
+@keyframes linePulse{
+  0%,100%{opacity:.50;stroke-width:3.2}
+  50%    {opacity:1;  stroke-width:5.6}
+}
 
 /* "count the spaces" hint — the distance is shown, never the number */
 .hint-run{animation:fadeIn 260ms both}
@@ -1062,7 +1109,7 @@ button{font-family:inherit}
 
 /* ---------------- reduced motion ---------------- */
 @media (prefers-reduced-motion:reduce){
-  .caustic,.swell,.glint,.cloud,.surf-band,.go,.wp-pulse,.wp-ping,.play-btn img,
+  .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-line,.go,.wp-pulse,.wp-ping,.play-btn img,
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff{animation:none!important}
   .puff{display:none}
   *{transition-duration:1ms!important}

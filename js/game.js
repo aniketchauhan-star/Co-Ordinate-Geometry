@@ -345,7 +345,10 @@ window.CG = window.CG || {};
           }
         }
 
-        /* one engine whoosh per grid line crossed */
+        /* one engine whoosh per grid line crossed. The points are NOT
+           lit here: they belong to the recap, where the voice counts
+           them out, not to the flight, where the trail already shows
+           the route. */
         while (cellsDone < plan.total && s >= cellsDone + 1 - 1e-4) {
           cellsDone++;
           Audio.play('aircraftMove');
@@ -478,6 +481,9 @@ window.CG = window.CG || {};
     var q;
     Grid.clearReveal();
     for (q = 1; q <= Math.abs(sel.x); q++) Grid.highlightRevealed('x', Math.sign(sel.x) * q, true);
+    Grid.pulseLine('x', sel.x);        /* the line the number refers to */
+    Grid.clearRoutePoints();
+    Grid.markLeg('x', sel.x);          /* and the spaces it counted     */
     UI.mission({
       text: 'First, you moved <em>' + Math.abs(sel.x) + '</em> spaces ' + dirWord('x', sel.x) + '.',
       voice: 'First, you moved ' + CG.Voice.numWord(Math.abs(sel.x)) + ' spaces ' +
@@ -487,6 +493,8 @@ window.CG = window.CG || {};
     await wait(CFG.beatMed); if (tk !== seqToken) return;
 
     for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
+    Grid.pulseLine('y', sel.y);
+    Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
       text: 'Then, you moved <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
       voice: 'Then, you moved ' + CG.Voice.numWord(Math.abs(sel.y)) + ' spaces ' +
@@ -497,6 +505,9 @@ window.CG = window.CG || {};
 
     /* first success only: the movement is named as X and Y */
     if (level().coordinateReveal) {
+      Grid.pulseLine('x', sel.x);
+      Grid.clearRoutePoints();
+      Grid.markLeg('x', sel.x);
       UI.mission({
         text: 'That is <em>' + Math.abs(sel.x) + '</em> spaces across.',
         sub: 'X = ' + sel.x,
@@ -506,6 +517,8 @@ window.CG = window.CG || {};
       });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
+      Grid.pulseLine('y', sel.y);
+      Grid.markLeg('y', sel.y, sel.x);
       UI.mission({
         text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
         sub: 'Y = ' + sel.y,
@@ -515,6 +528,8 @@ window.CG = window.CG || {};
       });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
+      Grid.clearPulseLines();
+      Grid.clearRoutePoints();
       UI.mission({
         text: 'Together: <span class="coord">' + coordText(sel) + '</span>',
         voice: 'Together, that is ' + spoken(sel) + '.',
@@ -522,6 +537,9 @@ window.CG = window.CG || {};
       });
       await wait(CFG.beatMed); if (tk !== seqToken) return;
     }
+
+    Grid.clearPulseLines();
+    Grid.clearRoutePoints();
 
     /* the sign lesson for a newly opened quadrant */
     if (level().signLesson) {
@@ -597,6 +615,8 @@ window.CG = window.CG || {};
      ============================================================ */
   function loadLevel(index) {
     animToken++; seqToken++; clearAuto(); clearIdleHint();
+    Grid.clearPulseLines();          /* nothing survives a new mission */
+    Grid.clearRoutePoints();
     Audio.engineStop();
     Audio.duck('flight', false);
     CG.Voice.cancel();
@@ -668,6 +688,7 @@ window.CG = window.CG || {};
     Grid.clearReveal();
     Grid.clearFx();
     Grid.clearHint();
+    Grid.clearPulseLines();
     UI.hideCoordTag();
     Grid.setTarget(gameState.target);
     refreshTargetGlow();
