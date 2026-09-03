@@ -134,37 +134,33 @@ CG.Grid = (function () {
     showAxes(false);          /* tutorial missions show a plain grid */
   }
 
-  /* Every integer line, including 0: during the missions the learner
-     sees a plain, even grid of solid white lines. The axes are a separate
-     emphasis layer that stays hidden until the concept reveal names
-     them. */
-  /* Three weights, because the palette carries three: every integer gets
-     a minor line, every fifth gets a major one, and the two centre lines
-     get the heaviest.
+  /* EVERY INTEGER LINE, AT ONE WEIGHT. There used to be three: n=0 drawn as a stand-in
+     centre line, every fifth drawn heavier, and the rest faint. On
+     screen that read as three different glows rather than as a
+     hierarchy, because a brighter, wider line blooms harder through the
+     same filter.
 
-     The centre lines matter before they have names. When quadrant II
-     unfolds, the line through the origin becomes the middle of the chart,
-     and the learner has to be able to see the plane split in two — so
-     x=0 and y=0 are drawn at the major weight from the start, even while
-     the #axes layer is still hidden and the words "x-axis" and "y-axis"
-     have not been said. Fives earn their weight too: the steppers stop
-     at 5, so a route is counted in exactly those blocks. */
+     A graticule's job is to be an even backdrop you can count on. The
+     things allowed to stand out are the aircraft, the target, and the
+     #axes layer once the lesson gives the axes their names — and that
+     layer has arrowheads, ticks, labels and its own weight to do it
+     with, so it never needed the graticule to be dim.
+
+     No class is passed at all now, which is why .grid-major and
+     .grid-centre are deleted from the stylesheet rather than left
+     sitting there unused. */
   function drawLines(host) {
     var i, nss = { 'vector-effect': 'non-scaling-stroke' };
-    var weight = function (n) {
-      return n === 0 ? 'grid-centre' : (n % 5 === 0 ? 'grid-major' : null);
-    };
     for (i = MAX.xMin; i <= MAX.xMax; i++) {
       host.appendChild(mk('line', Object.assign(
-        { x1: toX(i), y1: toY(MAX.yMax), x2: toX(i), y2: toY(MAX.yMin) }, nss),
-        weight(i)));
+        { x1: toX(i), y1: toY(MAX.yMax), x2: toX(i), y2: toY(MAX.yMin) }, nss)));
     }
     for (i = MAX.yMin; i <= MAX.yMax; i++) {
       host.appendChild(mk('line', Object.assign(
-        { x1: toX(MAX.xMin), y1: toY(i), x2: toX(MAX.xMax), y2: toY(i) }, nss),
-        weight(i)));
+        { x1: toX(MAX.xMin), y1: toY(i), x2: toX(MAX.xMax), y2: toY(i) }, nss)));
     }
   }
+
 
   /* Axes, ticks and arrowheads are an overlay revealed at concept time. */
   function showAxes(on) {

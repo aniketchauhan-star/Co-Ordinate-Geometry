@@ -101,21 +101,21 @@ CG.LEVELS = [
   /* ---------- FIRST QUADRANT : right + up ---------- */
   {
     quadrant: 1, target: { x: 3, y: 2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.',
     tutorial: true,
     coordinateReveal: true          /* FLOW 10 — the "X = 3, Y = 2" moment */
   },
   {
     quadrant: 1, target: { x: 5, y: 4 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.'
   },
 
   /* ---------- SECOND QUADRANT : left + up ---------- */
   {
     quadrant: 2, target: { x: -2, y: 4 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.',
     unlockNote: 'The airspace now extends to the left.',
     unlockVoice: 'Now the airspace extends to the left.',
@@ -123,7 +123,7 @@ CG.LEVELS = [
   },
   {
     quadrant: 2, target: { x: -5, y: 2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.'
   },
 

@@ -37,8 +37,19 @@
   --grid-bg-mid: rgba(5, 97, 154, 0.74);    /* #05619A */
   --grid-bg-light: rgba(22, 127, 175, 0.20);/* #167FAF */
 
-  --grid-line: rgba(83, 175, 197, 0.67);
-  --grid-line-major: rgba(125, 195, 210, 0.87);
+  /* ONE GRID-LINE HUE. The supplied palette gave two — a minor at
+     rgba(83,175,197,.67) and a major at rgba(125,195,210,.87) — for a
+     two-tier grid. The grid is one tier now, so it takes one hue, and it
+     takes the BRIGHTER of the two: measured against the panel over the
+     artwork, the minor gives a luma delta of only 31.6/255 at its worst
+     row while the major gives 62.0. Going uniform therefore roughly
+     doubles the legibility of the lines that cover most of the chart,
+     instead of flattening everything down to the faintest tier.
+
+     Neither reaches the 100/255 floor this project set itself, and the
+     major cannot get there even at full opacity (71.4). Only the axis
+     hue #B7E7EF clears it, at 111.5 — see the note on #gridLines. */
+  --grid-line: rgba(125, 195, 210, 0.87);
   --grid-axis: #B7E7EF;
   --grid-border: #559DB8;
   --grid-glow: rgba(125, 211, 229, 0.30);
@@ -460,35 +471,45 @@ button{font-family:inherit}
   pointer-events:none;
   transition:opacity 420ms var(--ease-out);
 }
-/* dark under-stroke: a hair wider than the white line above it, so the
-   grid keeps its edge over bright water without any blur */
-/* Widths are in design px and do NOT scale with the chart zoom
+/* ONE LINE, ONE WEIGHT, ONE GLOW.
+
+   Widths are in design px and do NOT scale with the chart zoom
    (vector-effect: non-scaling-stroke), so the grid keeps the same weight
-   in every stage. */
-#gridLines line{stroke:var(--grid-line);stroke-width:2}
-#gridLines line.grid-major{stroke:var(--grid-line-major);stroke-width:2.6}
-/* the centre lines: the chart's middle, readable before it has a name */
-#gridLines line.grid-centre{stroke:var(--grid-axis);stroke-width:3;opacity:.82}
-/* The graticule glows in its own colour. Two shadows rather than one:
-   a tight halo that thickens the line and a wide bloom that lifts it off
-   the plate, which is what carries a 34-delta minor line. */
+   in every stage. 2.2 sits between the old faint tier (2) and the old
+   heavy one (2.6): every line is now a little more present than most
+   lines used to be, without the total ink on screen going up much.
+
+   THE GLOW IS TWO SHADOWS, NOT THREE. Chained drop-shadows are not
+   additive — each one operates on the previous one's OUTPUT, so a third
+   was blooming the second's bloom. That compounding, on top of three
+   different line weights, is what read as several different glows
+   instead of one. A tight halo that thickens the line and a soft bloom
+   that lifts it off the plate is the whole effect. */
+#gridLines line{stroke:var(--grid-line);stroke-width:2.2}
 #gridLines{
   filter:
-    drop-shadow(0 0 2px var(--grid-glow))
-    drop-shadow(0 0 7px var(--grid-glow))
-    drop-shadow(0 0 15px var(--grid-glow));
+    drop-shadow(0 0 3px var(--grid-glow))
+    drop-shadow(0 0 12px var(--grid-glow));
 }
+/* If you want the 100/255 floor met, this is the one line to change:
+   stroke:var(--grid-axis) at full opacity measures 111.5. It costs the
+   graticule its recession — every line would then be as bright as the
+   axes are, and the aircraft and target would have to fight it. */
 /* During the tutorial missions the field is a plain, even grid. The axes,
    their ticks and their arrowheads only appear once the concept reveal
    gives them names. */
 #axes,#ticks,#axisEnds{opacity:0;transition:opacity 620ms var(--ease-out)}
 #axes.axes-shown,#ticks.axes-shown,#axisEnds.axes-shown{opacity:1}
 #axes line{stroke:var(--grid-axis);stroke-width:3.4;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
+/* Two shadows, for the same reason as the graticule: chained
+   drop-shadows blur the previous one's output, so a third was blooming
+   a bloom. The axes still read brighter than the grid — that is their
+   colour, their 3.4 weight, their round caps, their arrowheads and
+   their labels doing it, not an extra glow layer. */
 #axes{
   filter:
-    drop-shadow(0 0 3px var(--grid-glow))
-    drop-shadow(0 0 10px var(--grid-glow))
-    drop-shadow(0 0 22px var(--grid-glow));
+    drop-shadow(0 0 4px var(--grid-glow))
+    drop-shadow(0 0 16px var(--grid-glow));
 }
 /* the voice is naming this axis right now: it goes white, thickens, and
    blooms, so there is no doubt which line is being talked about */
@@ -567,10 +588,10 @@ button{font-family:inherit}
 .pulse-line{
   stroke:var(--grid-axis);
   stroke-linecap:round;
+  /* two shadows, not three — see #gridLines */
   filter:
-    drop-shadow(0 0 6px var(--grid-glow))
-    drop-shadow(0 0 16px var(--grid-glow))
-    drop-shadow(0 0 30px var(--grid-glow));
+    drop-shadow(0 0 7px var(--grid-glow))
+    drop-shadow(0 0 22px var(--grid-glow));
   animation:linePulse 1150ms var(--ease-io) infinite;
 }
 @keyframes linePulse{
@@ -970,13 +991,12 @@ button{font-family:inherit}
   font-size:var(--fs-sm);font-weight:900;letter-spacing:.3px;
   text-shadow:0 2px 0 rgba(37,66,89,.20);
 }
-/* a soft gloss across the top half, which is what makes it read convex */
-.ctrl-label::before{
-  content:"";position:absolute;left:6px;right:6px;top:2px;height:44%;
-  border-radius:21px 21px 40% 40%;
-  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0));
-  pointer-events:none;
-}
+/* NO GLOSS OVERLAY ON THE UPPER SIDE. There was one here, and its own
+   border-radius (21px on top, 40% on the bottom) gave it a silhouette
+   of its own — so instead of reading as a highlight it read as a
+   separate rounded blob sitting on the button. The plate is convex
+   enough without it: the three-stop gradient does the curvature and the
+   inset white line does the top edge. */
 /* the supplied glyphs are already directional triangles, so they are
    the arrow — 1.35x the label, per the brief, and left of the word */
 .ctrl-label svg{
@@ -1051,7 +1071,6 @@ button{font-family:inherit}
   text-shadow:none;
   box-shadow:0 5px 0 #B3A483,inset 0 2px 0 rgba(255,255,255,.34);
 }
-.ctrl[data-armed="0"] .ctrl-label::before{opacity:.4}
 .ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(110,100,73,.62);filter:none}
 .ctrl[data-armed="0"] .ctrl-val,
 .ctrl[data-armed="0"] .stepper{
