@@ -13,33 +13,47 @@
   --green:#48BE37;
   --green-dk:#2F8E23;
   --lime:#7BE034;
-  --lime-dk:#4FA915;
-  --purple-dk:#6A38B4;
   --coral-dk:#B92F2F;
-  --charcoal:#2B3947;
-  --charcoal-dk:#1B2530;
 
   /* ---- THE CHART PALETTE ---------------------------------------------
-     Supplied art direction: a dark teal plate carrying a glowing cyan
-     graticule, rather than white lines on open water. The panel is now
-     mostly opaque, so the living water reads around the chart instead of
-     through it — which is what makes the grid a chart and not an overlay.
+     Supplied art direction. The background hues carry alpha rather than
+     the flat hex they were given as, because the water's wrinkles have to
+     read through the plate — an opaque stop blocks them completely.
 
-     Measured against the ocean beneath (luma 177):
-       panel composite ......  luma  93
-       minor grid line ......  luma 142   -> delta  49
-       major line / axis ....  luma 196   -> delta 102
-     So the axes carry the contrast and the minor grid is deliberately
-     quiet — a real hierarchy rather than one flat weight. The glow is
-     part of that: it is what makes a 49-delta line read cleanly.       */
-  --grid-bg: rgba(1, 75, 94, 0.72);
-  --grid-bg-mid: #036077;
-  --grid-bg-light: #0689A0;
+     The palette names three line weights, so the chart draws three.
+     Measured worst case across the whole plate, over the ocean beneath:
+       minor   every integer                  delta  34
+       major   every fifth line               delta  65
+       axis    the x and y axes               delta 115
+     Only the axes clear the 100/255 floor, and that is the point: they
+     are what the lesson names. Fives earn their emphasis too — the
+     steppers stop at 5, so a learner counting a route counts in exactly
+     those blocks, and the major lines mark them out.                   */
+  --grid-bg: rgba(5, 78, 128, 0.66);        /* #054E80 */
+  --grid-bg-dark: rgba(4, 61, 105, 0.70);   /* #043D69 */
+  /* #05619A is a lighter hue than the base, so it carries more alpha to
+     sit at the same darkness — at 0.62 the top of the plate rose to luma
+     118 and the minor grid fell to a 26 delta there. */
+  --grid-bg-mid: rgba(5, 97, 154, 0.74);    /* #05619A */
+  --grid-bg-light: rgba(22, 127, 175, 0.20);/* #167FAF */
 
-  --grid-line: rgba(34, 197, 208, 0.70);
-  --grid-line-major: rgba(116, 231, 234, 0.90);
-  --grid-border: #16CBD2;
-  --grid-glow: rgba(16, 207, 216, 0.32);
+  --grid-line: rgba(83, 175, 197, 0.67);
+  --grid-line-major: rgba(125, 195, 210, 0.87);
+  --grid-axis: #B7E7EF;
+  --grid-border: #559DB8;
+  --grid-glow: rgba(125, 211, 229, 0.30);
+
+  /* ---- THE CONTROL DOCK ----------------------------------------------
+     DOWN is the one direction the palette did not name, so it keeps the
+     coral it already had — the only hue left unclaimed by RIGHT, LEFT,
+     UP and GO. Say the word if you want a specific value.              */
+  --dock-bg: #0E1B31;
+  --dock-2: #2E4463;
+  --dock-inner: #172942;
+  --dock-rim: #44769C;
+  --go: #168BD7;
+  --go-dk: #0866B3;
+  --ui-text: #F3F7FA;
 
   /* ---- SEMANTIC vs DIRECTION -----------------------------------------
      The four direction hues (orange 30deg, green 112, purple 264, coral 0)
@@ -83,7 +97,6 @@
   --sh-1:0 2px 6px rgba(8,45,70,.16);                    /* sits on      */
   --sh-2:0 6px 16px rgba(8,45,70,.20);                   /* lifts off    */
   --sh-3:0 14px 34px rgba(8,45,70,.26);                  /* floats above */
-  --rim:inset 0 1px 0 rgba(255,255,255,.26);
   --ui-shadow:var(--sh-2);
   --ui-shadow-lg:var(--sh-3);
   --ui-stroke:rgba(22,55,91,.90);
@@ -275,26 +288,66 @@ button{font-family:inherit}
   left:577px;top:149px;width:766px;height:766px;
   pointer-events:none;
   border-radius:28px;
-  /* a plate of deeper water, brightest where the light falls at the
-     bottom, with the supplied cyan rim and its outer glow */
+  overflow:hidden;              /* clips the wrinkles to the rounded plate */
+  /* deep water, lighter where the light falls at the bottom, with the
+     supplied rim and its glow */
   background:
     radial-gradient(130% 105% at 50% 118%,
-      var(--grid-bg-light) 0%, rgba(6,137,160,0) 58%),
-    linear-gradient(180deg, var(--grid-bg-mid) 0%, var(--grid-bg) 100%);
+      var(--grid-bg-light) 0%, rgba(22,127,175,0) 58%),
+    linear-gradient(180deg,
+      var(--grid-bg-mid) 0%, var(--grid-bg) 52%, var(--grid-bg-dark) 100%);
   border:2.5px solid var(--grid-border);
   box-shadow:
     0 0 34px 2px var(--grid-glow),
-    inset 0 0 46px 8px rgba(1,50,64,.42),
-    inset 0 1px 0 rgba(174,247,250,.30),
+    inset 0 0 46px 8px rgba(3,40,70,.42),
+    inset 0 1px 0 rgba(183,231,239,.26),
     var(--sh-2);
 }
+/* THE WATER'S WRINKLES, ON THE CHART
+   Lowering the panel's opacity far enough to show the water would cost
+   the graticule its contrast, because the panel is what the lines read
+   against. So the wrinkles are re-composited on top of the panel instead:
+   the ocean's own two caustic patterns, at its own two drift rates, at a
+   low opacity. The panel stays dark, the water still moves across it.
+
+   Each drift is one exact gradient period, so both loop seamlessly:
+   34.7,-65.3 projected onto the 28deg axis travels 73.95px against a
+   74px period, and -53.7,-79.6 onto the -34deg axis travels 96.02px
+   against a 96px period. Change a period and the loop will jump. */
+.veil-wrinkle{
+  position:absolute;inset:-30%;
+  pointer-events:none;
+  will-change:transform;
+  backface-visibility:hidden;
+}
+.vw-a{
+  opacity:.20;
+  filter:blur(5px);
+  background-image:repeating-linear-gradient(28deg,
+      rgba(183,231,239,0) 0 30px,
+      rgba(183,231,239,.9) 36px,
+      rgba(183,231,239,0) 42px,
+      rgba(183,231,239,0) 74px);
+  animation:driftA 27s linear infinite;
+}
+.vw-b{
+  opacity:.14;
+  filter:blur(9px);
+  background-image:repeating-linear-gradient(-34deg,
+      rgba(183,231,239,0) 0 38px,
+      rgba(183,231,239,.85) 46px,
+      rgba(183,231,239,0) 54px,
+      rgba(183,231,239,0) 96px);
+  animation:driftB 37s linear infinite;
+}
+
 /* map neatline: a hairline rule set in from the outer rule, the way a
    chart plate is framed. No corner ticks - the top two corners are
    provably behind the islands, so ticks would only show on the bottom
    two and read as an error. */
 .chart-veil::before{
   content:"";position:absolute;inset:7px;
-  border:1px solid rgba(116,231,234,.22);
+  border:1px solid rgba(183,231,239,.20);
   border-radius:21px;
 }
 
@@ -303,6 +356,52 @@ button{font-family:inherit}
 .mtn{position:absolute;width:404px;height:auto;filter:drop-shadow(0 12px 26px rgba(8,45,70,.26))}
 .mtn-l{left:-84px;top:-104px}
 .mtn-r{right:-92px;top:-118px;transform:scaleX(-1) rotate(4deg)}
+
+/* ---------------- shore break ----------------
+   The surf sits in the terrain layer AFTER the two island images, so the
+   foam washes over the edge of the land the way a real wave does, and it
+   inherits exactly the same placement and mirroring as the artwork — one
+   transform for both, so they can never drift apart. */
+.surf{
+  position:absolute;
+  width:404px;height:427px;
+  overflow:visible;
+  pointer-events:none;
+}
+.surf-l{left:-84px;top:-104px}
+.surf-r{right:-92px;top:-118px;transform:scaleX(-1) rotate(4deg)}
+.surf-band{
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  will-change:transform,opacity;
+}
+/* three bands, staggered so one is always arriving as another retreats */
+.sb-1{
+  stroke:#FFFFFF;stroke-width:7;
+  filter:blur(2.5px);
+  animation:surfWash 7200ms ease-in-out infinite;
+}
+.sb-2{
+  stroke:#DFF7FF;stroke-width:12;
+  filter:blur(6px);
+  animation:surfWash 7200ms ease-in-out infinite -2400ms;
+}
+.sb-3{
+  stroke:#BFEEFF;stroke-width:19;
+  filter:blur(11px);
+  animation:surfWash 7200ms ease-in-out infinite -4800ms;
+}
+/* the wave surges up the beach, thins, then draws back out to sea.
+   The offset runs along the coast's outward normal, which for this
+   island points down and to the right. */
+@keyframes surfWash{
+  0%   {opacity:0;   transform:translate(19px,19px)}
+  14%  {opacity:.92}
+  46%  {opacity:.62; transform:translate(0,0)}
+  72%  {opacity:.24; transform:translate(9px,9px)}
+  100% {opacity:0;   transform:translate(19px,19px)}
+}
 
 /* ---------------- LAYER 2b : drifting clouds ----------------
    Soft top-down puffs built from three blurred blobs each. Swap in real
@@ -366,6 +465,7 @@ button{font-family:inherit}
    (vector-effect: non-scaling-stroke), so the grid keeps the same weight
    in every stage. */
 #gridLines line{stroke:var(--grid-line);stroke-width:2}
+#gridLines line.grid-major{stroke:var(--grid-line-major);stroke-width:2.6}
 /* the minor grid is deliberately quiet, so it needs the glow to read */
 #gridLines{filter:drop-shadow(0 0 3px var(--grid-glow))}
 /* During the tutorial missions the field is a plain, even grid. The axes,
@@ -373,11 +473,11 @@ button{font-family:inherit}
    gives them names. */
 #axes,#ticks,#axisEnds{opacity:0;transition:opacity 620ms var(--ease-out)}
 #axes.axes-shown,#ticks.axes-shown,#axisEnds.axes-shown{opacity:1}
-#axes line{stroke:var(--grid-line-major);stroke-width:3.4;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
+#axes line{stroke:var(--grid-axis);stroke-width:3.4;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
 #axes{filter:drop-shadow(0 0 6px var(--grid-glow))}
-#axes line.axis-hot{stroke:#CFFBFF;stroke-width:5.2}
-#ticks line{stroke:var(--grid-line-major);stroke-width:2.8;stroke-linecap:round}
-#axisEnds path{fill:var(--grid-line-major);transition:opacity 420ms var(--ease-out)}
+#axes line.axis-hot{stroke:#EAF9FD;stroke-width:5.2}
+#ticks line{stroke:var(--grid-axis);stroke-width:2.8;stroke-linecap:round}
+#axisEnds path{fill:var(--grid-axis);transition:opacity 420ms var(--ease-out)}
 #axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
 
 
@@ -645,10 +745,9 @@ button{font-family:inherit}
   padding:16px 22px;
   border-radius:22px;
   background:
-    linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 42%),
-    rgba(33,39,44,.90);
-  border:2px solid rgba(255,255,255,.70);
-  box-shadow:var(--sh-3),var(--rim);
+    linear-gradient(180deg,var(--dock-2) 0%,var(--dock-bg) 62%);
+  border:2px solid var(--dock-rim);
+  box-shadow:var(--sh-3),inset 0 1px 0 rgba(243,247,250,.16);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
 .dock.dock-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(18px)}
@@ -674,10 +773,10 @@ button{font-family:inherit}
   animation:ctrlIn 300ms var(--ease-out) both;
 }
 @keyframes ctrlIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
-.ctrl[data-dir="right"]{--c:#FFA83E;--cd:var(--orange-dk)}
-.ctrl[data-dir="left"] {--c:#63D24B;--cd:var(--green-dk)}
-.ctrl[data-dir="up"]   {--c:#A574EE;--cd:var(--purple-dk)}
-.ctrl[data-dir="down"] {--c:#FF6E6E;--cd:var(--coral-dk)}
+.ctrl[data-dir="right"]{--c:#FFA43B;--cd:#EF811A}
+.ctrl[data-dir="left"] {--c:#78CB50;--cd:#5AA437}
+.ctrl[data-dir="up"]   {--c:#9D70E8;--cd:#7C51CC}
+.ctrl[data-dir="down"] {--c:#FF6E6E;--cd:var(--coral-dk)}   /* unnamed in the palette */
 
 .ctrl-label{
   display:flex;align-items:center;gap:9px;
@@ -685,7 +784,7 @@ button{font-family:inherit}
   background:linear-gradient(180deg,var(--c),var(--cd));
   border:2.5px solid rgba(14,39,64,.55);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.34);
-  color:#fff;font-size:var(--fs-sm);font-weight:900;letter-spacing:var(--tracking-label);
+  color:var(--ui-text);font-size:var(--fs-sm);font-weight:900;letter-spacing:var(--tracking-label);
   text-shadow:0 2px 0 rgba(0,0,0,.24);
 }
 .ctrl-label svg{width:22px;height:22px;fill:#fff;flex:none;filter:drop-shadow(0 1px 0 rgba(0,0,0,.25))}
@@ -705,9 +804,9 @@ button{font-family:inherit}
 .stepper{display:flex;flex-direction:column;gap:6px}
 .step-btn{
   width:50px;height:30px;border-radius:9px;cursor:pointer;
-  background:linear-gradient(180deg,var(--charcoal),var(--charcoal-dk));
-  border:2.5px solid rgba(14,39,64,.7);
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.18),0 2px 0 rgba(6,18,28,.55);
+  background:linear-gradient(180deg,var(--dock-2),var(--dock-inner));
+  border:2.5px solid rgba(8,18,34,.72);
+  box-shadow:inset 0 1.5px 0 rgba(243,247,250,.16),0 2px 0 rgba(6,14,26,.60);
   display:grid;place-items:center;
   /* generous hit area without a bigger button (requirement: 44x44) */
   position:relative;
@@ -715,17 +814,17 @@ button{font-family:inherit}
              box-shadow var(--t-press);
 }
 .step-btn::after{content:"";position:absolute;inset:-8px -4px;border-radius:12px}
-.step-btn svg{width:18px;height:18px;fill:#fff;transition:fill var(--t-hover)}
+.step-btn svg{width:18px;height:18px;fill:var(--ui-text);transition:fill var(--t-hover)}
 .step-btn:hover:not(:disabled){filter:brightness(1.22)}
 /* press: the key actually travels down onto the plate */
-.step-btn:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.14)}
+.step-btn:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 1.5px 0 rgba(243,247,250,.12)}
 
 /* NOT YET — on screen, but this direction's airspace has not unfolded.
    Distinct from both LIMIT and LOCKED: the colour chip drains toward the
    dock, the value greys out and the keys go inert. The learner can see
    the direction exists and that it is coming. */
 .ctrl[data-armed="0"] .ctrl-label{
-  background:linear-gradient(180deg,#4A5560,#3A444E);
+  background:linear-gradient(180deg,#33486A,#233451);
   border-color:rgba(14,39,64,.45);
   color:rgba(255,255,255,.52);
   text-shadow:none;
@@ -733,13 +832,13 @@ button{font-family:inherit}
 }
 .ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(255,255,255,.42);filter:none}
 .ctrl[data-armed="0"] .ctrl-val{
-  background:linear-gradient(180deg,#6E7681,#5C646E);
+  background:linear-gradient(180deg,#5C6E8A,#455571);
   border-color:rgba(14,39,64,.45);
   color:rgba(255,255,255,.40);
   box-shadow:none;
 }
 .ctrl[data-armed="0"] .step-btn{
-  background:linear-gradient(180deg,#3A444E,#2E3741);
+  background:linear-gradient(180deg,#243550,#18263C);
   box-shadow:inset 0 1.5px 0 rgba(255,255,255,.07);
   cursor:default;
 }
@@ -757,8 +856,8 @@ button{font-family:inherit}
 .dock[data-locked="1"] .go{cursor:default}
 .dock[data-locked="1"] .step-btn{
   background:repeating-linear-gradient(135deg,
-    #2B3947 0 5px,#222E3A 5px 10px);
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.08);
+    var(--dock-2) 0 5px,var(--dock-inner) 5px 10px);
+  box-shadow:inset 0 1.5px 0 rgba(243,247,250,.08);
 }
 .dock[data-locked="1"] .step-btn svg{fill:rgba(255,255,255,.34)}
 
@@ -767,11 +866,13 @@ button{font-family:inherit}
   position:relative;
   height:84px;min-width:180px;padding:0 38px;
   border-radius:20px;cursor:pointer;
-  font-size:var(--fs-xl);font-weight:900;letter-spacing:.10em;color:#fff;
+  font-size:var(--fs-xl);font-weight:900;letter-spacing:.10em;color:var(--ui-text);
   text-shadow:0 3px 0 rgba(0,0,0,.26);
-  background:linear-gradient(180deg,#96EE4C 0%,var(--lime) 45%,var(--green) 100%);
-  border:3.5px solid var(--ui-stroke);
-  box-shadow:0 6px 0 var(--lime-dk),0 12px 22px rgba(10,48,72,.30),inset 0 3px 0 rgba(255,255,255,.42);
+  /* blue, per the palette. It no longer shares a hue family with LEFT,
+     which it did while both were green. */
+  background:linear-gradient(180deg,#2AA0E4 0%,var(--go) 46%,var(--go-dk) 100%);
+  border:3.5px solid rgba(8,18,34,.72);
+  box-shadow:0 6px 0 #064B85,0 12px 22px rgba(6,20,40,.34),inset 0 3px 0 rgba(243,247,250,.34);
   transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press),
              opacity var(--t-hover),filter var(--t-hover);
 }
@@ -786,22 +887,22 @@ button{font-family:inherit}
 .go:hover:not(:disabled){transform:scale(1.03)}
 .go:active:not(:disabled){
   transform:translateY(3px) scale(.98);
-  box-shadow:0 2px 0 var(--lime-dk),var(--sh-1),inset 0 3px 0 rgba(255,255,255,.42);
+  box-shadow:0 2px 0 #064B85,var(--sh-1),inset 0 3px 0 rgba(243,247,250,.34);
 }
 .go:disabled{
   cursor:default;
-  background:linear-gradient(180deg,#5E7A52 0%,#4A6342 100%);
-  border-color:rgba(22,55,91,.7);
-  color:rgba(255,255,255,.62);
-  box-shadow:0 6px 0 #38492F,var(--sh-1);
+  background:linear-gradient(180deg,#2D4460 0%,#22354D 100%);
+  border-color:rgba(8,18,34,.72);
+  color:rgba(243,247,250,.52);
+  box-shadow:0 6px 0 #16243A,var(--sh-1);
 }
 .go.armed:not(:disabled){
-  box-shadow:0 6px 0 var(--lime-dk),0 0 0 4px rgba(168,240,90,.28),
-             0 12px 22px rgba(10,48,72,.30),inset 0 3px 0 rgba(255,255,255,.42);
+  box-shadow:0 6px 0 #064B85,0 0 0 4px rgba(42,160,228,.34),
+             0 12px 22px rgba(6,20,40,.34),inset 0 3px 0 rgba(243,247,250,.34);
 }
 .dock[data-locked="1"] .go{
-  background:repeating-linear-gradient(135deg,#4A6342 0 6px,#3D5237 6px 12px);
-  color:rgba(255,255,255,.5);box-shadow:0 6px 0 #38492F,var(--sh-1);
+  background:repeating-linear-gradient(135deg,#22354D 0 6px,#1B2C42 6px 12px);
+  color:rgba(243,247,250,.5);box-shadow:0 6px 0 #16243A,var(--sh-1);
 }
 
 /* focus visibility everywhere */
@@ -927,7 +1028,7 @@ button{font-family:inherit}
 
 /* ---------------- reduced motion ---------------- */
 @media (prefers-reduced-motion:reduce){
-  .caustic,.swell,.glint,.cloud,.go,.wp-pulse,.wp-ping,.play-btn img,
+  .caustic,.swell,.glint,.cloud,.veil-wrinkle,.surf-band,.go,.wp-pulse,.wp-ping,.play-btn img,
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff{animation:none!important}
   .puff{display:none}
   *{transition-duration:1ms!important}
@@ -1060,10 +1161,9 @@ button{font-family:inherit}
   z-index:22;display:flex;gap:16px;align-items:center;
   padding:14px 18px;border-radius:var(--ui-radius-lg);
   background:
-    linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 42%),
-    rgba(33,39,44,.90);
-  border:2px solid rgba(255,255,255,.70);
-  box-shadow:var(--sh-3),var(--rim);
+    linear-gradient(180deg,var(--dock-2) 0%,var(--dock-bg) 62%);
+  border:2px solid var(--dock-rim);
+  box-shadow:var(--sh-3),inset 0 1px 0 rgba(243,247,250,.16);
   animation:dockIn 340ms var(--ease-out) both;
 }
 .chip{

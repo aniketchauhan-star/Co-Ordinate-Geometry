@@ -27,12 +27,37 @@
 
     <!-- Layer 3 — the gameplay panel tint (see .chart-veil). Under the
          terrain, so mountain.png is never tinted or softened. -->
-    <div class="chart-veil" id="chartVeil" aria-hidden="true"></div>
+    <div class="chart-veil" id="chartVeil" aria-hidden="true">
+      <!-- the water's wrinkles, re-composited ON the chart so the panel can
+           stay dark enough for the graticule to read. Two crossing sets,
+           reusing the ocean's own caustic patterns and drift. -->
+      <i class="veil-wrinkle vw-a"></i>
+      <i class="veil-wrinkle vw-b"></i>
+    </div>
 
     <!-- Layer 4 — static coastal terrain -->
     <div class="layer layer-terrain" aria-hidden="true">
       <img class="mtn mtn-l" src="assets/mountain.png" alt="" draggable="false">
       <img class="mtn mtn-r" src="assets/mountain.png" alt="" draggable="false">
+
+      <!-- SHORE BREAK
+           The path is the island's own coastline, traced out of
+           mountain.png's alpha channel, so the foam follows the painted
+           beach exactly. Three bands wash up the shore on a stagger, each
+           moving inland along the coast's outward normal (down-right for
+           the left island; the right island is mirrored by the same
+           transform that mirrors the artwork, so they cannot drift). -->
+      <svg class="surf surf-l" viewBox="0 0 404 427" aria-hidden="true">
+        <path class="surf-band sb-1" d="M 219 14 Q 254 16 277 19 Q 300 21 315 22 Q 329 24 345 27 Q 361 30 370 38 Q 378 45 384 54 Q 391 63 397 74 Q 403 84 400 96 Q 398 108 390 118 Q 383 129 372 135 Q 360 141 349 147 Q 337 153 333 164 Q 330 174 328 186 Q 327 198 318 207 Q 310 216 308 228 Q 306 240 310 250 Q 313 261 310 273 Q 308 285 301 294 Q 294 303 284 309 Q 275 315 262 318 Q 250 321 238 324 Q 225 327 215 330 Q 204 333 196 342 Q 189 351 177 358 Q 166 366 154 372 Q 142 378 136 388 Q 130 399 119 408 Q 108 417 97 421 Q 85 424 73 424 Q 61 423 50 419 Q 40 415 30 406 Q 19 397 17 391 L 14 384"></path>
+        <path class="surf-band sb-2" d="M 219 14 Q 254 16 277 19 Q 300 21 315 22 Q 329 24 345 27 Q 361 30 370 38 Q 378 45 384 54 Q 391 63 397 74 Q 403 84 400 96 Q 398 108 390 118 Q 383 129 372 135 Q 360 141 349 147 Q 337 153 333 164 Q 330 174 328 186 Q 327 198 318 207 Q 310 216 308 228 Q 306 240 310 250 Q 313 261 310 273 Q 308 285 301 294 Q 294 303 284 309 Q 275 315 262 318 Q 250 321 238 324 Q 225 327 215 330 Q 204 333 196 342 Q 189 351 177 358 Q 166 366 154 372 Q 142 378 136 388 Q 130 399 119 408 Q 108 417 97 421 Q 85 424 73 424 Q 61 423 50 419 Q 40 415 30 406 Q 19 397 17 391 L 14 384"></path>
+        <path class="surf-band sb-3" d="M 219 14 Q 254 16 277 19 Q 300 21 315 22 Q 329 24 345 27 Q 361 30 370 38 Q 378 45 384 54 Q 391 63 397 74 Q 403 84 400 96 Q 398 108 390 118 Q 383 129 372 135 Q 360 141 349 147 Q 337 153 333 164 Q 330 174 328 186 Q 327 198 318 207 Q 310 216 308 228 Q 306 240 310 250 Q 313 261 310 273 Q 308 285 301 294 Q 294 303 284 309 Q 275 315 262 318 Q 250 321 238 324 Q 225 327 215 330 Q 204 333 196 342 Q 189 351 177 358 Q 166 366 154 372 Q 142 378 136 388 Q 130 399 119 408 Q 108 417 97 421 Q 85 424 73 424 Q 61 423 50 419 Q 40 415 30 406 Q 19 397 17 391 L 14 384"></path>
+      </svg>
+      <svg class="surf surf-r" viewBox="0 0 404 427" aria-hidden="true">
+        <path class="surf-band sb-1" d="M 219 14 Q 254 16 277 19 Q 300 21 315 22 Q 329 24 345 27 Q 361 30 370 38 Q 378 45 384 54 Q 391 63 397 74 Q 403 84 400 96 Q 398 108 390 118 Q 383 129 372 135 Q 360 141 349 147 Q 337 153 333 164 Q 330 174 328 186 Q 327 198 318 207 Q 310 216 308 228 Q 306 240 310 250 Q 313 261 310 273 Q 308 285 301 294 Q 294 303 284 309 Q 275 315 262 318 Q 250 321 238 324 Q 225 327 215 330 Q 204 333 196 342 Q 189 351 177 358 Q 166 366 154 372 Q 142 378 136 388 Q 130 399 119 408 Q 108 417 97 421 Q 85 424 73 424 Q 61 423 50 419 Q 40 415 30 406 Q 19 397 17 391 L 14 384"></path>
+        <path class="surf-band sb-2" d="M 219 14 Q 254 16 277 19 Q 300 21 315 22 Q 329 24 345 27 Q 361 30 370 38 Q 378 45 384 54 Q 391 63 397 74 Q 403 84 400 96 Q 398 108 390 118 Q 383 129 372 135 Q 360 141 349 147 Q 337 153 333 164 Q 330 174 328 186 Q 327 198 318 207 Q 310 216 308 228 Q 306 240 310 250 Q 313 261 310 273 Q 308 285 301 294 Q 294 303 284 309 Q 275 315 262 318 Q 250 321 238 324 Q 225 327 215 330 Q 204 333 196 342 Q 189 351 177 358 Q 166 366 154 372 Q 142 378 136 388 Q 130 399 119 408 Q 108 417 97 421 Q 85 424 73 424 Q 61 423 50 419 Q 40 415 30 406 Q 19 397 17 391 L 14 384"></path>
+        <path class="surf-band sb-3" d="M 219 14 Q 254 16 277 19 Q 300 21 315 22 Q 329 24 345 27 Q 361 30 370 38 Q 378 45 384 54 Q 391 63 397 74 Q 403 84 400 96 Q 398 108 390 118 Q 383 129 372 135 Q 360 141 349 147 Q 337 153 333 164 Q 330 174 328 186 Q 327 198 318 207 Q 310 216 308 228 Q 306 240 310 250 Q 313 261 310 273 Q 308 285 301 294 Q 294 303 284 309 Q 275 315 262 318 Q 250 321 238 324 Q 225 327 215 330 Q 204 333 196 342 Q 189 351 177 358 Q 166 366 154 372 Q 142 378 136 388 Q 130 399 119 408 Q 108 417 97 421 Q 85 424 73 424 Q 61 423 50 419 Q 40 415 30 406 Q 19 397 17 391 L 14 384"></path>
+      </svg>
+
     </div>
 
     <!-- Layer 5 — cloud cover over the headlands. Sits ABOVE the terrain

@@ -860,6 +860,7 @@ window.CG = window.CG || {};
     CG.Voice.setEnabled(CG.Audio.isEnabled());
     Audio.play('uiClick');
     Audio.musicStart();                    /* the bed, from the first gesture */
+    Audio.surfStart();                     /* and the shore break behind it   */
     /* FLOW 01 — the framing line, spoken over the transition */
     CG.Voice.say('You are the air traffic controller. Guide each aircraft to its target.');
     dom.btnPlay.disabled = true;

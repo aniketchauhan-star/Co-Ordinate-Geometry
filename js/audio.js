@@ -178,6 +178,14 @@ CG.Audio = (function () {
   var FLY_VOL = 0.55;
   var REACHED_VOL = 0.9;
   var MUSIC_VOL = 0.40;      /* the requested bed level */
+  /* Shore break level. Everything synthesised runs through master at
+     0.30, and the brown-noise bed loses 5.5dB to its own bandpass, so a
+     small-looking number here is far quieter than it appears: 0.075 came
+     out at -74dBFS, inaudible. Measured, 0.80 puts the swell between
+     -42 and -32 dBFS — clearly there, and roughly 25dB under the music
+     bed, which is what "slightly, not too loud" needs to mean once the
+     signal chain is accounted for. */
+  var SURF_VOL = 0.80;
 
   /* Ducking. A 40% music bed sitting under a 0.9 voice muddies the
      instruction, which is the one thing a learner cannot afford to miss,
@@ -189,6 +197,7 @@ CG.Audio = (function () {
   var media = { fly: null, reached: null };
   var mediaReady = { fly: false, reached: false };
   var music = null, musicReady = false, musicWanted = false;
+  var surf = null;           /* { src, gain, duck, lfo[] } once running */
   var fadeRaf = null, musicRaf = null;
 
   function bindMedia() {
@@ -293,6 +302,106 @@ CG.Audio = (function () {
     try { el.pause(); } catch (e) {}
   }
 
+  /* ---- shore break -------------------------------------------------
+     No recording was supplied for this one, so it is synthesised: a
+     seamless loop of brown noise through a bandpass, with two very slow
+     oscillators summed into its gain so the swell rises and falls
+     without ever repeating a pattern the ear can latch onto.
+
+     The loop is crossfaded end-to-start, otherwise brown noise clicks
+     audibly every time it wraps.                                      */
+  function makeSurfBuffer(c) {
+    var seconds = 8, tail = Math.floor(c.sampleRate * 0.6);
+    var len = Math.floor(c.sampleRate * seconds);
+    var raw = new Float32Array(len + tail);
+    var last = 0;
+    for (var i = 0; i < raw.length; i++) {
+      var w = Math.random() * 2 - 1;
+      last = (last + 0.022 * w) / 1.022;    /* integrate toward brown */
+      raw[i] = last * 3.2;
+    }
+    var buf = c.createBuffer(1, len, c.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var j = 0; j < len; j++) d[j] = raw[j];
+    /* fold the tail back over the head so the wrap is inaudible */
+    for (var k = 0; k < tail; k++) {
+      var t = k / tail;
+      d[k] = d[k] * t + raw[len + k] * (1 - t);
+    }
+    return buf;
+  }
+
+  function surfStart() {
+    var c = ensure();
+    if (!c || !enabled || surf) return;
+    try {
+      var src = c.createBufferSource();
+      src.buffer = makeSurfBuffer(c);
+      src.loop = true;
+
+      var bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 560;             /* the body of a breaking wave */
+      bp.Q.value = 0.62;
+
+      var hp = c.createBiquadFilter();
+      hp.type = 'highshelf';
+      hp.frequency.value = 2400;
+      hp.gain.value = -7;                   /* take the hiss off the top   */
+
+      var g = c.createGain();
+      g.gain.value = SURF_VOL * 0.62;       /* the level between swells    */
+
+      /* two slow swells, deliberately not harmonically related */
+      var lfos = [];
+      [[0.105, 0.20], [0.067, 0.11]].forEach(function (pair) {
+        var o = c.createOscillator();
+        o.frequency.value = pair[0];
+        var depth = c.createGain();
+        depth.gain.value = SURF_VOL * pair[1];
+        o.connect(depth);
+        depth.connect(g.gain);
+        o.start();
+        lfos.push(o);
+      });
+
+      var duckGain = c.createGain();
+      duckGain.gain.value = 0;              /* faded in below */
+
+      src.connect(bp); bp.connect(hp); hp.connect(g);
+      g.connect(duckGain); duckGain.connect(master);
+      src.start();
+
+      surf = { src: src, gain: g, duck: duckGain, lfos: lfos };
+      duckGain.gain.setTargetAtTime(surfDuckLevel(), c.currentTime, 1.2);
+    } catch (err) {
+      console.warn('[audio] shore break unavailable:', err);
+      surf = null;
+    }
+  }
+
+  function surfStop() {
+    if (!surf) return;
+    try {
+      surf.duck.gain.setTargetAtTime(0, ctx.currentTime, 0.25);
+      var s = surf;
+      window.setTimeout(function () {
+        try { s.src.stop(); s.lfos.forEach(function (o) { o.stop(); }); } catch (e) {}
+      }, 900);
+    } catch (e) {}
+    surf = null;
+  }
+
+  /* the shore break ducks with everything else, just less deeply: it is
+     scenery, so it thins under an instruction rather than disappearing */
+  function surfDuckLevel() {
+    var v = 1;
+    Object.keys(ducks).forEach(function (k) {
+      if (ducks[k]) v *= (k === 'voice' ? 0.55 : 0.80);
+    });
+    return v;
+  }
+
   /* ---- background music -------------------------------------------- */
   function musicTarget() {
     var v = MUSIC_VOL;
@@ -339,6 +448,9 @@ CG.Audio = (function () {
     if (!!ducks[reason] === !!on) return;
     ducks[reason] = !!on;
     if (music && musicWanted && enabled) fadeMusic(musicTarget(), on ? 260 : 520);
+    if (surf && ctx) {
+      surf.duck.gain.setTargetAtTime(surfDuckLevel(), ctx.currentTime, on ? 0.20 : 0.45);
+    }
   }
 
   function playReached() {
@@ -405,6 +517,8 @@ CG.Audio = (function () {
     preload: preload,
     musicStart: function () { unlock(); bindMedia(); musicStart(); },
     musicStop: musicStop,
+    surfStart: function () { unlock(); surfStart(); },
+    surfStop: surfStop,
     duck: duck,
     /* flight bed: the recording if it loaded, the synthesiser if not */
     engineStart: function () {
@@ -421,8 +535,8 @@ CG.Audio = (function () {
     setEnabled: function (v) {
       enabled = !!v;
       try { sessionStorage.setItem('cg-sound', enabled ? '1' : '0'); } catch (e) {}
-      if (enabled) { unlock(); if (musicWanted) musicStart(); }
-      else { flyStopNow(); engineStop(); fadeMusic(0, 200); }
+      if (enabled) { unlock(); if (musicWanted) musicStart(); surfStart(); }
+      else { flyStopNow(); engineStop(); fadeMusic(0, 200); surfStop(); }
     }
   };
 })();

@@ -137,15 +137,22 @@ CG.Grid = (function () {
      sees a plain, even grid of solid white lines. The axes are a separate
      emphasis layer that stays hidden until the concept reveal names
      them. */
+  /* Three weights, because the palette carries three: every integer gets
+     a minor line, every fifth gets a major one, and the two axes are
+     drawn separately in #axes. Fives are worth emphasising here — the
+     steppers stop at 5, so a learner counting a route is counting in
+     exactly those blocks. Line 0 is left to the axes. */
   function drawLines(host) {
     var i, nss = { 'vector-effect': 'non-scaling-stroke' };
     for (i = MAX.xMin; i <= MAX.xMax; i++) {
       host.appendChild(mk('line', Object.assign(
-        { x1: toX(i), y1: toY(MAX.yMax), x2: toX(i), y2: toY(MAX.yMin) }, nss)));
+        { x1: toX(i), y1: toY(MAX.yMax), x2: toX(i), y2: toY(MAX.yMin) }, nss),
+        i !== 0 && i % 5 === 0 ? 'grid-major' : null));
     }
     for (i = MAX.yMin; i <= MAX.yMax; i++) {
       host.appendChild(mk('line', Object.assign(
-        { x1: toX(MAX.xMin), y1: toY(i), x2: toX(MAX.xMax), y2: toY(i) }, nss)));
+        { x1: toX(MAX.xMin), y1: toY(i), x2: toX(MAX.xMax), y2: toY(i) }, nss),
+        i !== 0 && i % 5 === 0 ? 'grid-major' : null));
     }
   }
 
