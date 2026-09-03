@@ -32,10 +32,17 @@
       that accelerates out of touchdown reads as a bounce. That
       constraint is what fixes V_TOUCH — see slopes().
 
-   3. THE GROUND RUNS BACKWARD compared with a takeoff. Travelling
-      toward the camera moves the vanishing point away, so the dolly
-      CONTRACTS the runway and the ground sweeps UP the frame. Tyre
-      smoke and speed lines travel up with it.
+   3. THE RUNWAY IS SHOWN WHOLE, AT FULL SCREEN, and never moves. It
+      is a fixed camera looking down the entire strip. There is no
+      dolly: any zoom above 1 crops the artwork — the 1.28 this
+      replaced was cutting 22% of it away — and the whole point of the
+      shot is that you can see the runway end to end. The motion is
+      the aircraft travelling the frame, and the artwork's own painted
+      perspective does the rest: the strip is 258px wide at the far
+      threshold against 300px at the near one, so the aircraft grows as
+      it comes down it. The speed lines went with the dolly; against a
+      fixed camera, ground streaking the whole frame would be claiming
+      motion the shot does not have.
 
    4. THE AIRCRAFT FADES ON BOTH SIDES OF BOTH FADES. It is invisible
       whenever it is repositioned, so neither the cut to the runway nor
@@ -60,10 +67,10 @@ CG.Intro = (function () {
     approach: 0,       /* inbound, high over open water               */
     veil:     4000,    /* the first fade — the aircraft goes first     */
     runway:   4300,    /* veil peak: the runway scene begins           */
-    touch:    5100,    /* the wheels meet the tarmac                   */
-    stop:     7100,    /* rolled out to a standstill                   */
-    close:    7600,    /* the second fade, into the game               */
-    end:      8400
+    touch:    5000,    /* the wheels meet the tarmac                   */
+    stop:     7200,    /* rolled out to a standstill                   */
+    close:    7700,    /* the second fade, into the game               */
+    end:      8500
   };
 
   /* ---- geometry, measured out of runway.png ------------------------
@@ -83,14 +90,19 @@ CG.Intro = (function () {
      which is how a tracking shot works. */
   var SEA = { y0: 250, y1: 470, w0: 132, w1: 168 };
 
-  /* SCENE 2 — the runway, end to end. The aircraft enters at the START
-     of the strip and travels its whole length. Small at the far end,
-     largest parked at the near one: something growing is something
-     coming at you, and there is no frame in the scene that contradicts
-     it. Every one of these positions is verified to sit over painted
-     tarmac — see the glued audit in the test suite. */
-  var RW_START_Y = 200, RW_START_W = 120;
-  var TOUCH_Y    = 400, TOUCH_W    = 148;
+  /* SCENE 2 — the runway, end to end, at full screen and 1:1. The
+     aircraft enters at the START of the strip and travels its whole
+     length. Because the artwork is now unscaled, these are positions
+     on the painted runway itself: the far threshold is at y=53 and the
+     near one at y=1041, so it enters 97px in and rests 95px short of
+     the end — 90% of the strip, which is about what a landing uses.
+
+     Small at the far end, largest parked at the near one: something
+     growing is something coming at you, and there is no frame in the
+     scene that contradicts it. Every one of these positions is verified
+     to sit over painted tarmac — see the glued audit in the tests. */
+  var RW_START_Y = 150, RW_START_W = 118;
+  var TOUCH_Y    = 360, TOUCH_W    = 146;
   /* Where it comes to rest. The painted near threshold is at y=1041,
      but a 196px aircraft is 229px tall, so stopping any lower crops its
      nose against the bottom of the frame. */
@@ -102,7 +114,7 @@ CG.Intro = (function () {
      stop if its opening slope clears (3 - m1) / 2, and any slower a
      touchdown drops it under that bar and puts a brief acceleration —
      a bounce — right after the wheels are down. */
-  var V_TOUCH = 0.40;
+  var V_TOUCH = 0.39;
 
   /* Where the game wants the aircraft: stage 1's origin, at the
      wingspan syncPlaneScale() asks for. Read from the same config the
@@ -222,12 +234,12 @@ CG.Intro = (function () {
       f.y = mix(RW_START_Y, TOUCH_Y, e);
       f.w = mix(RW_START_W, TOUCH_W, e);
       f.o = fadeIn;
-      f.runway = { k: mix(1.28, 1.22, e), y: mix(61, 44, e), o: fadeIn };
+      f.runway = { o: fadeIn };
 
     } else if (t < BEAT.stop) {
       /* THE ROLLOUT, decelerating the whole way down the strip. The
-         ground CONTRACTS and sweeps up the frame, because travelling
-         toward the camera moves the vanishing point away. */
+         runway does not move — it is a fixed camera on the whole strip
+         — so the travel IS the aircraft crossing the frame. */
       u = clamp01((t - BEAT.touch) / (BEAT.stop - BEAT.touch));
       var sr = slopes();
       e = hermite(u, sr.rol[0], sr.rol[1]);
@@ -235,7 +247,7 @@ CG.Intro = (function () {
       f.x = CENTRELINE;
       f.y = mix(TOUCH_Y, PARK_Y - 6, e);
       f.w = mix(TOUCH_W, W_PARK - 2, e);
-      f.runway = { k: mix(1.22, 1.04, e), y: mix(44, 0, e), o: 1 };
+      f.runway = { o: 1 };
 
     } else if (t < BEAT.close) {
       /* SETTLED at the end of the strip. The last 6px of creep as the
@@ -247,7 +259,7 @@ CG.Intro = (function () {
       f.x = CENTRELINE;
       f.y = mix(PARK_Y - 6, PARK_Y, e);
       f.w = mix(W_PARK - 2, W_PARK, e);
-      f.runway = { k: mix(1.04, 1.02, e), y: 0, o: 1 };
+      f.runway = { o: 1 };
 
     } else {
       /* THE SECOND FADE, into the game. The aircraft AND the runway
@@ -264,12 +276,12 @@ CG.Intro = (function () {
         f.y = PARK_Y;
         f.w = W_PARK;
         f.o = 1 - easeIO(u / OUT);
-        f.runway = { k: 1.02, y: 0, o: f.o };
+        f.runway = { o: f.o };
       } else {
         f.x = h.x; f.y = h.y; f.w = h.w;
         f.deg = 0;                       /* on station it faces north */
         f.o = easeIO(clamp01(((u - OUT) / (1 - OUT) - DARK) / (1 - DARK)));
-        f.runway = { k: 1.02, y: 0, o: 0 };
+        f.runway = { o: 0 };
       }
     }
     return f;
@@ -309,21 +321,6 @@ CG.Intro = (function () {
     window.setTimeout(function () {
       if (d.parentNode) d.parentNode.removeChild(d);
     }, 1200);
-  }
-
-  /* Speed lines run UP the frame on a landing: the ground is sweeping
-     up, because the aircraft is coming toward the camera. */
-  function streak() {
-    if (reduced || !el.wake) return;
-    var d = document.createElement('div');
-    d.className = 'rw-streak up';
-    /* inside the measured tarmac: x 42.3% to 57.1% of 1920 */
-    d.style.left = Math.round(812 + Math.random() * 284) + 'px';
-    d.style.top = Math.round(560 + Math.random() * 300) + 'px';
-    el.wake.appendChild(d);
-    window.setTimeout(function () {
-      if (d.parentNode) d.parentNode.removeChild(d);
-    }, 620);
   }
 
   /* Cloud drifting UP past the aircraft, which is what makes an
@@ -392,11 +389,10 @@ CG.Intro = (function () {
       pc.heading(f.deg, f.bank);
       pc.opacity(f.o);
     }
-    if (f.runway && el.art) {
-      el.art.style.transform =
-        'translate3d(0,' + f.runway.y.toFixed(1) + 'px,0) scale(' + f.runway.k.toFixed(4) + ')';
-      el.art.style.opacity = f.runway.o.toFixed(3);
-    }
+    /* On the LAYER, not the image: the heat haze is a sibling of the
+       artwork inside it, and fading only the image would leave the haze
+       shimmering over the open sea in the first scene. */
+    if (f.runway && el.runway) el.runway.style.opacity = f.runway.o.toFixed(3);
     if (f.t >= BEAT.end) { finish(false); return; }
     raf = window.requestAnimationFrame(tick);
   }
@@ -416,7 +412,7 @@ CG.Intro = (function () {
 
     if (el.runway) {
       el.runway.hidden = true;
-      el.runway.classList.remove('rolling');
+      el.runway.style.opacity = '';
       if (el.art) { el.art.style.transform = ''; el.art.style.opacity = ''; }
     }
     if (el.wake)  el.wake.innerHTML = '';
@@ -469,8 +465,8 @@ CG.Intro = (function () {
      The same story with nothing moving: the aircraft down on the
      runway, the clearance, and then the game. */
   function runStill() {
-    if (el.runway) { el.runway.hidden = false; el.runway.classList.remove('rolling'); }
-    if (el.art) { el.art.style.transform = 'none'; el.art.style.opacity = '1'; }
+    if (el.runway) { el.runway.hidden = false; el.runway.style.opacity = '1'; }
+    if (el.art) el.art.style.transform = 'none';
     if (CG.planeControl) {
       CG.planeControl.atStage(CENTRELINE, PARK_Y);
       CG.planeControl.width(W_PARK);
@@ -517,8 +513,7 @@ CG.Intro = (function () {
          cut. Raising it later would race the animation frame. */
       if (el.runway) {
         el.runway.hidden = false;
-        el.runway.classList.add('rolling');   /* no heat haze in flight */
-        if (el.art) el.art.style.opacity = '0';
+        el.runway.style.opacity = '0';
       }
 
       /* SCENE 1 — the engine bed, the clearance, and cloud rushing up.
@@ -571,13 +566,11 @@ CG.Intro = (function () {
           puff(CENTRELINE + 30, f.y + 20);
         });
       }
-      for (n = 0; n < 13; n++) later(BEAT.touch + n * 92, streak);
 
       /* STOP — down, stopped, engines winding down. The heat haze is
          painted at a fixed point on screen, so it can only be on once
          the ground has stopped moving underneath it. */
       later(BEAT.stop, function () {
-        if (el.runway) el.runway.classList.remove('rolling');
         CG.Audio.engineStop();
         CG.Audio.play('spoolDown');
       });
@@ -625,6 +618,8 @@ CG.Intro = (function () {
     CENTRELINE: CENTRELINE,
     HEADING: HEADING,
     RW_START_Y: RW_START_Y,
+    FAR_THRESHOLD: 53,
+    NEAR_THRESHOLD: 1041,
     RW_START_W: RW_START_W,
     TOUCH_Y: TOUCH_Y,
     TOUCH_W: TOUCH_W,

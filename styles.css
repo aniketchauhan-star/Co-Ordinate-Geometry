@@ -1136,11 +1136,13 @@ button{font-family:inherit}
    sea, the runway fading up ahead, touchdown, the rollout, and the
    dissolve into the game.
 
-   THE GROUND RUNS BACKWARD compared with a takeoff. The aircraft lands
-   TOWARD the camera, which moves the vanishing point away, so the
-   dolly contracts the runway rather than expanding it and the ground
-   sweeps UP the frame. Everything that trails the aircraft — tyre
-   smoke, speed lines, cloud — therefore travels up too.
+   THE RUNWAY IS SHOWN WHOLE, AT FULL SCREEN, AND NEVER MOVES. It is a
+   fixed camera on the entire strip. There is no dolly, because any
+   zoom above 1 crops the artwork and the point of the shot is that you
+   can see the runway end to end. The motion is the aircraft crossing
+   the frame; the artwork's own painted perspective — 258px of tarmac
+   at the far threshold against 300px at the near one — is what makes
+   it grow as it comes down.
 
    GEOMETRY, MEASURED FROM runway.png ITSELF
    The artwork is 1672x941 - exactly 16:9 - so it fills the 1920x1080
@@ -1152,21 +1154,27 @@ button{font-family:inherit}
    with very little perspective, so shrinking the aircraft to sell speed
    would be a lie. The ground moves instead. See .runway-art.
    =================================================================== */
-.layer-runway{pointer-events:none;overflow:hidden}
+/* The LAYER carries the fade, not the image inside it: the heat haze
+   is a sibling of the artwork, and fading only the artwork would leave
+   the haze shimmering over open sea in the first scene. */
+.layer-runway{pointer-events:none;overflow:hidden;will-change:opacity}
 /* Wingspan is driven every frame during the takeoff, so its eased
    width transition has to be out of the way or the aircraft lags a
    frame and a half behind its own flight path. */
 .stage[data-screen="intro"] #plane{transition:none}
+/* FULL SCREEN, WHOLE, AND UNSCALED.
+
+   The source is 1672x941 and the canvas is 1920x1080 - 1.7768 against
+   1.7778 - so cover fills the width exactly and trims 0.6px off the
+   height. That is the entire crop: every painted metre of the runway,
+   both threshold bars and both edge lines are on screen at once.
+
+   No transform. The dolly that used to live here scaled to 1.28, which
+   pushed 22% of the artwork outside the frame - including the far
+   threshold the aircraft is supposed to be landing over. */
 .runway-art{
   position:absolute;left:0;top:0;width:100%;height:100%;
-  object-fit:cover;                    /* a 1:1 fit at 16:9, not a crop */
-  /* THE DOLLY PIVOT: the far threshold, which is this shot's vanishing
-     point. Scaling about it expands the ground away from the horizon
-     and sweeps it off the bottom of frame - the ground-rush read - and
-     it does that using the runway's own painted edge lines and
-     threshold bars rather than markings invented on top of the art. */
-  transform-origin:49.7% 4.9%;
-  will-change:transform,opacity;
+  object-fit:cover;
   backface-visibility:hidden;
 }
 
@@ -1182,13 +1190,9 @@ button{font-family:inherit}
   0%,100%{opacity:.30;transform:translateY(0) scaleY(1)}
   50%    {opacity:.64;transform:translateY(-12px) scaleY(1.10)}
 }
-/* The haze is painted at a fixed point on screen, so it can only be on
-   when the ground is not moving underneath it — otherwise it is the one
-   thing in frame standing still. On a landing that means it is off for
-   the whole flight and the whole rollout, and comes on once the
-   aircraft has stopped and is idling. intro.js carries .rolling from
-   the first frame and drops it at the STOP beat. */
-.layer-runway.rolling .rw-heat{animation:none;opacity:0;transition:opacity 260ms linear}
+/* With the camera fixed and the ground still, the haze can simply run
+   for the whole runway scene — it is no longer the one thing in frame
+   standing still. It fades in and out with the layer around it. */
 
 /* Tyre smoke off the mains: a burst at touchdown, then trailing puffs
    thinning out through the rollout. It drifts UP the frame because the
@@ -1208,21 +1212,6 @@ button{font-family:inherit}
 @keyframes rwPuff{
   from{transform:scale(.32);opacity:.88}
   to  {transform:scale(2.5) translateY(-70px);opacity:0}
-}
-
-/* Speed lines along the tarmac. They run only while the rollout is
-   genuinely fast — past that they read as texture rather than
-   velocity — and they sweep UP the frame, with the ground. */
-.rw-streak{
-  position:absolute;width:3px;height:150px;border-radius:2px;
-  background:linear-gradient(to bottom,
-    rgba(255,255,255,0),rgba(255,255,255,.62),rgba(255,255,255,0));
-}
-.rw-streak.up{animation:rwStreakUp 430ms linear both}
-@keyframes rwStreakUp{
-  0%  {transform:translateY(150px) scaleY(.6);opacity:0}
-  20% {opacity:.78}
-  100%{transform:translateY(-830px) scaleY(1.7);opacity:0}
 }
 
 /* ---- the cinematic layers ----------------------------------------
@@ -1353,11 +1342,10 @@ button{font-family:inherit}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still
      cross-dissolve; everything that would move is stopped here. */
-  .rw-heat,.rw-puff,.rw-puff.big,.rw-streak,.rw-streak.up,.cine-puff,.cine-call,.cine-call b,
+  .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,.cine-call,.cine-call b,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
-  .rw-puff,.rw-streak,.cine-puff{display:none}
-  .runway-art{transform:none!important}
+  .rw-puff,.cine-puff{display:none}
   *{transition-duration:1ms!important}
   .plane-holder{transition:transform 200ms linear!important}
 }
