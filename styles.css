@@ -94,6 +94,36 @@
      One shadow scale, one rim rule, applied everywhere. Every shadow is
      the same hue (the ocean's shadow, 200deg) so nothing reads as lit by
      a different sun. Rim = a 1px inner highlight on the top edge only.  */
+  /* ---- THE CONTROL DOCK'S OWN PALETTE ------------------------------
+     Scoped to the dock on purpose. The game-wide --cream and --navy are
+     used by the mission strip, the completion card and the idle hand,
+     so redefining THOSE to hit this brief's values would repaint half
+     the game; the redesign is meant to be the bottom bar and nothing
+     else. Hence a parallel --ctl-* set. Every colour below appears
+     exactly once — the buttons all read their hues through --c-top /
+     --c-main / --c-bottom / --c-edge, which each .ctrl[data-dir] sets. */
+  --ctl-cream:      #FFF5D8;
+  --ctl-cream-hi:   #FFFBEA;
+  --ctl-cream-lo:   #E2CFA1;   /* the panel's bottom edge and its hem  */
+  --ctl-cream-rim:  #E5D3A9;
+  --ctl-well:       #FFE7B3;   /* inside the number capsule            */
+  --ctl-well-rim:   #C8AF7C;
+  --ctl-navy:       #123A63;   /* text on cream                        */
+  --ctl-ink:        #FFFDF4;   /* text on colour                       */
+
+  --right-top:#FFB33C; --right-main:#FF961F; --right-bottom:#F27B0D; --right-edge:#D76005;
+  --left-top: #A9E446; --left-main: #75C42B; --left-bottom: #54A91D; --left-edge: #3D8615;
+  --up-top:   #AC64E9; --up-main:   #8840CE; --up-bottom:   #7028B5; --up-edge:   #57218F;
+  --down-top: #50BCEF; --down-main: #2198DA; --down-bottom: #087BC5; --down-edge: #0866A5;
+  --go-top:   #32D6D7; --go-main:   #12B7C5; --go-bottom:   #078CA7; --go-edge:   #08799B;
+
+  /* One rounded stack, no web font: nothing here is downloaded, which is
+     the whole project's constraint. Arial Rounded MT Bold is present on
+     macOS and is the genuinely rounded face this brief wants; anywhere
+     it is missing this falls through to the game's own --font rather
+     than to a default sans. */
+  --font-ctl:"Arial Rounded MT Bold","Baloo 2",var(--font);
+
   --sh-1:0 2px 6px rgba(8,45,70,.16);                    /* sits on      */
   --sh-2:0 6px 16px rgba(8,45,70,.20);                   /* lifts off    */
   --sh-3:0 14px 34px rgba(8,45,70,.26);                  /* floats above */
@@ -818,21 +848,68 @@ button{font-family:inherit}
 .origin-tap[hidden]{display:none}
 .coord-tag.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
-/* ---------------- CONTROL DOCK ----------------
-   ONE unified backplate behind every control (requirement 13). Dark
-   warm graphite so the orange / green / purple / coral buttons pop off
-   the bright ocean, with a thin cream rim to seat it in the artwork.
-   Panel top sits at y=944 on the design canvas: 116px tall + 20px
-   bottom margin = 10.7% of stage height, well under the 20% ceiling. */
+/* ===================================================================
+   THE CONTROL DOCK
+   -------------------------------------------------------------------
+   A long warm cream strip carrying four direction plates, each paired
+   with a cream number capsule, and a round turquoise GO.
+
+   FOUR THINGS WORTH KNOWING BEFORE EDITING
+
+   1. THE MARKUP IS UNCHANGED. Every hook the game and the test suites
+      use is still here: .ctrl[data-dir][data-armed], .ctrl-label,
+      .ctrl-val (+.bump), .stepper, .step-btn[data-limit], #btnGo.go
+      (+.armed), and the dock's own .dock-enter / .dock-away /
+      [data-locked]. This is a pure restyle — no JS was touched, so no
+      gameplay could be.
+
+   2. SIZES ARE IN PIXELS, NOT clamp()/vw, AND THAT IS DELIBERATE. The
+      whole game lives on a fixed 1920x1080 canvas that is scaled to fit
+      with one transform, so a px here is ALREADY responsive: everything
+      shrinks together and the 16:9 composition holds. Viewport units
+      inside that canvas would fight the scale — the dock would change
+      proportion relative to the grid as the window resized, which is
+      the one thing the composition cannot survive. Readability at
+      1366x768 comes from the scale factor (0.711), not from a query.
+
+   3. THE DOCK'S HEIGHT IS LOAD-BEARING. GO's 88px diameter plus 12px
+      of padding and the border makes 117px; with the 20px bottom margin
+      that puts the top edge at y=943. Stage 3's chart panel reaches
+      y=924, so there are 19px of clearance and no more. GO's diameter
+      and the vertical padding are picked against that number, not by
+      eye — anything taller here collides with the grid.
+
+   4. THE COLOURED PLATE IS A LABEL, NOT A BUTTON, and it deliberately
+      has no press state. In this game the direction is the NAME of a
+      spinner; the thing you press is the capsule's arrows. Giving a
+      chunky plate hover-lift and travel would promise a tap that does
+      nothing — the worst kind of affordance for a child. Instead the
+      plate and its capsule lift together as one unit on hover, which
+      is true: hovering the pair does lead you to a live control.
+   =================================================================== */
 .dock{
   position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
-  padding:16px 22px;
-  border-radius:22px;
-  background:
-    linear-gradient(180deg,var(--dock-2) 0%,var(--dock-bg) 62%);
-  border:2px solid var(--dock-rim);
-  box-shadow:var(--sh-3),inset 0 1px 0 rgba(243,247,250,.16);
+  padding:12px 22px;
+  /* not perfectly geometric: the corners are deliberately unequal */
+  border-radius:26px 30px 26px 30px;
+  background:linear-gradient(180deg,var(--ctl-cream-hi) 0%,var(--ctl-cream) 58%,#F6E7C0 100%);
+  border:2.5px solid var(--ctl-cream-rim);
+  /* a solid 2D game edge, not a blurry drop shadow */
+  box-shadow:
+    0 6px 0 rgba(126,99,57,.20),
+    0 10px 18px rgba(13,69,99,.16),
+    inset 0 2px 0 rgba(255,255,255,.75);
+  font-family:var(--font-ctl);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
+}
+/* A soft scalloped hem peeking out from under the bottom edge — one
+   repeating radial, understated, and it reads as cut paper rather than
+   as a CSS trick. Sits behind nothing: it simply extends below. */
+.dock::after{
+  content:"";position:absolute;left:26px;right:26px;bottom:-8px;height:16px;
+  background:radial-gradient(circle at 50% 0,
+    var(--ctl-cream-lo) 0 7.5px,rgba(0,0,0,0) 8px) 0 0/30px 16px repeat-x;
+  pointer-events:none;
 }
 .dock.dock-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(18px)}
 /* played once when the gameplay screen opens — never per mission */
@@ -841,162 +918,261 @@ button{font-family:inherit}
   from{opacity:0;transform:translateX(-50%) translateY(20px)}
   to{opacity:1;transform:translateX(-50%)}
 }
-/* ONE ROW, always. Wrapping is what pushed GO onto a second line and
-   made the dock tall enough to reach up into the grid. The stage scales
-   uniformly, so the dock never actually needs to wrap: at four controls
-   plus GO the content is 1456px inside a 1920px stage. */
-.dock-inner{display:flex;align-items:center;gap:24px;flex-wrap:nowrap;justify-content:center}
-.controls{display:flex;align-items:center;gap:16px;flex-wrap:nowrap;justify-content:center}
+
+/* ONE ROW, always. Wrapping is what once pushed GO onto a second line
+   and made the dock tall enough to reach into the grid. It never needs
+   to wrap: four pairs plus GO measure 1318px inside a 1920px stage. */
+.dock-inner{display:flex;align-items:center;gap:22px;flex-wrap:nowrap;justify-content:center}
+.controls{display:flex;align-items:center;gap:18px;flex-wrap:nowrap;justify-content:center}
 .controls[hidden]{display:none}
 
-/* No individual card per control — the dock backplate is the frame. */
+/* ---- one direction: a coloured plate and its number capsule -------- */
 .ctrl{
-  --c:var(--orange);--cd:var(--orange-dk);
-  display:flex;align-items:center;gap:10px;
-  height:84px;
+  /* No default hue here on purpose — that would be RIGHT's quartet
+     written twice, and buildControls() always sets data-dir, so the
+     four rules below are the single source. */
+  /* gap:0 on purpose. A flex gap here applies between ALL three
+     children, which would drive a visible 8px slot down the middle of
+     the number capsule and destroy the one-object illusion the split
+     border-radius exists to create. The one gap that IS wanted — plate
+     to capsule — is a margin on .ctrl-val. */
+  display:flex;align-items:center;gap:0;
+  height:74px;
   animation:ctrlIn 300ms var(--ease-out) both;
 }
 @keyframes ctrlIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
-.ctrl[data-dir="right"]{--c:#FFA43B;--cd:#EF811A}
-.ctrl[data-dir="left"] {--c:#78CB50;--cd:#5AA437}
-.ctrl[data-dir="up"]   {--c:#9D70E8;--cd:#7C51CC}
-.ctrl[data-dir="down"] {--c:#FF6E6E;--cd:var(--coral-dk)}   /* unnamed in the palette */
+.ctrl[data-dir="right"]{--c-top:var(--right-top);--c-main:var(--right-main);--c-bottom:var(--right-bottom);--c-edge:var(--right-edge)}
+.ctrl[data-dir="left"] {--c-top:var(--left-top); --c-main:var(--left-main); --c-bottom:var(--left-bottom); --c-edge:var(--left-edge)}
+.ctrl[data-dir="up"]   {--c-top:var(--up-top);   --c-main:var(--up-main);   --c-bottom:var(--up-bottom);   --c-edge:var(--up-edge)}
+.ctrl[data-dir="down"] {--c-top:var(--down-top); --c-main:var(--down-main); --c-bottom:var(--down-bottom); --c-edge:var(--down-edge)}
 
-.ctrl-label{
-  display:flex;align-items:center;gap:9px;
-  height:66px;min-width:120px;padding:0 14px;border-radius:13px;
-  background:linear-gradient(180deg,var(--c),var(--cd));
-  border:2.5px solid rgba(14,39,64,.55);
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.34);
-  color:var(--ui-text);font-size:var(--fs-sm);font-weight:900;letter-spacing:var(--tracking-label);
-  text-shadow:0 2px 0 rgba(0,0,0,.24);
+/* the pair lifts as one — see note 4 above */
+.ctrl[data-armed="1"]{transition:transform 160ms cubic-bezier(.2,.8,.2,1)}
+@media (hover:hover){
+  .ctrl[data-armed="1"]:hover{transform:translateY(-2px)}
 }
-.ctrl-label svg{width:22px;height:22px;fill:#fff;flex:none;filter:drop-shadow(0 1px 0 rgba(0,0,0,.25))}
 
+/* ---- the coloured plate ------------------------------------------- */
+.ctrl-label{
+  position:relative;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  height:74px;min-width:158px;padding:0 18px;
+  /* bottom corners a touch rounder than the top: the pillow silhouette */
+  border-radius:24px 24px 27px 27px;
+  background:linear-gradient(180deg,var(--c-top) 0%,var(--c-main) 48%,var(--c-bottom) 100%);
+  border:2.5px solid var(--c-edge);
+  box-shadow:
+    0 5px 0 var(--c-edge),                  /* the solid lower edge   */
+    0 7px 10px rgba(13,69,99,.18),
+    inset 0 2px 0 rgba(255,255,255,.42),    /* the convex top         */
+    inset 0 -7px 0 rgba(0,0,0,.10);         /* the darker lower lip   */
+  color:var(--ctl-ink);
+  font-size:var(--fs-sm);font-weight:900;letter-spacing:.3px;
+  text-shadow:0 2px 0 rgba(37,66,89,.20);
+}
+/* a soft gloss across the top half, which is what makes it read convex */
+.ctrl-label::before{
+  content:"";position:absolute;left:6px;right:6px;top:2px;height:44%;
+  border-radius:21px 21px 40% 40%;
+  background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0));
+  pointer-events:none;
+}
+/* the supplied glyphs are already directional triangles, so they are
+   the arrow — 1.35x the label, per the brief, and left of the word */
+.ctrl-label svg{
+  width:28px;height:28px;fill:#fff;flex:none;
+  filter:drop-shadow(0 2px 0 rgba(37,66,89,.22));
+}
+
+/* ---- the number capsule ------------------------------------------
+   .ctrl-val and .stepper are separate elements in the markup, so they
+   are butted together and share a rim to read as ONE capsule split by a
+   hairline. That is what avoids adding a wrapper element — and adding
+   one would have meant editing buildControls(). */
 .ctrl-val{
-  min-width:72px;height:66px;border-radius:13px;
-  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
-  border:2.5px solid rgba(14,39,64,.55);
-  box-shadow:inset 0 -3px 0 rgba(200,160,80,.22);
+  margin-left:8px;                     /* the only gap inside a .ctrl */
+  min-width:74px;height:74px;
+  border-radius:18px 0 0 18px;
+  background:linear-gradient(180deg,var(--ctl-cream-hi),var(--ctl-well));
+  border:3px solid var(--ctl-well-rim);border-right:none;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.70),inset 0 -4px 0 rgba(200,160,80,.16);
   display:grid;place-items:center;
-  font:900 34px/1 var(--font-num);color:var(--navy);
+  font:900 32px/1 var(--font-ctl);color:var(--ctl-navy);
   font-variant-numeric:tabular-nums;
 }
+/* only the NUMBER animates, never the bar around it */
 .ctrl-val.bump{animation:bump 180ms var(--ease-out)}
-@keyframes bump{50%{transform:scale(1.14)}}
+@keyframes bump{50%{transform:scale(1.15) translateY(-2px)}}
 
-.stepper{display:flex;flex-direction:column;gap:6px}
+.stepper{
+  display:flex;flex-direction:column;
+  height:74px;width:40px;
+  border-radius:0 18px 18px 0;
+  background:linear-gradient(180deg,var(--ctl-cream-hi),var(--ctl-well));
+  border:3px solid var(--ctl-well-rim);border-left:none;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.70),inset 0 -4px 0 rgba(200,160,80,.16);
+  overflow:hidden;
+}
 .step-btn{
-  width:50px;height:30px;border-radius:9px;cursor:pointer;
-  background:linear-gradient(180deg,var(--dock-2),var(--dock-inner));
-  border:2.5px solid rgba(8,18,34,.72);
-  box-shadow:inset 0 1.5px 0 rgba(243,247,250,.16),0 2px 0 rgba(6,14,26,.60);
+  flex:1;width:100%;border:none;background:rgba(0,0,0,0);cursor:pointer;
   display:grid;place-items:center;
-  /* generous hit area without a bigger button (requirement: 44x44) */
   position:relative;
-  transition:transform var(--t-press) var(--ease-out),filter var(--t-hover),
-             box-shadow var(--t-press);
+  transition:background 140ms var(--ease-out),transform var(--t-press) var(--ease-out);
 }
-.step-btn::after{content:"";position:absolute;inset:-8px -4px;border-radius:12px}
-.step-btn svg{width:18px;height:18px;fill:var(--ui-text);transition:fill var(--t-hover)}
-.step-btn:hover:not(:disabled){filter:brightness(1.22)}
-/* press: the key actually travels down onto the plate */
-.step-btn:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 1.5px 0 rgba(243,247,250,.12)}
+/* the hairline between the two keys */
+.step-btn:first-child{box-shadow:inset 0 -1.5px 0 rgba(200,160,80,.42)}
+/* THE 44px TARGET, WITHOUT A 44px KEY.
+   The capsule is 74px tall, so two stacked keys are 34px each — under
+   the 44px this game holds itself to. Each target is therefore extended
+   10px OUTWARD ONLY, away from the hairline they share: 46x44 apiece,
+   and they cannot overlap, so the boundary between increase and
+   decrease stays unambiguous. Extending both inward would have made a
+   tap near the middle land on either one. */
+.step-btn::after{content:"";position:absolute}
+.step-btn:first-child::after{inset:-10px -6px 0 -6px}
+.step-btn:last-child::after {inset:0 -6px -10px -6px}
+.step-btn svg{width:19px;height:19px;fill:var(--ctl-navy);transition:fill 140ms}
+@media (hover:hover){
+  .step-btn:hover:not(:disabled){background:rgba(180,140,60,.16)}
+}
+.step-btn:active:not(:disabled){transform:translateY(2px)}
+/* the brief's focus ring, scoped here so the game-wide one is untouched */
+.dock :where(button):focus-visible{outline:3px solid #FFF4A8;outline-offset:3px}
 
-/* NOT YET — on screen, but this direction's airspace has not unfolded.
-   Distinct from both LIMIT and LOCKED: the colour chip drains toward the
-   dock, the value greys out and the keys go inert. The learner can see
-   the direction exists and that it is coming. */
+/* ---- NOT YET -----------------------------------------------------
+   On screen, but this direction's airspace has not unfolded. Distinct
+   from both LIMIT and LOCKED, and deliberately still legible: the hue
+   drains toward the cream panel instead of going dark, so the learner
+   can see the direction exists and that it is coming. */
 .ctrl[data-armed="0"] .ctrl-label{
-  background:linear-gradient(180deg,#33486A,#233451);
-  border-color:rgba(14,39,64,.45);
-  color:rgba(255,255,255,.52);
+  background:linear-gradient(180deg,#D9CDB2,#C4B694);
+  border-color:#B3A483;
+  color:#6E6449;
   text-shadow:none;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.10);
+  box-shadow:0 5px 0 #B3A483,inset 0 2px 0 rgba(255,255,255,.34);
 }
-.ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(255,255,255,.42);filter:none}
-.ctrl[data-armed="0"] .ctrl-val{
-  background:linear-gradient(180deg,#5C6E8A,#455571);
-  border-color:rgba(14,39,64,.45);
-  color:rgba(255,255,255,.40);
-  box-shadow:none;
+.ctrl[data-armed="0"] .ctrl-label::before{opacity:.4}
+.ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(110,100,73,.62);filter:none}
+.ctrl[data-armed="0"] .ctrl-val,
+.ctrl[data-armed="0"] .stepper{
+  background:linear-gradient(180deg,#F0E7D2,#E2D6B8);
+  border-color:#C4B694;
 }
-.ctrl[data-armed="0"] .step-btn{
-  background:linear-gradient(180deg,#243550,#18263C);
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.07);
-  cursor:default;
-}
-.ctrl[data-armed="0"] .step-btn svg{fill:rgba(255,255,255,.22)}
+.ctrl[data-armed="0"] .ctrl-val{color:rgba(18,58,99,.36)}
+.ctrl[data-armed="0"] .step-btn{cursor:default}
+.ctrl[data-armed="0"] .step-btn svg{fill:rgba(18,58,99,.22)}
 
-/* LIMIT — "that is as far as it goes". The key stays present and solid;
-   only its arrow hollows out, so it reads as an end stop. */
-.step-btn[data-limit="1"]{cursor:default;filter:none}
-.step-btn[data-limit="1"] svg{fill:rgba(255,255,255,.26)}
+/* LIMIT — "that is as far as it goes". The key stays; only its arrow
+   hollows out, so it reads as an end stop rather than as broken. */
+.step-btn[data-limit="1"]{cursor:default}
+.step-btn[data-limit="1"] svg{fill:rgba(18,58,99,.24)}
 
-/* LOCKED — "not right now", while the aircraft is flying. Carried by the
-   whole dock dimming and a diagonal hatch, never by opacity alone, so it
-   is distinguishable from LIMIT at a glance. */
+/* LOCKED — "not right now", while the aircraft is flying. Carried by a
+   diagonal hatch as well as a tint, never by opacity alone, so it stays
+   distinguishable from LIMIT at a glance. */
 .dock[data-locked="1"] .step-btn,
 .dock[data-locked="1"] .go{cursor:default}
-.dock[data-locked="1"] .step-btn{
+.dock[data-locked="1"] .stepper{
   background:repeating-linear-gradient(135deg,
-    var(--dock-2) 0 5px,var(--dock-inner) 5px 10px);
-  box-shadow:inset 0 1.5px 0 rgba(243,247,250,.08);
+    #F2E8D0 0 5px,#E4D7B6 5px 10px);
 }
-.dock[data-locked="1"] .step-btn svg{fill:rgba(255,255,255,.34)}
+.dock[data-locked="1"] .step-btn svg{fill:rgba(18,58,99,.30)}
+.dock[data-locked="1"] .ctrl-label{filter:saturate(.55) brightness(.96)}
 
-/* GO */
+/* ---- GO -----------------------------------------------------------
+   Round, turquoise, and ringed in cream so it reads as a separate
+   object sitting ON the strip rather than as another plate in the row.
+   88px because the dock's height budget is 116 (see note 3). */
 .go{
   position:relative;
-  height:84px;min-width:180px;padding:0 38px;
-  border-radius:20px;cursor:pointer;
-  font-size:var(--fs-xl);font-weight:900;letter-spacing:.10em;color:var(--ui-text);
-  text-shadow:0 3px 0 rgba(0,0,0,.26);
-  /* blue, per the palette. It no longer shares a hue family with LEFT,
-     which it did while both were green. */
-  background:linear-gradient(180deg,#2AA0E4 0%,var(--go) 46%,var(--go-dk) 100%);
-  border:3.5px solid rgba(8,18,34,.72);
-  box-shadow:0 6px 0 #064B85,0 12px 22px rgba(6,20,40,.34),inset 0 3px 0 rgba(243,247,250,.34);
+  width:88px;height:88px;padding:0;
+  border-radius:50%;cursor:pointer;
+  font-family:var(--font-ctl);
+  font-size:30px;font-weight:900;letter-spacing:.04em;
+  color:var(--ctl-ink);
+  text-shadow:0 2px 0 rgba(6,70,88,.30);
+  background:linear-gradient(180deg,var(--go-top) 0%,var(--go-main) 48%,var(--go-bottom) 100%);
+  border:4px solid var(--go-edge);
+  box-shadow:
+    0 0 0 6px var(--ctl-cream-hi),        /* the cream ring          */
+    0 5px 0 #086F8A,
+    0 8px 14px rgba(11,75,110,.22),
+    inset 0 3px 0 rgba(255,255,255,.35);
   transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press),
-             opacity var(--t-hover),filter var(--t-hover);
+             filter var(--t-hover);
 }
-/* GO no longer breathes on a loop. Nothing on screen should pulse
-   forever while the learner is reading; the glow now appears only when
-   GO is actually armed (see .go.armed). */
 /* --- GO, four states -------------------------------------------------
    idle      nothing selected yet: present but clearly not ready
-   armed     a movement is set: it glows, once, and stays lit
-   pressed   travels down onto the dock
-   locked    the aircraft is flying: hatched with the rest of the dock  */
-.go:hover:not(:disabled){transform:scale(1.03)}
+   armed     a movement is set: saturated, with a 4px breathing ring
+   pressed   travels down onto the strip
+   locked    the aircraft is flying: hatched, like the rest of the dock */
+@media (hover:hover){
+  .go:hover:not(:disabled){transform:translateY(-2px) scale(1.015)}
+}
 .go:active:not(:disabled){
-  transform:translateY(3px) scale(.98);
-  box-shadow:0 2px 0 #064B85,var(--sh-1),inset 0 3px 0 rgba(243,247,250,.34);
+  transform:translateY(3px) scale(.985);
+  box-shadow:
+    0 0 0 6px var(--ctl-cream-hi),
+    0 2px 0 #086F8A,
+    0 4px 8px rgba(11,75,110,.20),
+    inset 0 3px 0 rgba(255,255,255,.35);
 }
 .go:disabled{
-  cursor:default;
-  background:linear-gradient(180deg,#2D4460 0%,#22354D 100%);
-  border-color:rgba(8,18,34,.72);
-  color:rgba(243,247,250,.52);
-  box-shadow:0 6px 0 #16243A,var(--sh-1);
+  cursor:not-allowed;
+  filter:saturate(.28) brightness(.94);
+  color:rgba(255,253,242,.62);
+  text-shadow:none;
+  box-shadow:
+    0 0 0 6px #EFE3C4,
+    0 5px 0 #9DA9AC,
+    inset 0 3px 0 rgba(255,255,255,.20);
 }
-.go.armed:not(:disabled){
-  box-shadow:0 6px 0 #064B85,0 0 0 4px rgba(42,160,228,.34),
-             0 12px 22px rgba(6,20,40,.34),inset 0 3px 0 rgba(243,247,250,.34);
+/* ARMED. A 4px ring expansion over 2s — the one loop in the dock, and
+   it only ever runs once a route is set, which is the moment the child
+   has stopped reading and is about to act. */
+.go.armed:not(:disabled){animation:goReady 2000ms var(--ease-io) infinite}
+@keyframes goReady{
+  0%,100%{box-shadow:
+    0 0 0 6px var(--ctl-cream-hi),0 0 0 6px rgba(50,214,215,0),
+    0 5px 0 #086F8A,0 8px 14px rgba(11,75,110,.22),
+    inset 0 3px 0 rgba(255,255,255,.35)}
+  50%{box-shadow:
+    0 0 0 6px var(--ctl-cream-hi),0 0 0 10px rgba(50,214,215,.42),
+    0 5px 0 #086F8A,0 8px 14px rgba(11,75,110,.22),
+    inset 0 3px 0 rgba(255,255,255,.35)}
 }
 .dock[data-locked="1"] .go{
-  background:repeating-linear-gradient(135deg,#22354D 0 6px,#1B2C42 6px 12px);
-  color:rgba(243,247,250,.5);box-shadow:0 6px 0 #16243A,var(--sh-1);
+  background:repeating-linear-gradient(135deg,#8FB6BE 0 6px,#7FA8B1 6px 12px);
+  color:rgba(255,253,242,.62);
+  animation:none;
+  box-shadow:0 0 0 6px #EFE3C4,0 5px 0 #6E939B,inset 0 3px 0 rgba(255,255,255,.20);
 }
 
-/* focus visibility everywhere */
-:where(button,input,[tabindex]):focus-visible{
-  outline:3px solid #FFF3C4;
-  outline-offset:3px;
-  box-shadow:0 0 0 6px rgba(255,243,196,.30);
+/* ---- THE ACTIVE DIRECTION -----------------------------------------
+   The mission line names one direction at a time, and UI.highlight()
+   already marks it with .tut-hi. On a .ctrl that now means a warm
+   ring and the gentlest possible breath rather than the dashed tutorial
+   outline — an emphasis, not an alarm. Inactive plates are NOT dimmed:
+   quieter would read as disabled, and they are not. */
+/* GO keeps the dashed tutorial ring, but round — a 26px-radius rect
+   around an 88px circle reads as a mistake. */
+.go.tut-hi::after{inset:-16px;border-radius:50%}
+.ctrl.tut-hi{position:relative;z-index:4}
+.ctrl.tut-hi::after{content:none}
+.ctrl.tut-hi .ctrl-label{
+  transform:translateY(-2px);
+  box-shadow:
+    0 6px 0 var(--c-edge),
+    0 0 0 3px rgba(255,244,181,.90),
+    0 0 14px rgba(255,167,40,.28),
+    inset 0 2px 0 rgba(255,255,255,.42),
+    inset 0 -7px 0 rgba(0,0,0,.10);
+  animation:ctrlBreathe 2000ms var(--ease-io) infinite;
 }
-/* icon buttons sit on the artwork, so their ring needs a dark backing */
-.icon-btn:focus-visible{box-shadow:0 0 0 6px rgba(14,39,64,.35)}
+@keyframes ctrlBreathe{
+  0%,100%{transform:translateY(-2px) scale(1)}
+  50%    {transform:translateY(-2px) scale(1.025)}
+}
 
 /* tutorial highlight */
 .tut-hi{position:relative;z-index:4}
@@ -1347,7 +1523,8 @@ button{font-family:inherit}
    anyone reading the file, and by anything checking it. */
 @media (prefers-reduced-motion:reduce){
   .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-line,.go,.wp-pulse,.wp-ping,.play-btn img,
-  .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff{animation:none!important}
+  .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff,
+  .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label{animation:none!important}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still
      cross-dissolve; everything that would move is stopped here. */
