@@ -164,6 +164,9 @@ CG.Grid = (function () {
      corner are driven from the same rect, so they can never disagree. */
   var PLAY = { x: 64, y: 148, w: 1792, h: 768 };
   var PANEL_PAD = 26;
+  /* canonical px of slack around the charted rect: half the widest line
+     (the axes, 3.4 screen px) at the smallest stage scale, rounded up */
+  var STROKE_PAD = 6;
 
   function panelRect(c, v) {
     var l = v.px + toX(c.xMin) * v.k;
@@ -206,9 +209,16 @@ CG.Grid = (function () {
       'translate(' + v.px.toFixed(2) + ',' + v.py.toFixed(2) + ') scale(' + v.k.toFixed(5) + ')');
     applyPanel(c, v);
 
-    /* the clip is what makes the plane unfold: nothing outside the
-       charted quadrants is drawn at all */
-    var pad = CELL * 0.42;
+    /* The clip is what makes the plane unfold: nothing outside the
+       charted quadrants is drawn at all.
+
+       The pad is only enough to keep the OUTERMOST line's stroke from
+       being shaved — it must not spill a partial cell past the last line.
+       It used to be 0.42 of a cell, sized for the rounded flight corner
+       that no longer exists, which pushed the grid ~17px beyond the panel
+       and left the panel's 28px rounding slicing stubs off the corners.
+       Whole cells only, entirely inside the plate. */
+    var pad = STROKE_PAD;
     el.clip.setAttribute('x', toX(c.xMin) - pad);
     el.clip.setAttribute('y', toY(c.yMax) - pad);
     el.clip.setAttribute('width', (c.xMax - c.xMin) * CELL + pad * 2);
