@@ -164,7 +164,10 @@ button{font-family:inherit}
 .layer-terrain{z-index:3}
 .layer-clouds{z-index:4}
 .layer-field{z-index:5}
+.layer-runway{z-index:6}
+.layer-cine-back{z-index:8}
 .plane-holder{z-index:9}
+.layer-cine{z-index:10}
 .layer-ui{z-index:20}
 .hud{z-index:20}
 .mission{z-index:20}
@@ -1099,6 +1102,22 @@ button{font-family:inherit}
 .stage[data-screen="start"] .layer-field,
 .stage[data-screen="start"] .layer-ui,
 .stage[data-screen="start"] .plane-holder{opacity:0;pointer-events:none}
+
+/* THE INTRO STATE
+   During the takeoff the aircraft is the one thing that must be seen,
+   so it is the one game layer left visible. The chart, the dock and the
+   panel tint are all still to come; the terrain and its cloud cover are
+   held back until landfall, when they fly in. */
+.stage[data-screen="intro"] .layer-field,
+.stage[data-screen="intro"] .layer-ui,
+.stage[data-screen="intro"] .chart-veil,
+.stage[data-screen="intro"] .layer-terrain,
+.stage[data-screen="intro"] .layer-clouds{opacity:0;pointer-events:none}
+/* land ho. The extra attribute keeps this above the rule it overrides
+   on specificity rather than on source order. */
+.stage[data-screen="intro"].intro-land .layer-terrain,
+.stage[data-screen="intro"].intro-land .layer-clouds{opacity:1}
+.chart-veil,.layer-terrain,.layer-clouds{transition:opacity 620ms var(--ease-out)}
 .layer-ui,.plane-holder{transition:opacity 460ms var(--ease-out)}
 
 /* rotate hint (very narrow portrait only) */
@@ -1107,11 +1126,194 @@ button{font-family:inherit}
 #rotateHint[hidden]{display:none}
 #rotateHint span{font-size:16px;font-weight:700;opacity:.7}
 
+/* ===================================================================
+   THE TAKEOFF  (intro only)
+
+   Five beats, one continuous flight: engines run up on the runway, the
+   roll, rotation, a circuit over open water while the headlands arrive,
+   and the handoff into the game.
+
+   GEOMETRY, MEASURED FROM runway.png ITSELF
+   The artwork is 1672x941 - exactly 16:9 - so it fills the 1920x1080
+   canvas with no crop. Reading its pixels: the tarmac centreline is at
+   x = 0.497w, i.e. 954px on the stage; the strip runs from y = 53px
+   (far threshold) to y = 1041px (near threshold); and it is 258px wide
+   at the far end against 300px at the near one. That last pair is the
+   important one - a ratio of 0.86 means this is a near-overhead view
+   with very little perspective, so shrinking the aircraft to sell speed
+   would be a lie. The ground moves instead. See .runway-art.
+   =================================================================== */
+.layer-runway{pointer-events:none;overflow:hidden}
+/* Wingspan is driven every frame during the takeoff, so its eased
+   width transition has to be out of the way or the aircraft lags a
+   frame and a half behind its own flight path. */
+.stage[data-screen="intro"] #plane{transition:none}
+.runway-art{
+  position:absolute;left:0;top:0;width:100%;height:100%;
+  object-fit:cover;                    /* a 1:1 fit at 16:9, not a crop */
+  /* THE DOLLY PIVOT: the far threshold, which is this shot's vanishing
+     point. Scaling about it expands the ground away from the horizon
+     and sweeps it off the bottom of frame - the ground-rush read - and
+     it does that using the runway's own painted edge lines and
+     threshold bars rather than markings invented on top of the art. */
+  transform-origin:49.7% 4.9%;
+  will-change:transform,opacity;
+  backface-visibility:hidden;
+}
+
+/* Heat coming off the tarmac while the engines are held against the
+   brakes. Sized to the measured strip: x 42.3% to 57.1% of the frame. */
+.rw-heat{
+  position:absolute;left:42.3%;width:14.8%;top:24%;height:50%;
+  background:linear-gradient(to top,rgba(255,255,255,.18),rgba(255,255,255,0));
+  filter:blur(8px);
+  animation:rwHeat 2.6s ease-in-out infinite;
+}
+@keyframes rwHeat{
+  0%,100%{opacity:.30;transform:translateY(0) scaleY(1)}
+  50%    {opacity:.64;transform:translateY(-12px) scaleY(1.10)}
+}
+/* Off the moment the brakes release. The haze is painted at a fixed
+   point on screen, so once the ground starts dollying underneath it it
+   would be the one thing in frame standing still. */
+.layer-runway.rolling .rw-heat{animation:none;opacity:0;transition:opacity 260ms linear}
+
+/* Tyre smoke, spawned at the wheels once per beat down the roll. */
+.rw-wake{position:absolute;inset:0}
+.rw-puff{
+  position:absolute;width:74px;height:74px;margin:-37px 0 0 -37px;border-radius:50%;
+  background:radial-gradient(50% 50% at 50% 50%,
+    rgba(255,255,255,.58),rgba(214,232,240,.22) 56%,rgba(214,232,240,0) 76%);
+  animation:rwPuff 900ms var(--ease-out) both;
+}
+@keyframes rwPuff{
+  from{transform:scale(.32);opacity:.88}
+  to  {transform:scale(2.5) translateY(70px);opacity:0}
+}
+
+/* Speed lines along the tarmac. They only appear once the roll is
+   genuinely fast, so they read as velocity and not as texture. */
+.rw-streak{
+  position:absolute;width:3px;height:150px;border-radius:2px;
+  background:linear-gradient(to bottom,
+    rgba(255,255,255,0),rgba(255,255,255,.62),rgba(255,255,255,0));
+  animation:rwStreak 430ms linear both;
+}
+@keyframes rwStreak{
+  0%  {transform:translateY(-150px) scaleY(.6);opacity:0}
+  20% {opacity:.78}
+  100%{transform:translateY(830px) scaleY(1.7);opacity:0}
+}
+
+/* ---- the cinematic layers ----------------------------------------
+   Two of them, one either side of the aircraft, because depth is the
+   whole point: cloud passing BEHIND reads as distance, cloud passing
+   IN FRONT reads as speed. Split like this, five puffs do the work of
+   twenty. */
+.layer-cine-back,.layer-cine{pointer-events:none;overflow:hidden}
+
+/* Built from the same three blurred blobs as the ambient clouds, so a
+   puff that rushes the camera is recognisably the same weather. */
+.cine-puff{
+  position:absolute;width:440px;height:186px;margin:-93px 0 0 -220px;
+  filter:drop-shadow(0 10px 22px rgba(8,45,70,.14));
+  will-change:transform,opacity;
+  animation:cinePuff var(--d,2200ms) cubic-bezier(.36,.05,.62,1) both;
+}
+.cine-puff i{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(60% 60% at 42% 34%,
+    rgba(255,255,255,.96),rgba(255,255,255,.62) 62%,rgba(255,255,255,0) 78%);
+}
+.cine-puff i:nth-child(1){left:0;top:26%;width:56%;height:74%}
+.cine-puff i:nth-child(2){left:28%;top:0;width:52%;height:100%}
+.cine-puff i:nth-child(3){left:58%;top:22%;width:44%;height:70%}
+/* one keyframe, five different flights: the vector, the final scale,
+   the peak opacity and the duration are all set per puff */
+@keyframes cinePuff{
+  0%  {transform:translate3d(0,0,0) scale(.24);opacity:0}
+  18% {opacity:var(--o,.60)}
+  68% {opacity:var(--o,.60)}
+  100%{transform:translate3d(var(--dx,0),var(--dy,900px),0) scale(var(--k,2.6));opacity:0}
+}
+
+/* The tower's clearance. Same kicker language as the completion card,
+   so it reads as part of the same air-traffic-control world. */
+.cine-call{
+  position:absolute;left:50%;top:132px;
+  display:flex;align-items:center;gap:14px;
+  margin:0;padding:13px 28px;border-radius:999px;
+  background:rgba(14,27,49,.82);
+  border:1px solid var(--dock-rim);
+  box-shadow:0 14px 34px rgba(4,26,44,.42);
+  color:var(--ui-text);
+  font-size:22px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  white-space:nowrap;
+  animation:callIn 420ms var(--ease-out) both;
+}
+.cine-call[hidden]{display:none}
+.cine-call.out{animation:callOut 320ms var(--ease-out) both}
+.cine-call b{
+  flex:0 0 auto;width:12px;height:12px;border-radius:50%;
+  background:var(--ok);color:var(--ok);
+  box-shadow:0 0 12px currentColor;
+  animation:callBlink 880ms steps(1,end) infinite;
+}
+@keyframes callBlink{0%,49%{opacity:1}50%,100%{opacity:.22}}
+@keyframes callIn{
+  from{opacity:0;transform:translate(-50%,-16px)}
+  to  {opacity:1;transform:translate(-50%,0)}
+}
+@keyframes callOut{
+  from{opacity:1;transform:translate(-50%,0)}
+  to  {opacity:0;transform:translate(-50%,-12px)}
+}
+
+/* The handoff. A bloom, not a blast: 42% peak, tinted with the chart's
+   own axis colour so it belongs to the grid it hands over to. */
+.cine-flash{
+  position:absolute;inset:0;opacity:0;
+  background:radial-gradient(120% 90% at 50% 46%,
+    rgba(255,255,255,.94),rgba(183,231,239,.44) 46%,rgba(183,231,239,0) 78%);
+}
+.cine-flash.go{animation:cineFlash 640ms var(--ease-out) both}
+@keyframes cineFlash{0%{opacity:0}22%{opacity:.42}100%{opacity:0}}
+
+/* ---- landfall ------------------------------------------------------
+   The headlands fly in from off-frame to the exact positions they hold
+   for the rest of the game, so the cinematic never has to cut: these
+   ARE the game's mountains. Each keyframe therefore has to restate the
+   element's own base transform - mtn-r is mirrored and rotated - or the
+   animation would silently unmirror the right-hand island. */
+@keyframes mtnInL{
+  0%  {opacity:0;transform:translate(-300px,-240px) scale(.84)}
+  100%{opacity:1;transform:translate(0,0) scale(1)}
+}
+@keyframes mtnInR{
+  0%  {opacity:0;transform:translate(300px,-254px) scale(.84) scaleX(-1) rotate(4deg)}
+  100%{opacity:1;transform:translate(0,0) scale(1) scaleX(-1) rotate(4deg)}
+}
+.stage.intro-land .mtn-l{animation:mtnInL 1500ms cubic-bezier(.18,.86,.24,1) both}
+.stage.intro-land .mtn-r{animation:mtnInR 1500ms cubic-bezier(.18,.86,.24,1) both}
+/* the shore break does NOT fly in with the islands - it is painted at
+   their final coastline - so it waits until they have seated */
+.stage.intro-land .surf{animation:fadeIn 620ms 940ms var(--ease-out) both}
+
 /* ---------------- reduced motion ---------------- */
+/* ONE block, deliberately. A second @media (prefers-reduced-motion)
+   block elsewhere in the file is how a rule gets quietly missed — by
+   anyone reading the file, and by anything checking it. */
 @media (prefers-reduced-motion:reduce){
   .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-line,.go,.wp-pulse,.wp-ping,.play-btn img,
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff{animation:none!important}
   .puff{display:none}
+  /* THE TAKEOFF. intro.js shortens the timeline to a still
+     cross-dissolve; everything that would move is stopped here. */
+  .rw-heat,.rw-puff,.rw-streak,.cine-puff,.cine-call,.cine-call b,
+  .cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
+  .stage.intro-land .surf{animation:none!important}
+  .rw-puff,.rw-streak,.cine-puff{display:none}
+  .runway-art{transform:none!important}
   *{transition-duration:1ms!important}
   .plane-holder{transition:transform 200ms linear!important}
 }

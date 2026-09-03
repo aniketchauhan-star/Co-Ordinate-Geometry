@@ -871,6 +871,37 @@ window.CG = window.CG || {};
   /* the origin becomes tappable — used by the lesson arc */
   CG.originTap = function (cb) { showOriginTap(cb); };
 
+  /* ---- the takeoff's flight controls -------------------------------
+     The intro is authored in STAGE PIXELS, not grid cells, because it
+     starts on a runway that has no coordinate system. These five calls
+     are everything it needs, and they route through the game's own
+     heading and bank maths, so the aircraft carries exactly the weight
+     in the cinematic that it carries in play. */
+  CG.planeControl = {
+    atStage: function (px, py) {
+      dom.planeHolder.classList.remove('snap');
+      dom.planeHolder.style.transitionDuration = '0ms';
+      dom.planeHolder.style.transform =
+        'translate3d(' + px.toFixed(2) + 'px,' + py.toFixed(2) + 'px,0)';
+    },
+    width: function (px) {
+      dom.stage.style.setProperty('--plane-w', px.toFixed(1) + 'px');
+    },
+    heading: function (deg, bank) { applyHeading(deg, bank); },
+    /* per-frame driving needs the spin transition out of the way;
+       putting it back is what lets the arrival straighten ease */
+    free: function (on) { dom.planeSpin.classList.toggle('free', !!on); },
+    /* Hand the aircraft back to the chart. It arrives off the circuit
+       pointing roughly north-west, and straightens onto north with the
+       same eased pivot the game uses after every landing. */
+    home: function () {
+      dom.planeSpin.classList.remove('free');
+      setHeading(0);
+      syncPlaneScale();
+      setAircraftPosition(0, 0, false);
+    }
+  };
+
   /* ============================================================
      SCREENS
      ============================================================ */
@@ -882,30 +913,47 @@ window.CG = window.CG || {};
     Audio.play('uiClick');
     Audio.musicStart();                    /* the bed, from the first gesture */
     Audio.surfStart();                     /* and the shore break behind it   */
-    /* FLOW 01 — the framing line, spoken over the transition */
-    CG.Voice.say('You are the air traffic controller. Guide each aircraft to its target.');
     dom.btnPlay.disabled = true;
     dom.screenStart.classList.add('leaving');
     window.setTimeout(function () {
       dom.screenStart.hidden = true;
       dom.btnPlay.disabled = false;
+      beginFlightDeck();
+    }, 520);
+  }
+
+  /* The opening state is set up BEFORE the takeoff plays, so the chart
+     the cinematic hands over to is already built and correct underneath
+     it. That is what makes the handoff a reveal instead of a cut — and
+     it is also why the intro can be skipped at any point without
+     landing the player in a half-assembled game. */
+  function beginFlightDeck() {
+    gameState.coordinateMode = false;
+    gameState.tutorialStep = -1;
+    Grid.showPermanentNumbers(false);
+    Grid.setLetter('x', false);
+    Grid.setLetter('y', false);
+    Grid.showQuadrants(null);
+    Grid.showAxes(false);
+    Grid.setStage(1, false);
+    dom.stage.classList.remove('intro-land');
+
+    function toGame() {
       dom.stage.dataset.screen = 'playing';
-      gameState.coordinateMode = false;
-      gameState.tutorialStep = -1;
-      Grid.showPermanentNumbers(false);
-      Grid.setLetter('x', false);
-      Grid.setLetter('y', false);
-      Grid.showQuadrants(null);
-      Grid.showAxes(false);
-      Grid.setStage(1, false);
       UI.playDockEntry();                  /* slide-up, once per session */
       loadLevel(0);
-    }, 520);
+    }
+
+    if (!CG.Intro) { toGame(); return; }   /* the game still runs without it */
+    gameState.screen = 'intro';
+    dom.stage.dataset.screen = 'intro';
+    CG.Intro.run().then(toGame);
   }
 
   function playAgain() {
     CG.Voice.cancel();
     if (CG.Lesson) CG.Lesson.cancel();
+    dom.stage.classList.remove('intro-land');
     hideOriginTap();
     dom.screenComplete.hidden = true;
     UI.showMission(true);
@@ -948,7 +996,11 @@ window.CG = window.CG || {};
     'assets/mountain.png',
     'assets/airplane.png',
     'assets/start screen.png',
-    'assets/start button.png'
+    'assets/start button.png',
+    /* The runway is on screen a third of a second after PLAY is pressed,
+       so it has to be decoded before then — a half-painted runway is a
+       worse trade than a slightly longer loading bar. It is 2.4MB. */
+    'assets/runway .png'
   ];
 
   function preload() {
@@ -987,6 +1039,9 @@ window.CG = window.CG || {};
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startGame(); }
       return;
     }
+    /* the takeoff has its own capture-phase handler: any key skips it,
+       and none of them may reach the stepper underneath */
+    if (gameState.screen === 'intro') return;
     if (gameState.screen === 'complete') return;
     var tag = (ev.target && ev.target.tagName) || '';
     if (tag === 'INPUT') return;
