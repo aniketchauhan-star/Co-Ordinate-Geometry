@@ -2,9 +2,9 @@
    audio.js — sound effects.
 
    Two supplied recordings do the heavy lifting:
-     sfx/airplane fly sound .mp3     looped while the aircraft flies
-     sfx/airplane reached sound .mp3 played when it reaches the target
-     sfx/bg music.mp3                looped under everything, at 40%
+     sfx/airplane fly sound .ogg     looped while the aircraft flies
+     sfx/airplane reached sound .ogg played when it reaches the target
+     sfx/bg music.ogg                looped under everything, at 40%
 
    Everything else (clicks, stepper ticks, the wrong-answer cue) is
    still generated with the Web Audio API, so no extra files are
@@ -241,22 +241,13 @@ CG.Audio = (function () {
   }
 
   /* Waits for both recordings so the loading screen can cover them. */
-  function preload() {
-    bindMedia();
-    var waits = Object.keys(media).map(function (k) {
-      var el = media[k];
-      if (!el) return Promise.resolve();
-      if (el.readyState >= 3) { mediaReady[k] = true; return Promise.resolve(); }
-      return new Promise(function (resolve) {
-        var done = function () { resolve(); };
-        el.addEventListener('canplaythrough', done, { once: true });
-        el.addEventListener('error', done, { once: true });
-        window.setTimeout(done, 8000);       /* never block the game on audio */
-        try { el.load(); } catch (e) { done(); }
-      });
-    });
-    return Promise.all(waits);
-  }
+  /* preload() used to live here and block the boot on canplaythrough.
+     js/preload.js owns fetching now and hands each element a blob, and
+     bindMedia() picks the readiness up either from its canplaythrough
+     listener or from readyState on attach — so there is nothing left for
+     a second preloader to do. */
+
+
 
   /* smooth volume ramp on a media element (no Web Audio routing needed,
      so this works from file:// as well as a server) */
@@ -638,7 +629,6 @@ CG.Audio = (function () {
   return {
     play: play,
     unlock: unlock,
-    preload: preload,
     musicStart: function () { unlock(); bindMedia(); musicStart(); },
     musicStop: musicStop,
     surfStart: function () { unlock(); surfStart(); },

@@ -82,7 +82,7 @@ CG.Intro = (function () {
     end:      9700     /* the veil reaches zero and is taken away      */
   };
 
-  /* ---- geometry, measured out of runway.png ------------------------
+  /* ---- geometry, measured out of the runway artwork ------------------------
      Stage pixels on the 1920x1080 canvas. The artwork is 1672x941 —
      exactly 16:9 — so it fills the canvas with no crop, and reading its
      pixels gives the tarmac centreline at x = 0.497w and the strip

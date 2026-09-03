@@ -218,7 +218,7 @@ button{font-family:inherit}
 
 /* ---------------- LAYER 1 : living water ----------------
    Everything here is an overlay that drifts *above* the artwork, so
-   background.png is never scaled, warped or moved. With the chart now a
+   background.webp is never scaled, warped or moved. With the chart now a
    near-opaque plate, this reads mostly AROUND the panel rather than
    through it — which is what makes the chart a chart. */
 .layer-water{pointer-events:none;overflow:hidden}
@@ -319,7 +319,7 @@ button{font-family:inherit}
    No blur: backdrop-filter and a blurred duplicate layer each made WebKit
    drop the grid and HUD on roughly a fifth of frames.
 
-   Sits UNDER the terrain, so mountain.png is never tinted. Its top edge
+   Sits UNDER the terrain, so mountain.webp is never tinted. Its top edge
    is hidden behind both headlands (the islands are opaque to x=227 at
    y=148), so the chart appears to tuck under the coastline. The matching
    rounded clip is #panelClip in index.html; the rect mirrors
@@ -1220,23 +1220,81 @@ button{font-family:inherit}
    startGame() — so this is a cross-dissolve onto the runway, not a fade
    to whatever the game happens to be showing. */
 .screen-start{transition:opacity 600ms var(--ease-out)}
+
+/* ===================================================================
+   THE LOADING GAUGE  (§2)
+
+   It sits in the play button's slot, so revealing the button is a swap
+   in place with no layout shift — the eye stays where it already is.
+   Same cream/turquoise language as the dock, because this is the first
+   thing the player sees and it should already look like the game.
+   =================================================================== */
+.play-slot{
+  position:absolute;left:50%;top:68%;transform:translate(-50%,-50%);
+  display:grid;place-items:center;
+  width:clamp(280px,34vw,420px);min-height:132px;
+}
+.load-gauge{
+  width:100%;
+  display:grid;justify-items:center;gap:12px;
+  padding:20px 26px;
+  border-radius:22px;
+  background:linear-gradient(180deg,rgba(255,251,234,.94),rgba(255,245,216,.90));
+  border:2.5px solid var(--ctl-cream-rim);
+  box-shadow:0 5px 0 rgba(126,99,57,.18),0 10px 20px rgba(13,69,99,.20);
+  font-family:var(--font-ctl);
+  animation:gaugeIn 420ms var(--ease-out) both;
+}
+.load-gauge[hidden]{display:none}
+@keyframes gaugeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.load-gauge-label{
+  margin:0;font-size:15px;font-weight:900;letter-spacing:.18em;
+  color:var(--ctl-navy);text-transform:uppercase;
+}
+.load-gauge-track{
+  width:100%;height:16px;border-radius:999px;overflow:hidden;
+  background:linear-gradient(180deg,#E4D7B6,#F0E7D2);
+  border:2px solid var(--ctl-well-rim);
+  box-shadow:inset 0 2px 0 rgba(0,0,0,.06);
+}
+.load-gauge-track i{
+  display:block;height:100%;width:0%;
+  border-radius:999px;
+  background:linear-gradient(180deg,var(--go-top),var(--go-main) 52%,var(--go-bottom));
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.34);
+  /* the bar is driven from real byte counts, so this only smooths the
+     step between two reports — it must never outrun the data */
+  transition:width 140ms linear;
+}
+.load-gauge-pct{
+  margin:0;font-size:20px;font-weight:900;color:var(--ctl-navy);
+  font-variant-numeric:tabular-nums;
+}
+/* the reveal: one pop, once, when everything is genuinely local */
+.play-btn[hidden]{display:none}
+.play-btn.play-in{animation:playPop 460ms cubic-bezier(.18,.86,.24,1.06) both}
+@keyframes playPop{
+  0%  {opacity:0;transform:scale(.82)}
+  62% {opacity:1;transform:scale(1.04)}
+  100%{opacity:1;transform:scale(1)}
+}
 .screen-start.leaving{opacity:0;pointer-events:none}
 .start-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
   opacity:0;animation:artIn 900ms var(--ease-out) 120ms forwards}
 @keyframes artIn{from{opacity:0;transform:scale(1.02)}to{opacity:1;transform:none}}
 
+/* The button now lives inside .play-slot, which centres it — so it is
+   NOT self-positioned any more. It used to be absolute at (960,600)
+   with a translate(-50%,-50%) that every hover and press state had to
+   repeat; inside the slot those states are a plain scale(), which is
+   both simpler and what let the pop-in be written as one keyframe.
+   The old timed entry animation is gone with it: the button no longer
+   appears on a delay, it appears when the assets are actually here. */
 .play-btn{
-  position:absolute;left:960px;top:600px;transform:translate(-50%,-50%);
+  position:relative;
   width:300px;height:auto;padding:0;background:none;border:0;cursor:pointer;
   display:grid;justify-items:center;gap:4px;
-  /* `backwards` (not `forwards`) so the resting state is the element's own
-     style — leaving :hover can never re-trigger the entry animation. */
-  animation:playIn 520ms var(--ease-out) 620ms backwards;
   transition:transform var(--t-hover) var(--ease-out);
-}
-@keyframes playIn{
-  from{opacity:0;transform:translate(-50%,-50%) scale(.94)}
-  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
 }
 .play-btn img{
   width:190px;height:auto;display:block;
@@ -1249,8 +1307,8 @@ button{font-family:inherit}
   text-shadow:0 3px 0 rgba(14,39,64,.75),0 6px 14px rgba(8,45,70,.5);
 }
 .play-btn:disabled{cursor:default}
-.play-btn:hover:not(:disabled){transform:translate(-50%,-50%) scale(1.05)}
-.play-btn:active:not(:disabled){transform:translate(-50%,-50%) scale(.94);transition-duration:var(--t-press)}
+.play-btn:hover:not(:disabled){transform:scale(1.05)}
+.play-btn:active:not(:disabled){transform:scale(.94);transition-duration:var(--t-press)}
 
 /* temporary fallback if the supplied start artwork is missing.
    Clearly separated so the PNG can simply be dropped back in. */
@@ -1286,12 +1344,6 @@ button{font-family:inherit}
 .complete-actions .btn{height:64px;font-size:25px;padding:0 34px}
 
 /* loading */
-.screen-load{background:#2BC4E4;transition:opacity 420ms var(--ease-out)}
-.screen-load.leaving{opacity:0;pointer-events:none}
-.load-inner{text-align:center}
-.load-label{margin:0 0 16px;font-size:22px;font-weight:900;letter-spacing:.22em;color:rgba(255,255,255,.92)}
-.load-bar{width:320px;height:10px;border-radius:999px;background:rgba(255,255,255,.3);overflow:hidden;margin:0 auto}
-.load-bar i{display:block;height:100%;width:0%;border-radius:999px;background:var(--cream);transition:width 220ms linear}
 
 /* hidden gameplay layers while on start/loading */
 .stage[data-screen="loading"] .layer-field,
@@ -1339,7 +1391,7 @@ button{font-family:inherit}
    at the far threshold against 300px at the near one — is what makes
    it grow as it comes down.
 
-   GEOMETRY, MEASURED FROM runway.png ITSELF
+   GEOMETRY, MEASURED FROM THE RUNWAY ARTWORK ITSELF
    The artwork is 1672x941 - exactly 16:9 - so it fills the 1920x1080
    canvas with no crop. Reading its pixels: the tarmac centreline is at
    x = 0.497w, i.e. 954px on the stage; the strip runs from y = 53px

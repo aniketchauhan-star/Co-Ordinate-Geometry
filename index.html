@@ -14,7 +14,7 @@
   <div class="stage" id="stage" data-screen="loading">
 
     <!-- Layer 0 — ocean artwork -->
-    <img class="layer layer-bg" id="bgImg" src="assets/background.png" alt="" draggable="false">
+    <img class="layer layer-bg" id="bgImg" src="assets/background.webp" alt="" draggable="false">
 
     <!-- Layer 1 — living water: swell, caustics and a slow glint sweep.
          All of it is an overlay; the artwork itself is never distorted. -->
@@ -26,17 +26,17 @@
     </div>
 
     <!-- Layer 3 — the gameplay panel tint (see .chart-veil). Under the
-         terrain, so mountain.png is never tinted or softened. -->
+         terrain, so mountain.webp is never tinted or softened. -->
     <div class="chart-veil" id="chartVeil" aria-hidden="true"></div>
 
     <!-- Layer 4 — static coastal terrain -->
     <div class="layer layer-terrain" aria-hidden="true">
-      <img class="mtn mtn-l" src="assets/mountain.png" alt="" draggable="false">
-      <img class="mtn mtn-r" src="assets/mountain.png" alt="" draggable="false">
+      <img class="mtn mtn-l" src="assets/mountain.webp" alt="" draggable="false">
+      <img class="mtn mtn-r" src="assets/mountain.webp" alt="" draggable="false">
 
       <!-- SHORE BREAK
            The path is the island's own coastline, traced out of
-           mountain.png's alpha channel, so the foam follows the painted
+           mountain.webp's alpha channel, so the foam follows the painted
            beach exactly. Three bands wash up the shore on a stagger, each
            moving inland along the coast's outward normal (down-right for
            the left island; the right island is mirrored by the same
@@ -69,7 +69,7 @@
     <!-- Layer 6 - THE RUNWAY (intro only)
          Covers the whole stage during the takeoff, then falls away
          beneath the climbing aircraft to reveal the ocean already
-         painted below it. runway.png is 1672x941 - exactly 16:9 - so it
+         painted below it. runway.webp is 1672x941 - exactly 16:9 - so it
          fills the design canvas with no crop and no letterbox.
 
          Measured out of the artwork's own pixels: the tarmac centreline
@@ -78,7 +78,7 @@
          near one). The aircraft's roll is anchored to those numbers, so
          it tracks the painted runway instead of a guess. -->
     <div class="layer layer-runway" id="layerRunway" hidden aria-hidden="true">
-      <img class="runway-art" id="runwayArt" src="assets/runway%20.png" alt="" draggable="false">
+      <img class="runway-art" id="runwayArt" src="assets/runway%20.webp" alt="" draggable="false">
       <!-- heat coming off the tarmac while the engines run up -->
       <div class="rw-heat"></div>
       <!-- tyre dust, spawned per-wheel down the roll -->
@@ -137,7 +137,7 @@
     <!-- Layer 9 — aircraft -->
     <div class="plane-holder" id="planeHolder">
       <div class="plane-spin" id="planeSpin">
-        <img id="plane" src="assets/airplane.png" alt="Aircraft" draggable="false">
+        <img id="plane" src="assets/airplane.webp" alt="Aircraft" draggable="false">
       </div>
     </div>
 
@@ -205,11 +205,21 @@
 
     <!-- Start screen -->
     <div class="screen screen-start" id="screenStart">
-      <img class="start-art" src="assets/start%20screen.png" alt="Co-ordinate Geometry" draggable="false">
-      <button class="play-btn" id="btnPlay" type="button" aria-label="Play" disabled>
-        <img src="assets/start%20button.png" alt="" draggable="false">
-        <span class="play-label">PLAY</span>
-      </button>
+      <img class="start-art" src="assets/start%20screen.webp" alt="Co-ordinate Geometry" draggable="false">
+      <!-- The bar sits exactly where the button will, so the reveal is a
+           swap in place rather than a layout shift. hidden until 100%. -->
+      <div class="play-slot">
+        <div class="load-gauge" id="loadGauge" role="progressbar"
+             aria-label="Loading the airspace" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <p class="load-gauge-label">PREPARING AIRSPACE</p>
+          <div class="load-gauge-track"><i id="loadGaugeFill"></i></div>
+          <p class="load-gauge-pct"><span id="loadGaugePct">0</span>%</p>
+        </div>
+        <button class="play-btn" id="btnPlay" type="button" aria-label="Play" disabled hidden>
+          <img src="assets/start%20button.webp" alt="" draggable="false">
+          <span class="play-label">PLAY</span>
+        </button>
+      </div>
     </div>
 
     <!-- Completion screen -->
@@ -232,27 +242,60 @@
       </div>
     </div>
 
-    <!-- Loading -->
-    <div class="screen screen-load" id="screenLoad">
-      <div class="load-inner">
-        <p class="load-label">PREPARING AIRSPACE</p>
-        <div class="load-bar"><i id="loadFill"></i></div>
-      </div>
     </div>
 
   </div>
 </div>
 
-<!-- Supplied sound effects. Filenames contain spaces (and a trailing
-     space before .mp3), so they are URL-encoded here. -->
-<audio id="sfxFly" src="sfx/airplane%20fly%20sound%20.mp3" loop preload="auto"></audio>
-<audio id="sfxReached" src="sfx/airplane%20reached%20sound%20.mp3" preload="auto"></audio>
+<!-- Supplied sound effects, transcoded to Ogg/Opus (see the note at the
+     foot of this file). Filenames contain spaces — and a trailing space
+     before the extension — so they are URL-encoded here.
+
+     preload="none" on all three: the loading bar fetches them itself and
+     swaps in a blob: URL, so leaving preload="auto" would download every
+     one of them twice. -->
+<audio id="sfxFly" src="sfx/airplane%20fly%20sound%20.ogg" loop preload="none"></audio>
+<audio id="sfxReached" src="sfx/airplane%20reached%20sound%20.ogg" preload="none"></audio>
 <!-- 5:01 of music, 7.2MB: deliberately NOT part of the blocking preload,
      so the loading screen never waits on it. It streams and fades in. -->
-<audio id="sfxMusic" src="sfx/bg%20music.mp3" loop preload="auto"></audio>
+<audio id="sfxMusic" src="sfx/bg%20music.ogg" loop preload="none"></audio>
 
+<!-- ===================================================================
+     MEDIA FORMATS
+
+     Images are WebP, audio is Ogg/Opus. Chosen per asset rather than
+     uniformly, because the two kinds of artwork behave very differently:
+
+       background / runway / start screen   lossy q82
+         Painted, fully opaque, mostly smooth gradient. 8.2MB of PNG
+         becomes 421KB. Measured at 35.6-40.9 dB PSNR — and, more to the
+         point, the grid-line-vs-panel luma delta this project is built
+         around reads 62.05 off the WebP against 62.02 off the PNG, so
+         none of the art-direction work moved.
+
+       airplane / mountain / start button   LOSSLESS, -exact
+         Hard-edged cutouts with alpha. Lossy composited these at only
+         28-31 dB with errors up to 180/255 — visible fringing on an
+         outline. Lossless is still smaller than the PNG (70-77%) and is
+         verified BIT-IDENTICAL, which also protects the coastline traced
+         out of the mountain's alpha channel for the surf.
+         (-exact matters: without it cwebp rewrites RGB under
+         fully-transparent pixels, which is invisible but not identical.)
+
+     BROWSER SUPPORT
+       WebP       Chrome, Edge, Firefox, Safari 14+ — universal in
+                  practice, and the images are the whole visual world, so
+                  this is the load-bearing one.
+       Ogg/Opus   Chrome, Edge, Firefox, and Safari 17.4+ (March 2024).
+                  THIS IS THE NARROWER FLOOR: Safari 16 and earlier, and
+                  iOS before 17.4, get no sound. The game stays fully
+                  playable — every cue is guarded — but if that audience
+                  matters, restore the MP3s as a second <source> on each
+                  <audio> element and the browser will pick for itself.
+     =================================================================== -->
 <div id="rotateHint" hidden><p>Rotate your device<br><span>for the best flight deck view</span></p></div>
 
+<script src="js/preload.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/voice.js"></script>
 <script src="js/levels.js"></script>
