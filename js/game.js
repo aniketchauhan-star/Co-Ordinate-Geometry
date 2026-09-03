@@ -185,35 +185,30 @@ window.CG = window.CG || {};
      crosses each grid line (requirement 27).
      ============================================================ */
 
+  /* The route is two STRAIGHT legs joined by a pivot, not a curve. The
+     aircraft flies the horizontal run, comes to rest exactly on the
+     corner point, turns on the spot, and only then flies the vertical
+     run. That is what makes the two movements readable as two separate
+     counts — a rounded corner blurs them into one diagonal sweep, and
+     the learner loses which number belongs to which direction. */
   function flightPlan(dx, dy) {
     var ax = Math.abs(dx), ay = Math.abs(dy);
-    var r = (ax > 0 && ay > 0) ? Math.min(CFG.cornerCells, ax / 2, ay / 2) : 0;
     return {
       sx: Math.sign(dx) || 1, sy: Math.sign(dy) || 1,
-      ax: ax, ay: ay, r: r, total: ax + ay
+      ax: ax, ay: ay,
+      pivots: ax > 0 && ay > 0,          /* is there a corner at all? */
+      total: ax + ay
     };
   }
 
   /* position + velocity at arc length s along the route */
+  /* Distance along the route, in cells. Corners are square: the position
+     is on one axis or the other, never between them. */
   function routeAt(p, s) {
-    var ax = p.ax, ay = p.ay, r = p.r;
-    if (ay === 0) return { x: p.sx * Math.min(s, ax), y: 0, vx: p.sx, vy: 0 };
-    if (ax === 0) return { x: 0, y: p.sy * Math.min(s, ay), vx: 0, vy: p.sy };
-
-    var c1 = ax - r, c2 = ax + r;
-    if (s <= c1) return { x: p.sx * s, y: 0, vx: p.sx, vy: 0 };
-    if (s >= c2) return { x: p.sx * ax, y: p.sy * Math.min(s - ax, ay), vx: 0, vy: p.sy };
-
-    /* quadratic Bezier corner: P0=(ax-r,0)  P1=(ax,0)  P2=(ax,r).
-       Tangent turns smoothly from +x to +y, so the heading follows for
-       free and the aircraft loses no forward motion. */
-    var t = (s - c1) / (2 * r), mt = 1 - t;
-    return {
-      x: p.sx * (mt * mt * (ax - r) + 2 * mt * t * ax + t * t * ax),
-      y: p.sy * (t * t * r),
-      vx: p.sx * 2 * mt * r,
-      vy: p.sy * 2 * t * r
-    };
+    if (p.ay === 0) return { x: p.sx * Math.min(s, p.ax), y: 0, vx: p.sx, vy: 0 };
+    if (p.ax === 0) return { x: 0, y: p.sy * Math.min(s, p.ay), vx: 0, vy: p.sy };
+    if (s <= p.ax) return { x: p.sx * s, y: 0, vx: p.sx, vy: 0 };
+    return { x: p.sx * p.ax, y: p.sy * Math.min(s - p.ax, p.ay), vx: 0, vy: p.sy };
   }
 
   /* trapezoidal progress: ease in over `a`, cruise, ease out over `a` */
@@ -244,8 +239,16 @@ window.CG = window.CG || {};
     }
 
     var cellMsNow = reduced ? 180 : CFG.cellDuration;
-    var duration = plan.total * cellMsNow + (plan.r > 0 ? CFG.turnMs : 0);
     var accel = reduced ? 0 : CFG.accelFraction;
+    /* three phases: fly the first leg, pivot on the spot, fly the second.
+       Each leg eases in and out of its own duration, so the aircraft
+       genuinely arrives at the corner, stops, turns, and sets off again. */
+    var legA = plan.ax * cellMsNow;
+    var legB = plan.ay * cellMsNow;
+    if (plan.ax === 0) { legA = 0; legB = plan.ay * cellMsNow; }
+    if (plan.ay === 0) { legA = plan.ax * cellMsNow; legB = 0; }
+    var pivotMs = plan.pivots ? (reduced ? 1 : CFG.pivotMs) : 0;
+    var duration = legA + pivotMs + legB;
 
     /* swing onto the opening heading while accelerating away */
     var startHeading = gameState.heading;
@@ -266,23 +269,45 @@ window.CG = window.CG || {};
       function frame(now) {
         if (token !== animToken) { endFlight(false); return; }
 
-        var u = Math.min(1, (now - t0) / duration);
-        var s = speedProfile(u, accel) * plan.total;
+        var el2 = now - t0;
+        var s, phase;
+        if (el2 < legA || legB === 0) {
+          /* leg 1 — the horizontal run */
+          phase = 'a';
+          s = legA > 0 ? speedProfile(Math.min(1, el2 / legA), accel) * plan.ax : 0;
+        } else if (el2 < legA + pivotMs) {
+          /* the pivot — parked exactly on the corner, turning in place */
+          phase = 'pivot';
+          s = plan.ax;
+        } else {
+          /* leg 2 — the vertical run */
+          phase = 'b';
+          var ub = legB > 0 ? Math.min(1, (el2 - legA - pivotMs) / legB) : 1;
+          s = plan.ax + speedProfile(ub, accel) * plan.ay;
+        }
         var at = routeAt(plan, s);
 
         placeAircraft(at.x, at.y);
 
-        /* heading: blend from the parked angle onto the tangent, then
-           follow the tangent exactly (which turns through the corner) */
-        var tangent = unwrap(heading, headingFromVelocity(at.vx, at.vy));
-        var el2 = now - t0;
+        /* Heading. Off the mark it swings onto the opening bearing; during
+           the pivot it rotates on the spot from one leg's bearing to the
+           next; on a leg it simply holds that leg's bearing — no curve,
+           so the aircraft never drifts diagonally. */
         var prevHeading = heading;
-        heading = (el2 < rotMs)
-          ? startHeading + (openHeading - startHeading) * (el2 / rotMs)
-          : tangent;
+        if (el2 < rotMs && phase === 'a') {
+          heading = startHeading + (openHeading - startHeading) * (el2 / rotMs);
+        } else if (phase === 'pivot') {
+          var pu = pivotMs > 0 ? (el2 - legA) / pivotMs : 1;
+          pu = pu < 0 ? 0 : pu > 1 ? 1 : pu;
+          var eased = pu < 0.5 ? 2 * pu * pu : 1 - Math.pow(-2 * pu + 2, 2) / 2;
+          var fromH = headingFromVelocity(plan.sx, 0);
+          var toH = unwrap(fromH, headingFromVelocity(0, plan.sy));
+          heading = fromH + (toH - fromH) * eased;
+        } else {
+          heading = unwrap(heading, headingFromVelocity(at.vx, at.vy));
+        }
 
-        /* bank is proportional to how fast the heading is changing, eased
-           so it builds into the turn and unwinds out of it */
+        /* The wings foreshorten while it turns on the spot, then level. */
         var turnRate = Math.abs(heading - prevHeading);
         bank += (Math.min(1, turnRate / 3.2) - bank) * 0.18;
         applyHeading(heading, bank * 0.16);
@@ -326,7 +351,7 @@ window.CG = window.CG || {};
           Audio.play('aircraftMove');
         }
 
-        if (u < 1) { requestAnimationFrame(frame); return; }
+        if (el2 < duration) { requestAnimationFrame(frame); return; }
 
         /* land exactly on the whole-cell destination, wings level */
         setAircraftPosition(dx, dy, false);
@@ -608,7 +633,7 @@ window.CG = window.CG || {};
     Grid.setTarget(gameState.target);
     refreshTargetGlow();                   /* co-ordinate entry: glowing waypoint */
 
-    UI.buildControls(lv.controls || []);
+    UI.buildControls(lv.visible || lv.controls || [], lv.controls || []);
     resetControlValues();
 
     setHeading(0);

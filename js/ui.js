@@ -62,18 +62,25 @@ CG.UI = (function () {
   }
 
   /* ---------------- direction controls ---------------- */
-  function buildControls(list) {
+  /* buildControls(visible, usable) — everything in `visible` is drawn so
+     the dock keeps a constant width, but a direction not in `usable` is
+     drawn in a "not yet" state: its airspace has not unfolded, and flying
+     that way would leave the chart. */
+  function buildControls(visible, usable) {
+    usable = usable || visible;
     el.controls.innerHTML = '';
     ctrlMap = {};
     CG.DIRECTIONS.forEach(function (d) {
-      if (list.indexOf(d.key) === -1) return;
+      if (visible.indexOf(d.key) === -1) return;
+      var armed = usable.indexOf(d.key) !== -1;
 
       var wrap = document.createElement('div');
       wrap.className = 'ctrl';
       wrap.dataset.dir = d.key;
-      wrap.dataset.armed = '1';
+      wrap.dataset.armed = armed ? '1' : '0';
       wrap.setAttribute('role', 'group');
-      wrap.setAttribute('aria-label', d.label + ' spaces');
+      wrap.setAttribute('aria-label', armed ? d.label + ' spaces'
+        : d.label + ' \u2014 this part of the airspace has not opened yet');
 
       var label = document.createElement('div');
       label.className = 'ctrl-label';
@@ -102,8 +109,14 @@ CG.UI = (function () {
       dn.appendChild(svgIcon('M12 18l7-9H5z'));
       dn.setAttribute('aria-label', 'Decrease ' + d.label);
 
-      up.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, +1); });
-      dn.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, -1); });
+      if (armed) {
+        up.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, +1); });
+        dn.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, -1); });
+      } else {
+        up.disabled = dn.disabled = true;
+        up.setAttribute('aria-disabled', 'true');
+        dn.setAttribute('aria-disabled', 'true');
+      }
 
       stepper.appendChild(up);
       stepper.appendChild(dn);
@@ -113,13 +126,13 @@ CG.UI = (function () {
       wrap.appendChild(stepper);
       el.controls.appendChild(wrap);
 
-      ctrlMap[d.key] = { root: wrap, val: val, up: up, down: dn };
+      ctrlMap[d.key] = { root: wrap, val: val, up: up, down: dn, armed: armed };
     });
   }
 
   function setValue(dir, v, bump) {
     var c = ctrlMap[dir];
-    if (!c) return;
+    if (!c || !c.armed) return;
     c.val.textContent = String(v);
     if (bump) {
       c.val.classList.remove('bump');
@@ -136,6 +149,7 @@ CG.UI = (function () {
      goes" (styled as an end stop), LOCKED is "not right now, the
      aircraft is flying" (the whole dock hatches). */
   function applyLock(c) {
+    if (!c.armed) { c.up.disabled = c.down.disabled = true; return; }
     c.up.disabled = locked || c.up.dataset.limit === '1';
     c.down.disabled = locked || c.down.dataset.limit === '1';
     c.up.setAttribute('aria-disabled', String(c.up.disabled));
@@ -277,7 +291,7 @@ CG.UI = (function () {
     );
     if (!what || what === 'target') return;   /* the waypoint glow lives in grid.js */
     if (what === 'go') { el.go.classList.add('tut-hi'); return; }
-    if (ctrlMap[what]) ctrlMap[what].root.classList.add('tut-hi');
+    if (ctrlMap[what] && ctrlMap[what].armed) ctrlMap[what].root.classList.add('tut-hi');
   }
 
   /* anchor the hand under a control's stepper (stage-space coords) */

@@ -5,10 +5,7 @@
 
 :root{
   /* palette */
-  --ocean-cyan:#38D5EC;
-  --ocean-deep:#12A9CE;
   --navy:#16375B;
-  --navy-ink:#0E2740;
   --cream:#FFF0CC;
   --cream-hi:#FFFBEF;
   --orange:#F58A22;
@@ -17,12 +14,32 @@
   --green-dk:#2F8E23;
   --lime:#7BE034;
   --lime-dk:#4FA915;
-  --purple:#8B56D9;
   --purple-dk:#6A38B4;
-  --coral:#E84E4E;
   --coral-dk:#B92F2F;
   --charcoal:#2B3947;
   --charcoal-dk:#1B2530;
+
+  /* ---- THE CHART PALETTE ---------------------------------------------
+     Supplied art direction: a dark teal plate carrying a glowing cyan
+     graticule, rather than white lines on open water. The panel is now
+     mostly opaque, so the living water reads around the chart instead of
+     through it — which is what makes the grid a chart and not an overlay.
+
+     Measured against the ocean beneath (luma 177):
+       panel composite ......  luma  93
+       minor grid line ......  luma 142   -> delta  49
+       major line / axis ....  luma 196   -> delta 102
+     So the axes carry the contrast and the minor grid is deliberately
+     quiet — a real hierarchy rather than one flat weight. The glow is
+     part of that: it is what makes a 49-delta line read cleanly.       */
+  --grid-bg: rgba(1, 75, 94, 0.72);
+  --grid-bg-mid: #036077;
+  --grid-bg-light: #0689A0;
+
+  --grid-line: rgba(34, 197, 208, 0.70);
+  --grid-line-major: rgba(116, 231, 234, 0.90);
+  --grid-border: #16CBD2;
+  --grid-glow: rgba(16, 207, 216, 0.32);
 
   /* ---- SEMANTIC vs DIRECTION -----------------------------------------
      The four direction hues (orange 30deg, green 112, purple 264, coral 0)
@@ -53,11 +70,8 @@
      are wide and fully opaque. Being opaque is also what keeps them clear
      of the panel tint behind them: measured line-vs-panel luma delta is
      116/255 with nothing else helping. */
-  --grid-line:#FFFFFF;
-  --grid-axis:#FFFFFF;
   /* darkness of the gameplay panel — the one number to turn if the grid
      needs to read harder (raise) or the ocean brighter (lower) */
-  --panel-tint:.26;
 
   /* shape */
   --ui-radius:16px;
@@ -79,7 +93,6 @@
   --t-press:110ms;
   --t-panel:260ms;
   --t-cell:640ms;
-  --t-pulse:620ms;
   --ease-out:cubic-bezier(.22,.85,.30,1);
   --ease-io:cubic-bezier(.45,.05,.30,1);
 
@@ -148,8 +161,9 @@ button{font-family:inherit}
 
 /* ---------------- LAYER 1 : living water ----------------
    Everything here is an overlay that drifts *above* the artwork, so
-   background.png is never scaled, warped or moved — and the terrain,
-   clouds and grid all sit above this layer and stay perfectly still. */
+   background.png is never scaled, warped or moved. With the chart now a
+   near-opaque plate, this reads mostly AROUND the panel rather than
+   through it — which is what makes the chart a chart. */
 .layer-water{pointer-events:none;overflow:hidden}
 .layer-water > *{position:absolute;will-change:transform,opacity;backface-visibility:hidden}
 
@@ -255,15 +269,23 @@ button{font-family:inherit}
    CG.CHART.rect in js/levels.js. */
 .chart-veil{
   position:absolute;
-  left:64px;top:148px;width:1792px;height:768px;
+  /* geometry is set by grid.js: the panel tracks the charted area so it
+     unfolds with the plane (square -> rectangle -> square). These are
+     only the first-paint values, before the first setStage. */
+  left:577px;top:149px;width:766px;height:766px;
   pointer-events:none;
   border-radius:28px;
+  /* a plate of deeper water, brightest where the light falls at the
+     bottom, with the supplied cyan rim and its outer glow */
   background:
-    linear-gradient(180deg,rgba(242,243,239,.07),rgba(242,243,239,0) 24%),
-    rgba(8,73,92,var(--panel-tint));
-  border:1.5px solid rgba(242,243,239,.46);
+    radial-gradient(130% 105% at 50% 118%,
+      var(--grid-bg-light) 0%, rgba(6,137,160,0) 58%),
+    linear-gradient(180deg, var(--grid-bg-mid) 0%, var(--grid-bg) 100%);
+  border:2.5px solid var(--grid-border);
   box-shadow:
-    var(--rim),
+    0 0 34px 2px var(--grid-glow),
+    inset 0 0 46px 8px rgba(1,50,64,.42),
+    inset 0 1px 0 rgba(174,247,250,.30),
     var(--sh-2);
 }
 /* map neatline: a hairline rule set in from the outer rule, the way a
@@ -272,7 +294,7 @@ button{font-family:inherit}
    two and read as an error. */
 .chart-veil::before{
   content:"";position:absolute;inset:7px;
-  border:1px solid rgba(242,243,239,.15);
+  border:1px solid rgba(116,231,234,.22);
   border-radius:21px;
 }
 
@@ -343,16 +365,19 @@ button{font-family:inherit}
 /* Widths are in design px and do NOT scale with the chart zoom
    (vector-effect: non-scaling-stroke), so the grid keeps the same weight
    in every stage. */
-#gridLines line{stroke:var(--grid-line);stroke-width:2.4}
+#gridLines line{stroke:var(--grid-line);stroke-width:2}
+/* the minor grid is deliberately quiet, so it needs the glow to read */
+#gridLines{filter:drop-shadow(0 0 3px var(--grid-glow))}
 /* During the tutorial missions the field is a plain, even grid. The axes,
    their ticks and their arrowheads only appear once the concept reveal
    gives them names. */
 #axes,#ticks,#axisEnds{opacity:0;transition:opacity 620ms var(--ease-out)}
 #axes.axes-shown,#ticks.axes-shown,#axisEnds.axes-shown{opacity:1}
-#axes line{stroke:var(--grid-axis);stroke-width:3.6;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
-#axes line.axis-hot{stroke:#FFF6DC;stroke-width:5.4}
-#ticks line{stroke:#FFFFFF;stroke-width:3;stroke-linecap:round}
-#axisEnds path{fill:var(--grid-axis);transition:opacity 420ms var(--ease-out)}
+#axes line{stroke:var(--grid-line-major);stroke-width:3.4;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
+#axes{filter:drop-shadow(0 0 6px var(--grid-glow))}
+#axes line.axis-hot{stroke:#CFFBFF;stroke-width:5.2}
+#ticks line{stroke:var(--grid-line-major);stroke-width:2.8;stroke-linecap:round}
+#axisEnds path{fill:var(--grid-line-major);transition:opacity 420ms var(--ease-out)}
 #axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
 
 
@@ -694,6 +719,31 @@ button{font-family:inherit}
 .step-btn:hover:not(:disabled){filter:brightness(1.22)}
 /* press: the key actually travels down onto the plate */
 .step-btn:active:not(:disabled){transform:translateY(2px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.14)}
+
+/* NOT YET — on screen, but this direction's airspace has not unfolded.
+   Distinct from both LIMIT and LOCKED: the colour chip drains toward the
+   dock, the value greys out and the keys go inert. The learner can see
+   the direction exists and that it is coming. */
+.ctrl[data-armed="0"] .ctrl-label{
+  background:linear-gradient(180deg,#4A5560,#3A444E);
+  border-color:rgba(14,39,64,.45);
+  color:rgba(255,255,255,.52);
+  text-shadow:none;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.10);
+}
+.ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(255,255,255,.42);filter:none}
+.ctrl[data-armed="0"] .ctrl-val{
+  background:linear-gradient(180deg,#6E7681,#5C646E);
+  border-color:rgba(14,39,64,.45);
+  color:rgba(255,255,255,.40);
+  box-shadow:none;
+}
+.ctrl[data-armed="0"] .step-btn{
+  background:linear-gradient(180deg,#3A444E,#2E3741);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.07);
+  cursor:default;
+}
+.ctrl[data-armed="0"] .step-btn svg{fill:rgba(255,255,255,.22)}
 
 /* LIMIT — "that is as far as it goes". The key stays present and solid;
    only its arrow hollows out, so it reads as an end stop. */

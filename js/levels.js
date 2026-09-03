@@ -27,80 +27,115 @@ window.CG = window.CG || {};
 CG.CHART = { rect: { x: 64, y: 148, w: 1792, h: 768 } };
 
 CG.STAGES = {
-  /* Both horizontal controls are usable from mission 1, so every stage
-     has to chart x -5..+5 at least — otherwise the aircraft would fly
-     into blank, unmapped ocean. The plane therefore no longer unfolds
-     sideways; what still unfolds is the airspace BELOW the origin, which
-     is where the negative-y idea actually lives.
-     1 -> 2 widens the charted width; 2 -> 3 opens up below. */
-  1: { cell: 119, origin: { x: 781, y: 770 }, extent: { xMin: -6,  xMax: 9,  yMin: -1, yMax: 5 } },
-  2: { cell: 99,  origin: { x: 960, y: 730 }, extent: { xMin: -9,  xMax: 9,  yMin: -1, yMax: 5 } },
-  3: { cell: 68,  origin: { x: 960, y: 498 }, extent: { xMin: -13, xMax: 13, yMin: -6, yMax: 5 } },
-  4: { cell: 64,  origin: { x: 960, y: 532 }, extent: { xMin: -14, xMax: 14, yMin: -6, yMax: 6 } }
+  /* ---------------------------------------------------------------------
+     THE PLANE UNFOLDS IN THREE SHAPES
+
+       stage 1   quadrant I only        7 x 7   cells   ->  SQUARE
+       stage 2   quadrants I + II      12 x 7   cells   ->  RECTANGLE
+       stage 3   all four quadrants    12 x 12  cells   ->  SQUARE
+
+     The shapes are not decoration: if quadrant I is an N x N square then
+     I + II is necessarily 2N x N, and all four is 2N x 2N. The learner
+     watches the same plane grow, and the shape itself says how much of
+     the plane exists.
+
+     Cells are always square (one `cell` value for both axes), and each
+     stage takes the largest cell its shape allows inside the play box
+     (1792 x 768):
+
+       stage 1   cell 102  ->   714 x 714   height-limited
+       stage 2   cell 102  ->  1224 x 714   SAME cell: a pure sideways
+                                            unfold with no zoom at all
+       stage 3   cell  59  ->   708 x 708   the unfold that also zooms out
+
+     Each is sized to leave 26px for the panel edge on every side, so the
+     panel can carry the same shape as the grid it holds.
+
+     So 1 -> 2 is motion without scale, and 2 -> 3 is the one zoom in the
+     whole game. The origin stays put from 1 to 2 (804) and only moves
+     when the airspace opens below it (787 -> 532).
+     --------------------------------------------------------------------- */
+  1: { cell: 102, origin: { x: 705, y: 787 }, extent: { xMin: -1, xMax: 6, yMin: -1, yMax: 6 } },
+  2: { cell: 102, origin: { x: 960, y: 787 }, extent: { xMin: -6, xMax: 6, yMin: -1, yMax: 6 } },
+  3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6, xMax: 6, yMin: -6, yMax: 6 } },
+  /* quadrant IV opens no new airspace beyond stage 3 — x and y already
+     span both signs — so it shares the geometry and nothing lurches. */
+  4: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6, xMax: 6, yMin: -6, yMax: 6 } }
 };
 
 /* ============================================================
    MISSIONS — the PDF's target sequence, in order.
    Movement first; the words come after the learner has flown it.
    ============================================================ */
-/* Both horizontal controls are shown AND usable in every mission, so
-   choosing "right" is a real choice rather than the only option, and the
-   dock keeps a constant width instead of shifting GO around. The vertical
-   pair still follows the quadrant being taught: up while the plane is
-   above the origin, down once it opens below.
+/* All four direction controls are on screen in every mission, so the dock
+   never changes width and the learner can see the whole system from the
+   start. What changes is which of them are ARMED, and that follows the
+   airspace: a direction is only usable once the plane extends that way.
+   Flying left in stage 1 would send the aircraft into unmapped ocean, so
+   LEFT waits until quadrant II unfolds, and DOWN until quadrants III/IV.
 
-   `controls` is both the visible and the usable set. It drives the dock,
-   the keyboard, and the geometry audit that proves every destination the
-   learner can select stays on the charted area. */
+     `visible`   what the dock draws        (constant: all four)
+     `controls`  what the learner can use   (grows with the plane)
+
+   `controls` drives the keyboard and the geometry audit, which proves
+   every destination the learner can select stays on the charted area. */
 CG.LEVELS = [
   /* ---------- FIRST QUADRANT : right + up ---------- */
   {
-    quadrant: 1, target: { x: 3, y: 2 }, controls: ['right', 'left', 'up'],
+    quadrant: 1, target: { x: 3, y: 2 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
     mission: 'Guide the aircraft to the target.',
     tutorial: true,
     coordinateReveal: true          /* FLOW 10 — the "X = 3, Y = 2" moment */
   },
   {
-    quadrant: 1, target: { x: 5, y: 4 }, controls: ['right', 'left', 'up'],
+    quadrant: 1, target: { x: 5, y: 4 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
     mission: 'Guide the aircraft to the target.'
   },
 
   /* ---------- SECOND QUADRANT : left + up ---------- */
   {
-    quadrant: 2, target: { x: -2, y: 4 }, controls: ['right', 'left', 'up'],
+    quadrant: 2, target: { x: -2, y: 4 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
     mission: 'Guide the aircraft to the target.',
     unlockNote: 'The airspace now extends to the left.',
     unlockVoice: 'Now the airspace extends to the left.',
     signLesson: 'Moving left gives negative horizontal values.'
   },
   {
-    quadrant: 2, target: { x: -5, y: 2 }, controls: ['right', 'left', 'up'],
+    quadrant: 2, target: { x: -5, y: 2 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
     mission: 'Guide the aircraft to the target.'
   },
 
   /* ---------- THIRD QUADRANT : left + down ---------- */
   {
-    quadrant: 3, target: { x: -4, y: -2 }, controls: ['right', 'left', 'down'],
+    quadrant: 3, target: { x: -4, y: -2 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.',
     unlockNote: 'The airspace now extends below the origin.',
     unlockVoice: 'Now the airspace extends below the origin.',
     signLesson: 'Moving left gives a negative X value. Moving down gives a negative Y value.'
   },
   {
-    quadrant: 3, target: { x: -5, y: -3 }, controls: ['right', 'left', 'down'],
+    quadrant: 3, target: { x: -5, y: -3 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.'
   },
 
   /* ---------- FOURTH QUADRANT : right + down ---------- */
   {
-    quadrant: 4, target: { x: 4, y: -5 }, controls: ['right', 'left', 'down'],
+    quadrant: 4, target: { x: 4, y: -5 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.',
     unlockNote: 'The last part of the airspace is open.',
     unlockVoice: 'Use right and down to reach the target.',
     signLesson: 'Moving right keeps X positive. Moving down makes Y negative.'
   },
   {
-    quadrant: 4, target: { x: 3, y: -3 }, controls: ['right', 'left', 'down'],
+    quadrant: 4, target: { x: 3, y: -3 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     mission: 'Guide the aircraft to the target.'
   },
 
@@ -110,7 +145,8 @@ CG.LEVELS = [
      inverse of every mission before it, where they had a target on the
      chart and discovered the numbers. Its feedback is the PDF's own. */
   {
-    quadrant: 4, target: { x: 2, y: -3 }, controls: ['right', 'left', 'down'],
+    quadrant: 4, target: { x: 2, y: -3 },
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     cfu: true,
     lessonBefore: true,
     mission: 'The target is (2, −3). Move the aircraft to its position.',
@@ -140,9 +176,12 @@ CG.CONFIG = {
      Deliberately unhurried: the learner has to be able to watch the
      aircraft cross each grid line and read the number as it appears. */
   cellDuration: 640,   /* ms of travel per grid cell, at cruise speed   */
-  turnMs: 200,         /* extra time granted to the corner transition   */
   accelFraction: 0.18, /* share of the flight spent easing in / out     */
-  cornerCells: 0.42,   /* corner rounding radius, in cells              */
+  pivotMs: 420,        /* pause-and-turn on the corner point, in ms.
+                          The aircraft stops dead on the corner, rotates
+                          through 90 degrees, then sets off again — so the
+                          horizontal count and the vertical count read as
+                          two separate movements rather than one sweep. */
   rotateMs: 360,       /* time to swing onto the first heading          */
   dotSpacing: 0.12,    /* flight-path dot every N cells travelled       */
   puffSpacing: 0.55,   /* contrail puff every N cells travelled         */

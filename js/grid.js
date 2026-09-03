@@ -80,6 +80,8 @@ CG.Grid = (function () {
     el.regionLayer = document.getElementById('regionLayer');
     el.lessonLayer = document.getElementById('lessonLayer');
     el.field = el.svg;                       /* the <svg>, for pointer-events */
+    el.veil = document.getElementById('chartVeil');
+    el.panelClip = document.querySelector('#panelClip rect');
 
     drawLines(el.lines);
 
@@ -155,10 +157,54 @@ CG.Grid = (function () {
   }
 
   /* ---------------- stage unfolding ---------------- */
+  /* The panel is the chart the grid is drawn on, so it tracks the charted
+     area rather than sitting at a fixed size: square for quadrant I, a
+     rectangle once quadrant II unfolds, square again with all four. Both
+     the visible tint and the clip that stops the grid at the rounded
+     corner are driven from the same rect, so they can never disagree. */
+  var PLAY = { x: 64, y: 148, w: 1792, h: 768 };
+  var PANEL_PAD = 26;
+
+  function panelRect(c, v) {
+    var l = v.px + toX(c.xMin) * v.k;
+    var r = v.px + toX(c.xMax) * v.k;
+    var t = v.py + toY(c.yMax) * v.k;
+    var b = v.py + toY(c.yMin) * v.k;
+    /* One padding value for all four sides, limited by the tightest room
+       available. Padding each side independently would let the panel grow
+       wider than it is tall and a square grid would sit on an oblong
+       panel — the shape of the panel has to say the same thing as the
+       shape of the grid. */
+    var pad = Math.min(PANEL_PAD,
+                       l - PLAY.x, (PLAY.x + PLAY.w) - r,
+                       t - PLAY.y, (PLAY.y + PLAY.h) - b);
+    if (!(pad > 0)) pad = 0;
+    return { x: l - pad, y: t - pad,
+             w: Math.max(1, (r - l) + pad * 2),
+             h: Math.max(1, (b - t) + pad * 2) };
+  }
+
+  function applyPanel(c, v) {
+    var p = panelRect(c, v);
+    if (el.veil) {
+      el.veil.style.left = p.x.toFixed(1) + 'px';
+      el.veil.style.top = p.y.toFixed(1) + 'px';
+      el.veil.style.width = p.w.toFixed(1) + 'px';
+      el.veil.style.height = p.h.toFixed(1) + 'px';
+    }
+    if (el.panelClip) {
+      el.panelClip.setAttribute('x', p.x.toFixed(1));
+      el.panelClip.setAttribute('y', p.y.toFixed(1));
+      el.panelClip.setAttribute('width', p.w.toFixed(1));
+      el.panelClip.setAttribute('height', p.h.toFixed(1));
+    }
+  }
+
   function apply(c, v) {
     view = v;
     el.chart.setAttribute('transform',
       'translate(' + v.px.toFixed(2) + ',' + v.py.toFixed(2) + ') scale(' + v.k.toFixed(5) + ')');
+    applyPanel(c, v);
 
     /* the clip is what makes the plane unfold: nothing outside the
        charted quadrants is drawn at all */
@@ -706,6 +752,7 @@ CG.Grid = (function () {
     showRightAngle: showRightAngle,
     showRegionLabel: showRegionLabel, showRegionLabels: showRegionLabels,
     clearRegionLabels: clearRegionLabels,
-    clearLesson: clearLesson
+    clearLesson: clearLesson,
+    panelRect: function () { return panelRect(charted, view); }
   };
 })();
