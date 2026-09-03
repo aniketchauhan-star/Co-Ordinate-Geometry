@@ -31,6 +31,7 @@ CG.UI = (function () {
     el.controls = q('controls');
     el.go = q('btnGo');
     el.dock = q('dock');
+    el.tray = q('dragTray');
     el.levelNow = q('levelNow');
     el.levelTotal = q('levelTotal');
     el.btnSound = q('btnSound');
@@ -248,6 +249,21 @@ CG.UI = (function () {
     void el.coordTag.offsetWidth;
     el.coordTag.classList.add('show');
   }
+  /* Emphasises one half of a co-ordinate tag, so "(2, 3)" can have its
+     first number called out while the second stays quiet — the PDF
+     highlights them one at a time before naming either. */
+  function emphasiseCoord(which) {
+    var v = el.coordTag.querySelector('.coord-val');
+    if (!v) return;
+    var m = /^\(\s*(-?\d+|)\s*,\s*(-?\d+|)\s*\)$/.exec(v.textContent.trim());
+    if (!which || !m) { v.classList.remove('coord-split'); return; }
+    var xs = m[1], ys = m[2];
+    v.classList.add('coord-split');
+    v.innerHTML = '(<span class="cx' + (which === 'x' || which === 'both' ? ' on' : '') +
+                  '">' + xs + '</span>, <span class="cy' +
+                  (which === 'y' || which === 'both' ? ' on' : '') + '">' + ys + '</span>)';
+  }
+
   function hideCoordTag() {
     el.coordTag.classList.remove('show');
     window.setTimeout(function () { el.coordTag.hidden = true; }, 280);
@@ -288,6 +304,152 @@ CG.UI = (function () {
     window.setTimeout(function () { el.hand.hidden = true; }, 260);
   }
 
+  /* =====================================================================
+     DRAG TRAY  (PDF p30 and p45)
+     Chips the learner drags onto drop zones drawn on the chart. Pointer
+     events so it works with mouse, pen and touch from one code path, and
+     a full keyboard route (Tab to a chip, arrow keys to pick a zone,
+     Enter to place) because a drag-only interaction is unusable without
+     a pointing device.
+     ===================================================================== */
+  var tray = { items: [], onDrop: null, sel: 0, zone: 0, zones: [] };
+
+  function dragTray(items, zones, onDrop) {
+    clearDragTray();
+    tray.items = items.slice();
+    tray.zones = zones.slice();
+    tray.onDrop = onDrop || null;
+    el.tray.hidden = false;
+    el.tray.innerHTML = '';
+    items.forEach(function (it, i) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = it.label;
+      b.dataset.key = it.key;
+      b.setAttribute('aria-label', it.label + ' — drag onto the chart, or press Enter to place');
+      bindChip(b);
+      el.tray.appendChild(b);
+    });
+  }
+
+  function chipDone(key) {
+    var b = el.tray.querySelector('.chip[data-key="' + key + '"]');
+    if (b) { b.classList.add('chip-placed'); b.disabled = true; }
+  }
+
+  function chipWrong(key) {
+    var b = el.tray.querySelector('.chip[data-key="' + key + '"]');
+    if (!b) return;
+    b.classList.add('chip-wrong');
+    setTimeout(function () { b.classList.remove('chip-wrong'); }, 620);
+  }
+
+  function bindChip(b) {
+    var drag = null;
+
+    b.addEventListener('pointerdown', function (e) {
+      if (b.disabled) return;
+      b.setPointerCapture(e.pointerId);
+      var r = b.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false };
+      b.classList.add('chip-dragging');
+    });
+
+    b.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      drag.moved = true;
+      /* lift the chip out of the tray and let it follow the pointer in
+         viewport space — the stage is scaled, so a transform in stage
+         units would drift away from the cursor */
+      b.style.position = 'fixed';
+      b.style.left = (e.clientX - drag.dx) + 'px';
+      b.style.top = (e.clientY - drag.dy) + 'px';
+      b.style.zIndex = 40;
+      highlightNearestZone(e.clientX, e.clientY);
+    });
+
+    b.addEventListener('pointerup', function (e) {
+      if (!drag) return;
+      b.classList.remove('chip-dragging');
+      var hit = drag.moved ? nearestZone(e.clientX, e.clientY) : null;
+      b.style.position = ''; b.style.left = ''; b.style.top = '';
+      b.style.zIndex = '';
+      clearZoneHighlight();
+      drag = null;
+      /* dropped on empty water: the chip simply returns to the tray */
+      if (hit && tray.onDrop) tray.onDrop(b.dataset.key, hit);
+    });
+
+    b.addEventListener('pointercancel', function () {
+      if (!drag) return;
+      b.classList.remove('chip-dragging');
+      b.style.position = ''; b.style.left = ''; b.style.top = '';
+      b.style.zIndex = '';
+      clearZoneHighlight(); drag = null;
+    });
+
+    /* keyboard route */
+    b.addEventListener('keydown', function (e) {
+      if (b.disabled) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        tray.zone = (tray.zone + 1) % tray.zones.length; highlightZone(); e.preventDefault();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        tray.zone = (tray.zone - 1 + tray.zones.length) % tray.zones.length;
+        highlightZone(); e.preventDefault();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        clearZoneHighlight();
+        if (tray.onDrop) tray.onDrop(b.dataset.key, tray.zones[tray.zone]);
+        e.preventDefault();
+      }
+    });
+    b.addEventListener('focus', function () {
+      /* every chip starts its zone selection at the first zone, so which
+         zone Enter targets never depends on what was pressed before */
+      tray.zone = 0;
+      highlightZone();
+    });
+    b.addEventListener('blur', clearZoneHighlight);
+  }
+
+  function nearestZone(cx, cy) {
+    var best = null, bestD = Infinity;
+    tray.zones.forEach(function (k) {
+      var r = CG.Grid.dropZoneRect(k);
+      if (!r) return;
+      var d = Math.hypot(cx - r.cx, cy - r.cy);
+      /* generous: anywhere within roughly a zone's width counts */
+      if (d < bestD && d < 190) { bestD = d; best = k; }
+    });
+    return best;
+  }
+
+  function highlightNearestZone(cx, cy) {
+    var k = nearestZone(cx, cy);
+    tray.zones.forEach(function (z) {
+      var g = document.querySelector('.dz[data-key="' + z + '"]');
+      if (g) g.classList.toggle('dz-over', z === k);
+    });
+  }
+
+  function highlightZone() {
+    tray.zones.forEach(function (z, i) {
+      var g = document.querySelector('.dz[data-key="' + z + '"]');
+      if (g) g.classList.toggle('dz-over', i === tray.zone);
+    });
+  }
+
+  function clearZoneHighlight() {
+    var n = document.querySelectorAll('.dz-over');
+    for (var i = 0; i < n.length; i++) n[i].classList.remove('dz-over');
+  }
+
+  function clearDragTray() {
+    tray.items = []; tray.zones = []; tray.onDrop = null; tray.zone = 0;
+    if (el.tray) { el.tray.innerHTML = ''; el.tray.hidden = true; }
+    clearZoneHighlight();
+  }
+
   return {
     init: init,
     buildControls: buildControls,
@@ -300,10 +462,13 @@ CG.UI = (function () {
     mission: mission,
     setLevelPill: setLevelPill,
     coordTag: coordTag,
+    emphasiseCoord: emphasiseCoord,
     hideCoordTag: hideCoordTag,
     highlight: highlight,
     handAt: handAt,
     hideHand: hideHand,
-    syncSoundButton: syncSoundButton
+    syncSoundButton: syncSoundButton,
+    dragTray: dragTray, clearDragTray: clearDragTray,
+    chipDone: chipDone, chipWrong: chipWrong
   };
 })();

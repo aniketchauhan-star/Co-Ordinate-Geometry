@@ -66,6 +66,9 @@
       <g clip-path="url(#panelClip)">
       <g id="chart">
         <g clip-path="url(#chartedClip)">
+          <!-- 3b: quadrant regions — tinted, tappable. Below the grid so
+               the white lines still read across a tinted region. -->
+          <g id="regionLayer"></g>
           <!-- 4: grid — solid white lines on the tinted panel -->
           <g id="gridLines"></g>
           <!-- 5: axes / origin -->
@@ -82,6 +85,9 @@
       <g id="revealLayer"></g>
       <!-- 8: target + beacon -->
       <g id="markerLayer"></g>
+      <!-- 8b: the lesson arc — plotted points, dashed unit measurements,
+           drop zones and the recap markers from the flown missions -->
+      <g id="lessonLayer"></g>
       <g id="fxLayer"></g>
       </g>
       </g>
@@ -128,6 +134,10 @@
               aria-label="Tap where the two axes meet"></button>
 
       <!-- Layers 21-22 — one unified control dock backplate + its buttons -->
+      <!-- drag tray for the labelling activities. Sits above the dock's
+           slot so the chips never overlap the chart. -->
+      <div class="tray" id="dragTray" hidden></div>
+
       <div class="dock" id="dock">
         <div class="dock-inner">
           <div class="controls" id="controls"></div>
@@ -156,6 +166,14 @@
         <p class="complete-kicker">AIR TRAFFIC CONTROL</p>
         <h2 class="complete-title">MISSION COMPLETE</h2>
         <p class="complete-line" id="completeLine">Two numbers can locate any point on the plane.</p>
+        <!-- the five skill outcomes the whole flow set out to teach -->
+        <ul class="outcomes">
+          <li>Moving left and right runs along the <strong>x-axis</strong>.</li>
+          <li>Moving up and down runs along the <strong>y-axis</strong>.</li>
+          <li>The two axes are perpendicular and meet at the <strong>origin</strong>.</li>
+          <li>A point&rsquo;s location is written in the order <span class="coord">(x, y)</span>.</li>
+          <li>The four quadrants each have their own sign pattern.</li>
+        </ul>
         <div class="complete-actions">
           <button class="btn btn-primary" id="btnPlayAgain" type="button">PLAY AGAIN</button>
         </div>
@@ -188,6 +206,7 @@
 <script src="js/levels.js"></script>
 <script src="js/grid.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/lesson.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

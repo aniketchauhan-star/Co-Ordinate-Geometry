@@ -883,3 +883,183 @@ button{font-family:inherit}
   *{transition-duration:1ms!important}
   .plane-holder{transition:transform 200ms linear!important}
 }
+
+/* ===================================================================
+   THE LESSON ARC
+   Plotted points, dashed unit measurements, drop zones, tappable
+   quadrant regions and the drag tray. All semantic colour comes from
+   the field-only tokens (--ok / --retry), never the dock's direction
+   hues — see the SEMANTIC vs DIRECTION note in :root.
+   =================================================================== */
+
+/* the chart only accepts pointer events while an activity is live */
+.layer-field.field-live{pointer-events:auto}
+.layer-field.field-live #chart{pointer-events:none}
+.layer-field.field-live .region-live,
+.layer-field.field-live .tapdot,
+.layer-field.field-live #regionLayer{pointer-events:auto}
+
+/* ---- plotted points ---------------------------------------------- */
+.plot{animation:plotIn 420ms var(--ease-out) both}
+.plot-glow{fill:rgba(245,138,34,.42);filter:url(#beaconGlow)}
+.plot-core{fill:var(--orange);stroke:#FFF6DC;stroke-width:3}
+.plot-label{
+  font:900 27px/1 var(--font-num);fill:#fff;
+  paint-order:stroke;stroke:rgba(14,39,64,.72);stroke-width:6;
+  font-variant-numeric:tabular-nums;
+}
+@keyframes plotIn{
+  0%{opacity:0;transform:scale(.4)}
+  60%{transform:scale(1.14)}
+  100%{opacity:1;transform:scale(1)}
+}
+.plot{transform-box:fill-box;transform-origin:center}
+
+/* ---- dashed unit measurement ------------------------------------- */
+.measure-line{
+  fill:none;stroke-width:4;stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.measure-x .measure-line{stroke:var(--ok)}
+.measure-y .measure-line{stroke:#7FD4FF}
+.measure-label{
+  font:900 25px/1 var(--font);text-anchor:middle;
+  paint-order:stroke;stroke:rgba(14,39,64,.70);stroke-width:6;
+}
+.measure-x .measure-label{fill:var(--ok-ring)}
+.measure-y .measure-label{fill:#CDEBFF}
+@keyframes measureDraw{to{stroke-dashoffset:0}}
+
+/* ---- the right-angle mark at the origin -------------------------- */
+.ra-mark{
+  fill:none;stroke:#FFF6DC;stroke-width:3.5;
+  vector-effect:non-scaling-stroke;
+  animation:fadeIn 340ms var(--ease-out) both;
+}
+
+/* ---- drop zones -------------------------------------------------- */
+.dz{animation:fadeIn 300ms var(--ease-out) both}
+.dz-lead{stroke:rgba(255,255,255,.62);stroke-width:2.5;vector-effect:non-scaling-stroke}
+.dz-box{
+  fill:rgba(10,44,66,.42);stroke:rgba(255,255,255,.62);
+  stroke-width:2.5;stroke-dasharray:8 7;
+  vector-effect:non-scaling-stroke;
+  transition:fill 180ms,stroke 180ms;
+}
+.dz-over .dz-box{fill:rgba(168,240,90,.26);stroke:var(--ok);stroke-dasharray:none}
+.dz-filled .dz-box{fill:rgba(10,44,66,.72);stroke:var(--ok);stroke-dasharray:none}
+.dz-wrong .dz-box{stroke:var(--retry);fill:rgba(255,194,77,.20);animation:dzShake 420ms}
+.dz-text{
+  font:900 27px/1 var(--font-num);fill:#fff;text-anchor:middle;
+  font-variant-numeric:tabular-nums;
+}
+@keyframes dzShake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(-7px)}
+  75%{transform:translateX(7px)}
+}
+.dz{transform-box:fill-box}
+
+/* ---- tappable quadrant regions ----------------------------------- */
+.region{fill:transparent;transition:fill 220ms}
+.region-live{cursor:pointer}
+.region-q1.region-live{fill:rgba(139,86,217,.16)}
+.region-q2.region-live{fill:rgba(232,78,78,.14)}
+.region-q3.region-live{fill:rgba(245,138,34,.15)}
+.region-q4.region-live{fill:rgba(72,190,55,.15)}
+.region-live:hover{fill:rgba(255,255,255,.20)}
+.region-idle{fill:transparent;pointer-events:none}
+.region-ok{fill:rgba(168,240,90,.40)!important}
+.region-bad{fill:rgba(255,194,77,.34)!important}
+
+/* the invitation to tap inside one region */
+.tapdot{
+  fill:rgba(255,255,255,.16);stroke:rgba(255,255,255,.55);
+  stroke-width:2;vector-effect:non-scaling-stroke;cursor:pointer;
+  transition:fill 160ms,stroke 160ms;
+  animation:tapdotIn 420ms var(--ease-out) both;
+}
+.tapdot:hover{fill:rgba(168,240,90,.40);stroke:#fff}
+@keyframes tapdotIn{from{opacity:0}to{opacity:1}}
+
+/* ---- quadrant labels --------------------------------------------- */
+.qlabel{animation:fadeIn 380ms var(--ease-out) both}
+.qlabel-roman{
+  font:900 34px/1 var(--font);fill:#fff;text-anchor:middle;
+  letter-spacing:.02em;
+  paint-order:stroke;stroke:rgba(14,39,64,.62);stroke-width:7;
+}
+.qlabel-signs{
+  font:900 30px/1 var(--font-num);fill:var(--cream-hi);text-anchor:middle;
+  paint-order:stroke;stroke:rgba(14,39,64,.62);stroke-width:7;
+}
+
+/* ---- the flown-route recap markers ------------------------------- */
+.recap{animation:plotIn 460ms var(--ease-out) both}
+.recap-dot{fill:var(--orange);stroke:#FFF6DC;stroke-width:3}
+.recap-box{fill:rgba(245,138,34,.94);stroke:rgba(14,39,64,.30);stroke-width:2}
+.recap-text{
+  font:900 26px/1 var(--font-num);fill:#fff;text-anchor:middle;
+  font-variant-numeric:tabular-nums;
+}
+.recap{transform-box:fill-box;transform-origin:center}
+
+/* ---- the drag tray ----------------------------------------------- */
+.tray{
+  position:absolute;left:50%;bottom:24px;transform:translateX(-50%);
+  z-index:22;display:flex;gap:16px;align-items:center;
+  padding:14px 18px;border-radius:var(--ui-radius-lg);
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 42%),
+    rgba(33,39,44,.90);
+  border:2px solid rgba(255,255,255,.70);
+  box-shadow:var(--sh-3),var(--rim);
+  animation:dockIn 340ms var(--ease-out) both;
+}
+.chip{
+  font:900 var(--fs-md)/1 var(--font);
+  color:var(--navy);
+  background:linear-gradient(180deg,#F6DCEC,#E8BBD6);
+  border:2.5px solid rgba(22,55,91,.55);
+  border-radius:14px;padding:14px 22px;
+  cursor:grab;touch-action:none;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.60),0 4px 0 rgba(150,90,120,.55),var(--sh-1);
+  transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press);
+}
+.chip:hover:not(:disabled){transform:translateY(-2px)}
+.chip-dragging{
+  cursor:grabbing;transform:scale(1.06) rotate(-1.5deg);
+  box-shadow:0 14px 26px rgba(8,45,70,.34);
+}
+.chip-placed{
+  opacity:.42;cursor:default;
+  background:linear-gradient(180deg,#CFD8DE,#B7C2CA);
+  box-shadow:none;transform:none;
+}
+.chip-wrong{animation:dzShake 420ms}
+.chip:focus-visible{outline:3px solid #FFF3C4;outline-offset:3px}
+
+/* ---- completion recap of the five outcomes ----------------------- */
+.outcomes{
+  display:grid;gap:10px;margin:4px 0 22px;padding:0;list-style:none;
+  text-align:left;
+}
+.outcomes li{
+  display:flex;gap:12px;align-items:baseline;
+  font-size:var(--fs-md);font-weight:700;color:var(--navy);
+}
+.outcomes li::before{
+  content:"";flex:0 0 auto;width:11px;height:11px;border-radius:50%;
+  background:var(--orange);box-shadow:0 0 0 4px rgba(245,138,34,.24);
+  transform:translateY(-2px);
+}
+.outcomes .coord{
+  font:900 1em/1 var(--font-num);font-variant-numeric:tabular-nums;
+  background:rgba(22,55,91,.09);padding:.04em .3em;border-radius:6px;
+}
+
+/* the two halves of a coordinate, called out one at a time */
+.coord-val .cx,.coord-val .cy{transition:color 220ms,background 220ms;border-radius:5px;padding:0 .1em}
+.coord-val .cx.on{color:var(--green-dk);background:rgba(72,190,55,.22)}
+.coord-val .cy.on{color:#1B6FA8;background:rgba(60,150,220,.20)}
+

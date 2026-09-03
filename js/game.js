@@ -26,6 +26,9 @@ window.CG = window.CG || {};
     horizontalCorrect: false,
     verticalCorrect: false,
     revealedNumbers: { x: [], y: [] },
+    /* one entry per solved mission — the lesson arc replays these as the
+       "you used two directions to locate every aircraft" markers */
+    reached: [],
     currentQuadrant: 1,
     animationState: 'idle'        /* idle | flying | returning */
   };
@@ -405,6 +408,24 @@ window.CG = window.CG || {};
     Grid.successFx(gameState.target);
     Grid.highlightTarget(true);
     Audio.play('reached');        /* supplied arrival chime */
+    /* Keyed to the mission, not appended: showSuccess records this before
+       its first await, so a re-entry would otherwise duplicate the entry
+       and the lesson arc would replay the same route twice. */
+    gameState.reached[gameState.levelIndex] = { x: sel.x, y: sel.y };
+
+    /* The final CFU is a check, not a lesson: it confirms and stops
+       rather than replaying the route and naming the numbers again. */
+    var fb = level().feedback;
+    if (fb) {
+      Grid.highlightRevealed('x', sel.x, true);
+      Grid.highlightRevealed('y', sel.y, true);
+      locationCallout(sel);
+      UI.mission({ text: fb.correct, voice: fb.correctVoice || fb.correct, animate: 'words' });
+      await wait(CFG.beatLong); if (tk !== seqToken) return;
+      UI.hideCoordTag();
+      showComplete();
+      return;
+    }
 
     /* FLOW 09 — arrival, then the coordinate */
     UI.mission({ text: 'Target reached!', voice: 'Target reached.' });
@@ -418,22 +439,32 @@ window.CG = window.CG || {};
     });
     await wait(CFG.beatMed); if (tk !== seqToken) return;
 
+    /* FLOW 10 / PDF p14 — replay the route, one direction at a time, and
+       do it after EVERY mission: "First, we moved 3 spaces horizontally.
+       Then, we moved 2 spaces vertically." The horizontal run lights up
+       on its own first, so each number is tied to one movement. */
+    var q;
+    Grid.clearReveal();
+    for (q = 1; q <= Math.abs(sel.x); q++) Grid.highlightRevealed('x', Math.sign(sel.x) * q, true);
     UI.mission({
-      text: 'You moved <em>' + Math.abs(sel.x) + '</em> spaces ' + dirWord('x', sel.x) +
-            ' and <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
-      voice: 'You moved ' + CG.Voice.numWord(Math.abs(sel.x)) + ' spaces ' +
-             dirWord('x', sel.x).toLowerCase() + ', and ' + CG.Voice.numWord(Math.abs(sel.y)) +
-             ' spaces ' + dirWord('y', sel.y).toLowerCase() + '.',
+      text: 'First, you moved <em>' + Math.abs(sel.x) + '</em> spaces ' + dirWord('x', sel.x) + '.',
+      voice: 'First, you moved ' + CG.Voice.numWord(Math.abs(sel.x)) + ' spaces ' +
+             dirWord('x', sel.x).toLowerCase() + '.',
       animate: 'words'
     });
-    Grid.highlightRevealed('x', sel.x, true);
-    Grid.highlightRevealed('y', sel.y, true);
+    await wait(CFG.beatMed); if (tk !== seqToken) return;
+
+    for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
+    UI.mission({
+      text: 'Then, you moved <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
+      voice: 'Then, you moved ' + CG.Voice.numWord(Math.abs(sel.y)) + ' spaces ' +
+             dirWord('y', sel.y).toLowerCase() + '.',
+      animate: 'words'
+    });
     await wait(CFG.beatLong); if (tk !== seqToken) return;
 
-    /* FLOW 10 — first success only: movement becomes X and Y */
+    /* first success only: the movement is named as X and Y */
     if (level().coordinateReveal) {
-      var q;
-      for (q = 1; q <= Math.abs(sel.x); q++) Grid.highlightRevealed('x', Math.sign(sel.x) * q, true);
       UI.mission({
         text: 'That is <em>' + Math.abs(sel.x) + '</em> spaces across.',
         sub: 'X = ' + sel.x,
@@ -443,7 +474,6 @@ window.CG = window.CG || {};
       });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
-      for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
       UI.mission({
         text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
         sub: 'Y = ' + sel.y,
@@ -479,7 +509,11 @@ window.CG = window.CG || {};
     locationCallout(sel);
 
     /* FLOW 12 — first miss: no answer, no hint, just try again */
-    UI.mission({ text: 'Not there yet. Try again.', voice: 'Not there yet. Try again.' });
+    var fb = level().feedback;
+    UI.mission(fb
+      ? { text: gameState.attemptNumber >= 2 ? fb.second : fb.first,
+          voice: gameState.attemptNumber >= 2 ? fb.second : fb.first }
+      : { text: 'Not there yet. Try again.', voice: 'Not there yet. Try again.' });
     await wait(CFG.retryDelay); if (tk !== seqToken) return;
 
     UI.hideCoordTag();
@@ -619,10 +653,25 @@ window.CG = window.CG || {};
 
   function advanceLevel() {
     clearAuto(); seqToken++;
-    var lv = level();
-    if (lv.conceptRevealAfter) { showConceptReveal(); return; }
-    if (gameState.levelIndex + 1 >= LEVELS.length) { showConceptReveal(); return; }
+    if (gameState.levelIndex + 1 >= LEVELS.length) { showComplete(); return; }
+    var next = LEVELS[gameState.levelIndex + 1];
+    /* The eight flight missions are arc 1. Between them and the final CFU
+       sits the whole lesson arc: the recap, the names, the co-ordinates of
+       a point and the quadrants. See js/lesson.js. */
+    if (next.lessonBefore) { runLesson(); return; }
     Audio.play('levelTransition');
+    loadLevel(gameState.levelIndex + 1);
+  }
+
+  /* arc 2 + arc 3, then hand back to the flight game for the final CFU */
+  async function runLesson() {
+    gameState.screen = 'lesson';
+    lockInput(true);
+    var flown = gameState.reached.filter(function (p) { return !!p; }).slice(0, 4);
+    var ok = await CG.Lesson.run(flown);
+    if (!ok) return;
+    Audio.play('levelTransition');
+    UI.showDock(true);
     loadLevel(gameState.levelIndex + 1);
   }
 
@@ -722,37 +771,6 @@ window.CG = window.CG || {};
     autoTimer = null;
   }
 
-  /* ============================================================
-     CONCEPT REVEAL  (movement  ->  X / Y language)
-     ============================================================ */
-  /* Runs a teaching sequence with no buttons: each step speaks, shows its
-     line, then either waits a beat or waits for the learner to tap. */
-  function runSequence(steps, done) {
-    var tk = ++seqToken;
-    var i = 0;
-
-    function step() {
-      if (tk !== seqToken) return;
-      if (i >= steps.length) { if (done) done(); return; }
-      var s = steps[i++];
-
-      Promise.resolve(s.before ? s.before() : null).then(function () {
-        if (tk !== seqToken) return;
-        UI.mission({ text: s.text, sub: s.sub || '', voice: s.voice, animate: 'words' });
-
-        if (s.tapOrigin) {                       /* "tap where the axes meet" */
-          showOriginTap(function () { if (tk === seqToken) step(); });
-          return;
-        }
-        clearAuto();
-        autoTimer = window.setTimeout(function () {
-          if (tk === seqToken) step();
-        }, s.beat || CFG.beatMed);
-      });
-    }
-    step();
-  }
-
   /* the origin becomes tappable for exactly one beat of the reveal */
   function showOriginTap(onTap) {
     var btn = dom.originTap;
@@ -772,121 +790,33 @@ window.CG = window.CG || {};
     dom.originTap.hidden = true;
   }
 
-  function showConceptReveal() {
-    gameState.screen = 'reveal';
-    lockInput(true);
-    clearAuto(); clearIdleHint();
-    UI.buildControls([]);
+  /* ============================================================
+     COMPLETION  (PDF p50 outcomes)
+     A restrained card over the same ocean and grid, recapping only the
+     five things the whole flow set out to teach. The teaching itself now
+     lives in js/lesson.js; this is the curtain, not the lesson.
+     ============================================================ */
+  function showComplete() {
+    clearAuto(); seqToken++;
+    gameState.screen = 'complete';
+    gameState.coordinateMode = true;
     UI.showDock(false);
-    Grid.setTarget(null);
-    Grid.clearPath(); Grid.clearReveal(); Grid.clearFx(); Grid.clearHint();
-    Grid.showQuadrants(null);
-    Grid.clearPing();
+    UI.showMission(false);
     UI.hideCoordTag();
-    hideOriginTap();
-    Grid.setStage(4, true);
-    syncPlaneScale();
-    setHeading(0);
-    setAircraftPosition(0, 0, true);
-    UI.setLevelPill(LEVELS.length, LEVELS.length);
-
-    var P = { x: 3, y: 2 };
-
-    runSequence([
-      { text: 'Let\u2019s see what we discovered.',
-        voice: 'Let us see what we discovered.', beat: CFG.beatMed },
-
-      { text: 'We need two numbers to locate a point.',
-        voice: 'We need two numbers to locate a point.', beat: CFG.beatMed },
-
-      { before: function () { Grid.showAxes(true); Audio.play('reveal'); },
-        text: 'These lines have special names.',
-        voice: 'These lines have special names.', beat: CFG.beatMed },
-
-      { before: function () { Grid.highlightAxis('x'); Grid.setLetter('x', true); Audio.play('reveal'); },
-        text: 'The horizontal line is the <em>x-axis</em>.',
-        voice: 'The horizontal line is the x axis.', beat: CFG.beatMed },
-
-      { before: function () { Grid.highlightAxis('y'); Grid.setLetter('y', true); Audio.play('reveal'); },
-        text: 'The vertical line is the <em>y-axis</em>.',
-        voice: 'The vertical line is the y axis.', beat: CFG.beatMed },
-
-      { before: function () { Grid.highlightAxis(null); Grid.pingPoint(0, 0); },
-        text: 'Tap where the two axes meet.',
-        voice: 'Tap where the two axes meet.', tapOrigin: true },
-
-      { before: function () { Grid.clearPing(); Grid.showOriginLabel('Origin (0, 0)'); Audio.play('reveal'); },
-        text: 'That point is the <em>origin</em>.',
-        sub: '(0, 0)',
-        voice: 'That point is the origin.', beat: CFG.beatMed },
-
-      { text: 'The axes meet at a right angle, so they are <em>perpendicular</em>.',
-        voice: 'The axes meet at a right angle, so the axes are perpendicular.',
-        beat: CFG.beatLong },
-
-      { before: function () { Grid.highlightOrigin(false); },
-        text: 'Together they form the <em>co-ordinate plane</em>.',
-        voice: 'Together, they form the coordinate plane.', beat: CFG.beatMed },
-
-      { before: function () {
-          Grid.hideOriginLabel();
-          Grid.showPermanentNumbers(true);
-          UI.mission({ text: 'Now look at this point.', animate: 'words',
-                       voice: 'Now, look at this point.' });
-          return animateAircraft(P.x, P.y).then(function () {
-            Grid.setTarget(P);
-            Grid.highlightTarget(true);
-            return wait(500);
-          });
-        },
-        text: 'It is <em>3</em> units to the right of the y-axis.',
-        sub: 'So its x-co-ordinate is 3.',
-        voice: 'It is three units to the right of the y axis. So its x coordinate is three.',
-        beat: CFG.beatLong },
-
-      { before: function () { Grid.highlightRevealed('y', P.y, true); },
-        text: 'It is also <em>2</em> units above the x-axis.',
-        sub: 'So its y-co-ordinate is 2.',
-        voice: 'It is also two units above the x axis. So its y coordinate is two.',
-        beat: CFG.beatLong },
-
-      { before: function () { locationCallout(P); Audio.play('reveal'); },
-        text: 'That gives us <span class="coord">(3, 2)</span>.',
-        voice: 'That gives us three, two.', beat: CFG.beatMed },
-
-      { text: 'The <em>x</em>-co-ordinate tells how far left or right. The <em>y</em>-co-ordinate tells how far up or down.',
-        voice: 'The x coordinate tells how far left or right the point is. ' +
-               'The y coordinate tells how far up or down.', beat: CFG.beatLong },
-
-      { before: function () { UI.hideCoordTag(); Grid.setTarget(null); },
-        text: 'The axes split the plane into four regions.',
-        voice: 'The axes split the plane into four regions.', beat: CFG.beatShort },
-
-      { before: function () { Grid.showQuadrants('roman'); Audio.play('reveal'); },
-        text: 'These regions are called <em>quadrants</em>.',
-        voice: 'These regions are called quadrants.', beat: CFG.beatMed },
-
-      { before: function () { Grid.showQuadrants('signs'); },
-        text: 'Each quadrant has its own pair of signs.',
-        sub: 'I (+, +)   II (\u2212, +)   III (\u2212, \u2212)   IV (+, \u2212)',
-        voice: 'In quadrant one both coordinates are positive. In quadrant two x is negative and y is positive. ' +
-               'In quadrant three both are negative. In quadrant four x is positive and y is negative.',
-        beat: CFG.quadrantBeat },
-
-      { text: 'Two numbers can locate any point on the plane.',
-        voice: 'Two numbers can locate any point on the plane.', beat: CFG.beatLong }
-
-    ], function () {
-      gameState.screen = 'complete';
-      gameState.coordinateMode = true;
-      UI.showMission(false);
-      UI.hideCoordTag();
-      Grid.showQuadrants(null);
-      dom.screenComplete.hidden = false;
-      Audio.play('success');
-      CG.Voice.say('Mission complete. Two numbers can locate any point on the plane.');
-    });
+    Grid.clearLesson();
+    Grid.setTarget(null);
+    Grid.clearPath();
+    Grid.showAxes(true);
+    Grid.showPermanentNumbers(true);
+    Grid.setLetter('x', true);
+    Grid.setLetter('y', true);
+    dom.screenComplete.hidden = false;
+    Audio.play('success');
+    CG.Voice.say('Mission complete. Two numbers can locate any point on the plane.');
   }
+
+  /* the origin becomes tappable — used by the lesson arc */
+  CG.originTap = function (cb) { showOriginTap(cb); };
 
   /* ============================================================
      SCREENS
@@ -921,11 +851,16 @@ window.CG = window.CG || {};
 
   function playAgain() {
     CG.Voice.cancel();
+    if (CG.Lesson) CG.Lesson.cancel();
     hideOriginTap();
     dom.screenComplete.hidden = true;
     UI.showMission(true);
+    UI.showDock(true);
     gameState.coordinateMode = false;
     gameState.tutorialStep = -1;
+    /* the flown-route markers are the whole run's history, so they clear
+       here and nowhere else */
+    gameState.reached = [];
     Grid.showPermanentNumbers(false);
     Grid.setLetter('x', false);
     Grid.setLetter('y', false);
@@ -933,6 +868,7 @@ window.CG = window.CG || {};
     Grid.highlightOrigin(false);
     Grid.hideOriginLabel();
     Grid.showQuadrants(null);
+    Grid.clearLesson();
     Grid.clearPing();
     Grid.showAxes(false);
     Grid.setStage(1, false);

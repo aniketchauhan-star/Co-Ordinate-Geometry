@@ -101,8 +101,27 @@ CG.LEVELS = [
   },
   {
     quadrant: 4, target: { x: 3, y: -3 }, controls: ['right', 'left', 'down'],
-    mission: 'Guide the aircraft to the target.',
-    conceptRevealAfter: true        /* "Let's see what we discovered" */
+    mission: 'Guide the aircraft to the target.'
+  },
+
+  /* ---- CFU 3 (PDF p58) ------------------------------------------------
+     The final check. It comes AFTER the lesson arc, so the learner is
+     told the co-ordinate outright and has to work out the route — the
+     inverse of every mission before it, where they had a target on the
+     chart and discovered the numbers. Its feedback is the PDF's own. */
+  {
+    quadrant: 4, target: { x: 2, y: -3 }, controls: ['right', 'left', 'down'],
+    cfu: true,
+    lessonBefore: true,
+    mission: 'The target is (2, −3). Move the aircraft to its position.',
+    voice: 'The target is two, negative three. Move the aircraft to its position.',
+    showTargetCoord: true,
+    feedback: {
+      correct: 'Perfect! You reached (2, −3).',
+      correctVoice: 'Perfect! You reached two, negative three.',
+      first: 'Not quite. Try again!',
+      second: 'First find x. Then move to y.'
+    }
   }
 ];
 
