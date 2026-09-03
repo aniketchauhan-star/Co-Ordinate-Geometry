@@ -66,6 +66,25 @@
       <div class="cloud cloud-3"><i></i><i></i><i></i></div>
     </div>
 
+    <!-- Layer 6 - THE RUNWAY (intro only)
+         Covers the whole stage during the takeoff, then falls away
+         beneath the climbing aircraft to reveal the ocean already
+         painted below it. runway.png is 1672x941 - exactly 16:9 - so it
+         fills the design canvas with no crop and no letterbox.
+
+         Measured out of the artwork's own pixels: the tarmac centreline
+         sits at x = 0.497w (954px on the stage) and the strip runs from
+         y = 0.049h (53px, the far threshold) to y = 0.964h (1041px, the
+         near one). The aircraft's roll is anchored to those numbers, so
+         it tracks the painted runway instead of a guess. -->
+    <div class="layer layer-runway" id="layerRunway" hidden aria-hidden="true">
+      <img class="runway-art" id="runwayArt" src="assets/runway%20.png" alt="" draggable="false">
+      <!-- heat coming off the tarmac while the engines run up -->
+      <div class="rw-heat"></div>
+      <!-- tyre dust, spawned per-wheel down the roll -->
+      <div class="rw-wake" id="rwWake"></div>
+    </div>
+
     <!-- Layers 4-8 — navigation grid, axes, trail, numbers, target -->
     <svg class="layer layer-field" id="field" viewBox="0 0 1920 1080" aria-hidden="true">
       <defs>
@@ -120,6 +139,17 @@
       <div class="plane-spin" id="planeSpin">
         <img id="plane" src="assets/airplane.png" alt="Aircraft" draggable="false">
       </div>
+    </div>
+
+    <!-- Layers 8 and 10 - INTRO CINEMATIC (intro only)
+         Two layers, one either side of the aircraft, because depth is
+         the whole point: cloud that passes BEHIND the aircraft reads as
+         distance, cloud that passes IN FRONT reads as speed. Split like
+         this, five puffs do the work of twenty. -->
+    <div class="layer layer-cine-back" id="cineBack" hidden aria-hidden="true"></div>
+    <div class="layer layer-cine" id="cineFront" hidden aria-hidden="true">
+      <p class="cine-call" id="cineCall" hidden><b></b><span></span></p>
+      <div class="cine-flash" id="cineFlash"></div>
     </div>
 
     <!-- Layers 7-10 — interface -->
@@ -229,6 +259,7 @@
 <script src="js/grid.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/lesson.js"></script>
+<script src="js/intro.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>
