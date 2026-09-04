@@ -1762,12 +1762,34 @@ button{font-family:inherit}
   transition:opacity 520ms var(--ease-out);
 }
 
-/* idle hand nudge */
-.hand{position:absolute;left:0;top:0;width:58px;height:58px;pointer-events:none;
-  transform:translate(-24px,0);opacity:0;transition:opacity 240ms}
+/* IDLE HAND NUDGE — assets/handNudge (2).webp
+   ------------------------------------------------------------------
+   THE OFFSET IS MEASURED, NOT GUESSED. UI.handAt() sets left/top to
+   the point being pointed AT, so the artwork has to be shifted until
+   its fingertip lands there. The supplied file is 254x358 and its
+   topmost opaque pixel sits at x=95, y=6 — 37.4% across, 1.7% down —
+   read straight off the alpha channel. At the 64px width below that is
+   24px left and effectively nothing vertically, which is why the
+   translate is -24px,0 and why the whole element is 64x90: 90 keeps the
+   file's own 254:358 aspect, so the hand is never stretched.
+
+   Change the artwork and these three numbers change with it: width,
+   height (width / 0.709), and the x offset (0.374 x width). */
+.hand{
+  position:absolute;left:0;top:0;
+  width:64px;height:90px;
+  pointer-events:none;
+  transform:translate(-24px,0);
+  opacity:0;transition:opacity 240ms;
+}
 .hand.show{opacity:1;animation:handNudge 1500ms var(--ease-io) infinite}
-.hand svg{width:100%;height:100%;fill:#FFFBEF;stroke:var(--navy);stroke-width:3.4;stroke-linejoin:round;
-  filter:drop-shadow(0 4px 7px rgba(8,45,70,.4))}
+/* The artwork is a thin gold outline and it has to read over a cream
+   dock as well as over open water, so it keeps a shadow of its own.
+   Static, so it is rasterised once — the nudge animates transform. */
+.hand img{
+  width:100%;height:100%;display:block;
+  filter:drop-shadow(0 3px 5px rgba(8,45,70,.45));
+}
 @keyframes handNudge{0%,100%{transform:translate(-24px,0)}50%{transform:translate(-24px,11px)}}
 
 /* ---------------- SCREENS ---------------- */
