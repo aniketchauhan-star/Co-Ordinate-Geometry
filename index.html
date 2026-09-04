@@ -168,11 +168,66 @@
     <div class="layer layer-ui" id="ui">
 
 
-      <!-- Mission / question panel (text is always dynamic, never baked into art) -->
-      <section class="mission" id="mission" role="status" aria-live="polite">
-        <p class="mission-text" id="missionText"></p>
-        <p class="mission-sub" id="missionSub"></p>
-        <div class="mission-actions" id="missionActions"></div>
+      <!-- ============ THE QUESTION BAR ============================
+           An aviation instruction panel: wing fins behind, a cream
+           panel with a navy stroke and a gold trim, and a roundel
+           badge overlapping its left end.
+
+           THE THREE IDS ARE THE CONTRACT. #missionText, #missionSub and
+           #missionActions are what UI.mission() writes into, and
+           #mission is what carries the .enter and .mission-away states.
+           Everything else here is chrome: it is aria-hidden, it holds
+           no text, and it can be restyled or removed without the game
+           logic noticing. The panel stays purely presentational — no
+           gameplay knows it exists beyond calling UI.mission().
+
+           STACKING, BACK TO FRONT: wings, panel, badge, aircraft,
+           text. The order below is that order, so it holds without
+           anything needing a z-index fight. -->
+      <section class="mission game-question-bar" id="mission" role="status" aria-live="polite">
+
+        <!-- wing fins, behind the panel on both sides -->
+        <div class="game-question-wings gq-wings-left" aria-hidden="true">
+          <i class="game-question-wing gq-w1"></i>
+          <i class="game-question-wing gq-w2"></i>
+          <i class="game-question-wing gq-w3"></i>
+        </div>
+        <div class="game-question-wings gq-wings-right" aria-hidden="true">
+          <i class="game-question-wing gq-w1"></i>
+          <i class="game-question-wing gq-w2"></i>
+          <i class="game-question-wing gq-w3"></i>
+        </div>
+
+        <div class="game-question-panel">
+          <!-- the two cyan marks at the right end -->
+          <span class="game-question-accent" aria-hidden="true"></span>
+          <p class="mission-text game-question-text" id="missionText"></p>
+          <p class="mission-sub" id="missionSub"></p>
+          <div class="mission-actions" id="missionActions"></div>
+        </div>
+
+        <!-- the roundel, overlapping the panel's left end -->
+        <div class="game-question-medallion" aria-hidden="true">
+          <span class="gq-tick gq-tick-t"></span>
+          <span class="gq-tick gq-tick-b"></span>
+          <span class="gq-tick gq-tick-l"></span>
+          <span class="gq-tick gq-tick-r"></span>
+          <!-- Top-down aircraft, nose up. Drawn rather than fetched:
+               it is 14 points, and an <img> here would be a tenth
+               request for a shape this simple. Symmetrical about
+               x=32, so it can never look subtly crooked. -->
+          <svg class="game-question-plane" viewBox="0 0 64 64" role="presentation" focusable="false">
+            <defs>
+              <linearGradient id="gqPlaneFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FFFFFF"/>
+                <stop offset=".62" stop-color="#F4FBFF"/>
+                <stop offset="1" stop-color="#CFEBFB"/>
+              </linearGradient>
+            </defs>
+            <path d="M32 4c2.4 0 4.2 3.2 4.6 8.6L37 21.5l20 12v5.5l-20-4.5.6 12 6.4 5v4L32 52.5 20 55.5v-4l6.4-5 .6-12-20 4.5V33.5l20-12 .4-8.9C27.8 7.2 29.6 4 32 4z"
+                  fill="url(#gqPlaneFill)"/>
+          </svg>
+        </div>
       </section>
 
       <!-- callout that appears beside the aircraft (LOCATION / (3, 2)) -->

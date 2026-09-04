@@ -228,10 +228,19 @@ CG.UI = (function () {
   function showMission(on) { el.mission.classList.toggle('mission-away', !on); }
 
   /* dock slide-up — played once when the gameplay screen opens */
+  /* ARRIVAL vs TEXT CHANGE. The dock slides up once a session, and the
+     question bar arrives with it — but the bar's arrival and its first
+     sentence land in the same frame (game.js calls this, then
+     loadLevel), so they cannot be two animations. The flag hands the
+     next mission() call the long arrival; every call after it gets the
+     short lift that a changed sentence deserves. See .gq-in / .enter. */
+  var barArriving = false;
+
   function playDockEntry() {
     el.dock.classList.remove('dock-enter');
     void el.dock.offsetWidth;
     el.dock.classList.add('dock-enter');
+    barArriving = true;
   }
 
   /* ---------------- mission panel ---------------- */
@@ -280,9 +289,11 @@ CG.UI = (function () {
       el.missionText.innerHTML = opts.text || '';
       el.missionSub.innerHTML = opts.sub || '';
       if (opts.animate !== false) {
-        el.mission.classList.remove('enter');
+        var arrival = barArriving ? 'gq-in' : 'enter';
+        barArriving = false;
+        el.mission.classList.remove('enter', 'gq-in');
         void el.mission.offsetWidth;
-        el.mission.classList.add('enter');
+        el.mission.classList.add(arrival);
       }
     }
     /* The question template carries no buttons: the flow is paced by

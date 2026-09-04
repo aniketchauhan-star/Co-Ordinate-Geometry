@@ -896,26 +896,210 @@ button{font-family:inherit}
    holds nothing but the mission panel now. Sound (M) and reset (R)
    live on the keyboard — see onKeyDown() in game.js. */
 
-/* MISSION PANEL */
-.mission{
-  position:absolute;left:50%;top:10px;transform:translateX(-50%);
-  min-width:520px;max-width:1060px;
-  padding:13px 36px 15px;
-  border-radius:var(--ui-radius-lg);
-  background:linear-gradient(180deg,var(--cream-hi) 0%,var(--cream) 100%);
-  border:3px solid var(--ui-stroke);
-  box-shadow:inset 0 0 0 3px rgba(245,138,34,.30),var(--ui-shadow-lg);
-  text-align:center;
+/* ===================================================================
+   THE QUESTION BAR  (.game-question-*)
+
+   An aviation instruction panel rather than a notification strip: wing
+   fins behind, a cream panel inside a navy stroke and a gold trim, and
+   a roundel overlapping its left end with a top-down aircraft in it.
+
+   SELF-CONTAINED. Every rule below is under .game-question-bar or one
+   of its own classes, and every colour it uses is one of the six
+   --question-* tokens. Nothing here reaches out into the dock, the
+   chart or the buttons, and nothing outside reaches in — the bar can
+   be lifted into another screen by copying this block and the markup.
+   The three game-owned ids (#missionText, #missionSub,
+   #missionActions) keep their existing .mission-* rules, so ui.js is
+   untouched by any of it.
+
+   WHY THERE IS NO clamp() OR vw HERE, and this is the one deviation
+   from the brief worth knowing about: the whole game is a fixed
+   1920x1080 canvas scaled by a single transform on .stage. A vw unit
+   inside it is measured against the WINDOW and then scaled again by
+   that transform, so a clamp()ed bar would shrink twice on a small
+   screen and drift out of proportion with the chart it sits over. Px
+   here are design px, and they are already responsive: the stage
+   carries them. This is the same reason .play-slot is positioned in
+   px — see the note there.
+   =================================================================== */
+.game-question-bar{
+  --question-navy:#153F6B;
+  --question-navy-dark:#0E3157;
+  --question-gold:#F4BC30;
+  --question-gold-light:#FFD65A;
+  --question-cream:#FFF5D8;
+  --question-cyan:#52CBEA;
+
+  --gq-h:88px;            /* the panel's resting height          */
+  --gq-medallion:112px;   /* roundel diameter                    */
+  --gq-stroke:5px;        /* navy outer                          */
+
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  min-width:760px;max-width:1180px;
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
 .mission.mission-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-16px)}
-.mission.enter{animation:panelIn 280ms var(--ease-out) both}
-@keyframes panelIn{from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(.98)}to{opacity:1;transform:translateX(-50%)}}
-.mission-text{margin:0;font-size:var(--fs-lg);line-height:1.2;font-weight:800;color:var(--navy);text-wrap:balance}
+
+/* ---- the cream panel ------------------------------------------------
+   THE THREE-RING EDGE is one border and two inset shadows, not three
+   nested elements. Inset shadows do not affect layout, so the gold trim
+   and the highlight inside it cost nothing in boxes and cannot fall out
+   of alignment with the corner radius the way a nested div does. */
+.game-question-panel{
+  position:relative;z-index:2;
+  min-height:var(--gq-h);
+  padding:15px 62px 17px 124px;   /* left clears the roundel */
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:34px 44px 44px 34px;
+  background:linear-gradient(180deg,#FFFAEA 0%,var(--question-cream) 65%,#FBECC5 100%);
+  border:var(--gq-stroke) solid var(--question-navy);
+  box-shadow:
+    inset 0 0 0 5px var(--question-gold),
+    inset 0 0 0 7px rgba(255,255,255,.62),
+    inset 0 2px 0 rgba(255,255,255,.55),
+    0 5px 9px rgba(9,54,88,.22);
+  text-align:center;
+}
+/* THE BREATH ON THE GOLD, and it is meant to be missed. A 3s ramp to
+   16% of a lighter gold laid over the trim that is already there —
+   enough that the bar is not quite dead on screen, not enough to pull
+   the eye off the sentence, which is the only thing here anyone is
+   asked to read. */
+.game-question-panel::after{
+  /* inset:0 puts this exactly on the padding box, which is where an
+     inset shadow is measured from — so this 5px ring lands ON the gold
+     trim rather than half over the navy stroke outside it. */
+  content:"";position:absolute;inset:0;
+  border-radius:30px 40px 40px 30px;pointer-events:none;
+  box-shadow:inset 0 0 0 5px var(--question-gold-light);
+  opacity:0;animation:gqBreath 3000ms var(--ease-io) infinite;
+}
+@keyframes gqBreath{0%,100%{opacity:0}50%{opacity:.16}}
+
+/* ---- the roundel ----------------------------------------------------
+   Same trick as the panel edge: one border, two inset rings. It sits
+   ABOVE the panel and hangs off its left end, which is what stops the
+   bar reading as a rectangle with a picture in it. */
+.game-question-medallion{
+  position:absolute;z-index:3;
+  left:-46px;top:50%;transform:translateY(-50%);
+  width:var(--gq-medallion);height:var(--gq-medallion);
+  border-radius:50%;
+  background:radial-gradient(120% 120% at 50% 18%,#2A67A0 0%,#1B4C82 52%,var(--question-navy-dark) 100%);
+  border:4px solid var(--question-navy);
+  box-shadow:
+    inset 0 0 0 4px var(--question-gold-light),
+    inset 0 0 0 7px #FFF3CF,
+    inset 0 -8px 14px rgba(6,28,54,.45),
+    0 4px 7px rgba(14,49,87,.28);
+  display:grid;place-items:center;
+}
+.game-question-plane{
+  width:56px;height:56px;display:block;
+  filter:drop-shadow(0 2px 3px rgba(6,28,54,.45));
+}
+/* the four compass ticks — a heading rose, not decoration for its own
+   sake: they say the roundel is an instrument */
+.gq-tick{
+  position:absolute;background:var(--question-cyan);
+  border-radius:2px;opacity:.72;
+}
+.gq-tick-t,.gq-tick-b{width:3px;height:9px;left:50%;margin-left:-1.5px}
+.gq-tick-l,.gq-tick-r{height:3px;width:9px;top:50%;margin-top:-1.5px}
+.gq-tick-t{top:11px} .gq-tick-b{bottom:11px}
+.gq-tick-l{left:11px} .gq-tick-r{right:11px}
+
+/* ---- the wing fins --------------------------------------------------
+   Three tapered strips a side, stacked and shortening downward, tucked
+   under the panel so only their outboard ends show. They are BEHIND
+   the panel (z-index 1 against its 2) and carry no text, so they can
+   never crowd the sentence however long it runs. */
+.game-question-wings{
+  position:absolute;z-index:1;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:7px;pointer-events:none;
+}
+.gq-wings-left {left:-108px;align-items:flex-end}
+.gq-wings-right{right:-108px;align-items:flex-start}
+.game-question-wing{
+  display:block;height:13px;
+  border:3px solid #245783;
+  background:linear-gradient(180deg,#FFFFFF 0%,#BDEAFF 100%);
+  box-shadow:0 2px 4px rgba(9,54,88,.18);
+}
+.gq-wings-left  .game-question-wing{border-radius:999px 8px 8px 999px}
+.gq-wings-right .game-question-wing{border-radius:8px 999px 999px 8px}
+.gq-w1{width:118px}
+.gq-w2{width:96px}
+.gq-w3{width:74px}
+
+/* ---- the cyan marks at the right end -------------------------------- */
+.game-question-accent{
+  position:absolute;right:26px;top:50%;transform:translateY(-50%);
+  width:12px;height:12px;border-radius:50%;
+  background:var(--question-cyan);opacity:.5;
+}
+.game-question-accent::before,
+.game-question-accent::after{
+  content:"";position:absolute;left:1px;
+  width:10px;height:3px;border-radius:999px;
+  background:#7ADAF2;opacity:.85;
+}
+.game-question-accent::before{top:-15px}
+.game-question-accent::after {bottom:-15px}
+
+/* ---- the text -------------------------------------------------------
+   The sentence is the strongest thing in the component and everything
+   above is arranged around that. It keeps the game's own display face
+   and --fs-lg, so a question reads at exactly the weight it did before
+   the bar was rebuilt. */
+.mission-text{
+  margin:0;font-size:var(--fs-lg);line-height:1.2;font-weight:800;
+  color:#123C69;letter-spacing:.1px;text-wrap:balance;
+}
 .mission-sub{margin:7px 0 0;font-size:var(--fs-md);line-height:1.24;font-weight:600;color:rgba(22,55,91,.66)}
 .mission-sub:empty,.mission-text:empty{display:none}
 .mission-actions{display:flex;gap:14px;justify-content:center;margin-top:12px}
 .mission-actions:empty{display:none}
+
+/* ---- motion ---------------------------------------------------------
+   TWO ANIMATIONS, AND THEY ARE NOT THE SAME EVENT.
+
+   .gq-in is the ARRIVAL: the bar coming onto a screen that did not have
+   one. It is the long, eased one the brief asks for, and it plays once
+   per session, alongside the dock's own entry.
+
+   .enter is a TEXT CHANGE: the same panel, a new sentence. ui.js fires
+   it on every mission line, so it has to stay short — running a 560ms
+   arrival every time the question changed is exactly the constant
+   bouncing the brief rules out. It is a 280ms lift, unchanged from
+   before this rebuild. */
+.game-question-bar.gq-in{animation:gqArrive 560ms cubic-bezier(.22,.8,.3,1) both}
+@keyframes gqArrive{
+  from{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.98)}
+  to  {opacity:1;transform:translateX(-50%)}
+}
+.mission.enter{animation:panelIn 280ms var(--ease-out) both}
+@keyframes panelIn{from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(.98)}to{opacity:1;transform:translateX(-50%)}}
+
+/* ---- THERE IS NO BREAKPOINT HERE, ON PURPOSE ------------------------
+   The brief asks for a sub-900px rule that shrinks the fins, the icon
+   and the padding. On a normal page that is right; on this one it
+   would break the thing it is meant to fix.
+
+   .stage is a fixed 1920x1080 canvas scaled by ONE transform, and this
+   bar is inside it. When the window narrows, the transform already
+   shrinks the bar, the chart, the dock and the aircraft together, in
+   step — that IS the responsive behaviour, and it is why the aircraft
+   never drifts off the origin at any window size. A @media
+   (max-width:900px) rule fires on the WINDOW while the bar's own px
+   are design px, so it would shrink the bar a second time: a bar
+   getting smaller against a chart that is not. The roundel would pull
+   away from a panel edge that had not moved.
+
+   The one thing that genuinely varies is sentence length, and that is
+   handled above without a query — min-width 760 keeps a short question
+   from collapsing into a badge with a word next to it, max-width 1180
+   makes a long one wrap, and the panel's min-height lets it grow. */
 /* the emphasised number inside a sentence is the thing to look at: it
    gets the numeral face, tabular figures and a warm ground, so it reads
    as a value rather than as bold text */
@@ -1818,6 +2002,7 @@ img:not([src]){visibility:hidden}
   .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,
   .axis-span-line,.axis-span-head,.axis-pip,#axisEnds path,
+  .game-question-panel::after,.game-question-bar.gq-in,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
