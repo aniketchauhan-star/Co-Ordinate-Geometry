@@ -59,6 +59,34 @@ window.CG = window.CG || {};
   function wait(ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function level() { return LEVELS[gameState.levelIndex]; }
+
+  /* HOW FAR A DIRECTION CAN COUNT, FROM THE CHART ITSELF.
+     ------------------------------------------------------------------
+     CFG.maxStep was a single number — 5 — applied at every stage, and
+     it was wrong in both directions. Stage 1's grid runs 0..6, so the
+     learner could never dial the 6 that exists; a narrower stage would
+     have let them dial past its own edge.
+
+     The ceiling is just how many lines that direction has, counted from
+     the origin the aircraft starts on. */
+  function stepCeiling(dir, lv) {
+    var st = CG.STAGES[(lv || level()).quadrant];
+    var e = st && st.extent;
+    if (!e) return CFG.maxStep;
+    if (dir === 'right') return e.xMax;
+    if (dir === 'left')  return -e.xMin;
+    if (dir === 'up')    return e.yMax;
+    if (dir === 'down')  return -e.yMin;
+    return CFG.maxStep;
+  }
+
+  /* A direction is only worth arming if the chart has room for it. The
+     level says which directions the LESSON allows; this intersects that
+     with what the airspace actually offers, so a button can never be
+     live with nowhere to go. */
+  function armedFor(lv) {
+    return (lv.controls || []).filter(function (d) { return stepCeiling(d, lv) > 0; });
+  }
   /* THE INSTRUCTION COMES FROM THE SCRIPT, NOT FROM THE LEVEL ROW.
      Moving the deck's words into js/script.js emptied `mission` off
      every level, and six call sites were still reading it — so the
@@ -211,7 +239,15 @@ window.CG = window.CG || {};
 
     /* a control that is on screen but not armed for this mission */
     if ((level().controls || []).indexOf(dir) === -1) return;
-    var next = clamp(gameState.controls[dir] + delta, 0, CFG.maxStep);
+    /* PAST THE TOP IT GOES ROUND TO 1, it does not stick. With no
+       decrement key on the button itself, clamping at the ceiling left
+       an overshoot as a dead end — the child taps and nothing happens.
+       Wrapping means they can always keep tapping round to the number
+       they want. */
+    var top = stepCeiling(dir);
+    var next = gameState.controls[dir] + delta;
+    if (next > top) next = 1;                  /* round again from 1 */
+    else if (next < 0) next = 0;               /* the counter's -1 stops at 0 */
     if (next === gameState.controls[dir]) return;
 
     gameState.controls[dir] = next;
@@ -768,7 +804,7 @@ window.CG = window.CG || {};
     Grid.setTarget(gameState.target);
     refreshTargetGlow();                   /* co-ordinate entry: glowing waypoint */
 
-    UI.buildControls(lv.visible || lv.controls || [], lv.controls || []);
+    UI.buildControls(lv.visible || lv.controls || [], armedFor(lv));
     resetControlValues();
 
     setHeading(0);
@@ -1169,6 +1205,9 @@ window.CG = window.CG || {};
      calls are everything it needs, and they route through the game's
      own heading and bank maths, so the aircraft carries exactly the
      weight in the approach that it carries in play. */
+  /* ui.js needs the same ceiling for its at-maximum flag */
+  CG.stepCeiling = function (dir) { return stepCeiling(dir); };
+
   CG.planeControl = {
     atStage: function (px, py) {
       dom.planeHolder.classList.remove('snap');

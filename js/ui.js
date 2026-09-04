@@ -237,7 +237,10 @@ CG.UI = (function () {
       c.val.classList.add('bump');
     }
     /* a signed stepper stops at -RANGE, not at zero */
-    var hi = c.signed ? CG.DIRECT_RANGE_OF(c.dir) : CG.CONFIG.maxStep;
+    /* the SAME ceiling the stepper uses, or the "at maximum" flag would
+       disagree with the value the button will actually accept */
+    var hi = c.signed ? CG.DIRECT_RANGE_OF(c.dir)
+                      : (CG.stepCeiling ? CG.stepCeiling(c.dir) : CG.CONFIG.maxStep);
     var lo = c.signed ? -CG.DIRECT_RANGE_OF(c.dir) : 0;
     /* QUEUED. A control with moves entered gets a quiet ring so the
        learner can see at a glance which directions they have asked for
@@ -265,6 +268,16 @@ CG.UI = (function () {
      aircraft is flying" (the whole dock hatches). */
   function applyLock(c) {
     if (!c.armed) { c.up.disabled = c.down.disabled = true; return; }
+    if (c.up === c.down) {
+      /* AT THE CEILING IT STAYS LIVE. One button that wraps must keep
+         accepting taps at its top value — disabling it there is what
+         made the count stick at 6 instead of starting again from 1.
+         data-limit still marks it, so the look can say "top" without
+         the button going dead. */
+      c.up.disabled = locked;
+      c.up.setAttribute('aria-disabled', String(c.up.disabled));
+      return;
+    }
     c.up.disabled = locked || c.up.dataset.limit === '1';
     c.down.disabled = locked || c.down.dataset.limit === '1';
     c.up.setAttribute('aria-disabled', String(c.up.disabled));
