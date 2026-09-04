@@ -47,6 +47,9 @@ window.CG = window.CG || {};
   var animToken = 0;              /* bumped to cancel an in-flight sequence */
   var seqToken = 0;               /* bumped to cancel a teaching sequence   */
   var idleTimer = null;
+  /* how many times the hand has already shown for THIS mission — capped
+     by CFG.idleHintPerMission so it advises once and then keeps quiet */
+  var idleHintShown = 0;
   var autoTimer = null;
 
   var dom = {};
@@ -679,6 +682,7 @@ window.CG = window.CG || {};
      ============================================================ */
   function loadLevel(index) {
     animToken++; seqToken++; clearAuto(); clearIdleHint();
+    idleHintShown = 0;               /* a new mission earns a new hand */
     Grid.clearPulseLines();          /* nothing survives a new mission */
     Grid.clearRoutePoints();
     Audio.engineStop();
@@ -760,6 +764,7 @@ window.CG = window.CG || {};
   /* Reset: cancels flight safely, never restarts progression. */
   function resetLevel() {
     animToken++; seqToken++; clearAuto();
+    idleHintShown = 0;               /* starting over earns a new hand */
     Audio.engineStop();
     Audio.duck('flight', false);
     CG.Voice.cancel();
@@ -952,6 +957,11 @@ window.CG = window.CG || {};
     armIdleHint();
   }
 
+  /* The hand may only ever land on something the learner can actually
+     press. GO is only useful once a route is set; a direction is only
+     useful if this mission arms it AND it is not already dialled in.
+     Returning null means "say nothing", which is the right answer more
+     often than pointing somewhere hopeful. */
   function nextUsefulControl() {
     if (routeIsSet()) return 'go';
     /* direct mode swapped the four directions for a signed X and Y —
@@ -960,17 +970,30 @@ window.CG = window.CG || {};
     for (var i = 0; i < usable.length; i++) {
       if (!gameState.controls[usable[i]]) return usable[i];
     }
-    return usable[0] || null;
+    /* every armed control already carries a value, yet the route reads
+       as unset — nothing here is worth pointing at */
+    return null;
   }
 
   function armIdleHint() {
     clearIdleHint();
     if (gameState.inputLocked) return;
     if (gameState.screen !== 'playing' && gameState.screen !== 'direct') return;
+    /* ONCE PER MISSION. Every tap re-armed this timer, so a learner who
+       worked slowly got the hand again and again — the "not every time"
+       complaint. The cap resets when the mission does, and on a reset,
+       which are the two moments the learner genuinely starts over. */
+    if (idleHintShown >= (CFG.idleHintPerMission || 1)) return;
     idleTimer = window.setTimeout(function () {
+      idleTimer = null;
+      /* re-checked on the way out, not just on the way in: ten seconds
+         is long enough for a flight to have started since */
       if (gameState.inputLocked) return;
+      if (gameState.screen !== 'playing' && gameState.screen !== 'direct') return;
       var what = nextUsefulControl();
-      if (what) UI.handAt(what);
+      if (!what) return;
+      idleHintShown++;
+      UI.handAt(what);          /* always a live control — see below */
     }, CFG.idleHintDelay);
   }
 

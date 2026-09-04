@@ -289,5 +289,13 @@ CG.CONFIG = {
   retryDelay: 4000,    /* wait before the aircraft glides home to retry */
   quadrantBeat: 11500, /* the four sign patterns need reading time      */
 
-  idleHintDelay: 5000  /* ms of inactivity before the hand nudge appears */
+  /* THE HAND WAITS TEN SECONDS, AND COMES ONCE.
+     Five was too eager: a learner reading the question, or counting
+     squares with a finger on the screen, is not stuck — and the hand
+     arrived mid-thought. Ten seconds of complete stillness is a real
+     stall. It is also capped at one appearance per mission (see
+     idleHintShown in game.js), because a hand that returns every ten
+     seconds stops reading as help and starts reading as a nag. */
+  idleHintDelay: 10000,
+  idleHintPerMission: 1
 };
