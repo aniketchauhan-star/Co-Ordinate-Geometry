@@ -59,6 +59,21 @@ window.CG = window.CG || {};
   function wait(ms) { return new Promise(function (r) { window.setTimeout(r, ms); }); }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function level() { return LEVELS[gameState.levelIndex]; }
+  /* THE INSTRUCTION COMES FROM THE SCRIPT, NOT FROM THE LEVEL ROW.
+     Moving the deck's words into js/script.js emptied `mission` off
+     every level, and six call sites were still reading it — so the
+     question bar rendered blank. A level may still override the line
+     (the CFU does, via CG.SCRIPT_CFU), otherwise it is page 2's. */
+  function missionLine(lv) {
+    lv = lv || level();
+    if (lv && lv.cfu && CG.SCRIPT_CFU) return CG.SCRIPT_CFU.text;
+    return (lv && lv.mission) || (CG.SCRIPT_MISSION && CG.SCRIPT_MISSION.text) || '';
+  }
+  function missionVoice(lv) {
+    lv = lv || level();
+    if (lv && lv.cfu && CG.SCRIPT_CFU) return CG.SCRIPT_CFU.voice || CG.SCRIPT_CFU.text;
+    return missionLine(lv);
+  }
   function reduceMotion() {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -431,6 +446,18 @@ window.CG = window.CG || {};
   }
 
   async function onGo() {
+    /* THE UI ANNOUNCES, IT DOES NOT FLY. The brief asks for a custom
+       event carrying the four counts, so the control bar stays a dumb
+       component and the movement logic stays here. Fired before any of
+       the flight machinery runs, so a listener sees the request as it
+       was made rather than after the engine has clamped it. */
+    try {
+      window.dispatchEvent(new CustomEvent('aircraftMove', { detail: {
+        right: gameState.controls.right, left: gameState.controls.left,
+        up: gameState.controls.up,       down: gameState.controls.down
+      }}));
+    } catch (err) { /* CustomEvent missing in some test shims */ }
+
     if (gameState.inputLocked) return;
     var sel = calculateSelectedCoordinate();
     if (!isFinite(sel.x) || !isFinite(sel.y)) { sel = { x: 0, y: 0 }; }
@@ -658,7 +685,7 @@ window.CG = window.CG || {};
 
       }
     } else {
-      UI.mission({ text: level().mission, voice: false });
+      UI.mission({ text: missionLine(), voice: false });
     }
 
     gameState.screen = 'playing';
@@ -743,17 +770,13 @@ window.CG = window.CG || {};
     var briefTakesOver = lv.tutorial && gameState.tutorialStep < 0;
     /* THE NOTE COMES FIRST AND THE MISSION LINE COMES SECOND, because
        the panel now shows one line at a time and whichever is second is
-       the one left on screen. "The airspace now extends to the left" is
-       news — it is true once, and then it is over. "Guide the aircraft
-       to the target" is the instruction, and it has to be readable for
-       as long as the learner is working. So the news opens the panel and
-       the instruction is what it settles on. */
+       the one left on screen. The unlock notes that used to open the
+       panel ("The airspace now extends to the left") were mine, not the
+       deck's, and went when the script became the single source of
+       words — so there is one line here now, page 2's instruction. */
     UI.mission({
-      text: briefTakesOver ? briefText(0) : (lv.unlockNote || lv.mission),
-      sub: (!briefTakesOver && lv.unlockNote) ? lv.mission : '',
-      voice: briefTakesOver ? false
-        : lv.unlockVoice ? lv.unlockVoice + ' ' + lv.mission
-        : lv.mission
+      text: briefTakesOver ? briefText(0) : missionLine(lv),
+      voice: briefTakesOver ? false : missionVoice(lv)
     });
     lockInput(false);
 
@@ -785,7 +808,7 @@ window.CG = window.CG || {};
     lockInput(false);
     armIdleHint();
     var lv = level();
-    UI.mission({ text: lv.mission, sub: '' });
+    UI.mission({ text: missionLine(lv), sub: '' });
     /* RESET is itself an interaction, so the brief has served its
        purpose — it ends here rather than replaying over the top. */
     if (gameState.tutorialStep >= 0) finishTutorial();
@@ -884,7 +907,7 @@ window.CG = window.CG || {};
 
   function briefText(i) {
     var b = BRIEF[i];
-    return b && b.text !== null ? b.text : level().mission;
+    return b && b.text !== null ? b.text : missionLine();
   }
 
   function cancelBrief() { briefToken++; briefAt = -1; clearAuto(); }

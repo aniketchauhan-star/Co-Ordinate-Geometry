@@ -176,32 +176,33 @@
     <div class="layer layer-ui" id="ui">
 
 
-      <!-- ============ THE INSTRUCTION BANNER ======================
-           The supplied artwork, used as one image exactly as painted:
-           a deep blue plate inside a thin white rim, with a small
-           stepped wing off each side. Third artwork in this slot, and
-           much the flattest — 8.09:1 against 4.92 and 3.68 — which is
-           why the chart below it is the biggest it has ever been.
+      <!-- ============ THE QUESTION BAR =============================
+           A pale rounded instruction panel carrying one line of text
+           and nothing else. The speaker button and the aircraft roundel
+           were both taken off at the designer's request — the panel
+           reads as a question, not as a badge. It
+           replaced a supplied plaque artwork: the brief asked for a
+           clean Grade 2 panel built in CSS rather than a dark navy
+           plate, and the artwork was deleted from assets/.
 
-           THE THREE IDS ARE THE CONTRACT. #missionText, #missionSub and
-           #missionActions are what UI.mission() writes into, and
-           #mission carries the .enter / .gq-in / .mission-away states.
-           ui.js is untouched by any of this.
+           THE THREE IDS ARE STILL THE CONTRACT. #missionText,
+           #missionSub and #missionActions are what UI.mission() writes
+           into, and #mission still carries the .enter / .gq-in /
+           .mission-away states, so ui.js needs no change for this. -->
+      <div class="question-wrapper">
 
-           The text sits in .banner-plate, inset in PERCENTAGES of the
-           artwork so it stays registered to the painted plate at any
-           banner width. The plate is DEEP BLUE, so the type is white —
-           navy measures 1.42:1 on it, which is unreadable. -->
-      <section class="mission aircraft-instruction-banner" id="mission"
-               role="status" aria-live="polite">
-        <img class="banner-art" data-src="assets/Question%20template.webp"
-             alt="" aria-hidden="true" draggable="false">
-        <div class="banner-plate">
-          <p class="mission-text" id="missionText"></p>
+
+        <section class="game-question-panel mission" id="mission"
+                 role="status" aria-live="polite">
+          <!-- the MISSION capsule: small, text-only, no icon. It earns
+               its place by naming what the line IS, which the panel
+               otherwise leaves to inference. -->
+          <span class="mission-tag" aria-hidden="true">MISSION</span>
+          <p class="question-text mission-text" id="missionText"></p>
           <p class="mission-sub" id="missionSub"></p>
           <div class="mission-actions" id="missionActions"></div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <!-- callout that appears beside the aircraft (LOCATION / (3, 2)) -->
       <div class="coord-tag" id="coordTag" hidden></div>
@@ -215,41 +216,30 @@
            slot so the chips never overlap the chart. -->
       <div class="tray" id="dragTray" hidden></div>
 
-      <!-- ============ THE CONTROL CONSOLE ==========================
-           THE GAME-OWNED HOOKS ARE UNCHANGED: #dock (carrying
-           .dock-enter / .dock-away / [data-locked]), #controls (which
-           buildControls() fills and empties) and #btnGo. ui.js was not
-           touched to build this — everything added here is chrome that
-           is aria-hidden and holds no state.
+      <!-- ============ THE MOVEMENT CONTROLS =======================
+           One organised horizontal bar: four big arrow buttons, a cream
+           counter beside each, then GO. It replaced a navy cockpit
+           console with feathered wings and gold trim marks, which the
+           brief rules out explicitly — "no dark metallic panels", "no
+           screws everywhere", "not realistic cockpit UI".
 
-           GO LEFT THE ROW. It used to be the last flex item inside
-           .dock-inner; it is now absolutely positioned, seated INSIDE
-           the console's right end. That is not only a look: with GO out
-           of the flow the console's height is set by the control row
-           alone, which is what bought the clearance to make every
-           control taller — see THE HEIGHT IS LOAD-BEARING in the CSS. -->
-      <div class="dock game-control-console" id="dock">
-
-        <div class="console-wings console-wings-left" aria-hidden="true">
-          <i class="console-wing cw1"></i>
-          <i class="console-wing cw2"></i>
-          <i class="console-wing cw3"></i>
-        </div>
-        <div class="console-wings console-wings-right" aria-hidden="true">
-          <i class="console-wing cw1"></i>
-          <i class="console-wing cw2"></i>
-          <i class="console-wing cw3"></i>
-        </div>
-
-        <!-- the four small gold trim marks, one pair per end -->
-        <i class="console-trim console-trim-l" aria-hidden="true"></i>
-        <i class="console-trim console-trim-r" aria-hidden="true"></i>
-
-        <div class="dock-inner">
-          <div class="controls" id="controls"></div>
-        </div>
-
-        <button class="go" id="btnGo" type="button">GO</button>
+           #dock, #controls and #btnGo keep their ids: they are the
+           game's hooks for .dock-enter / .dock-away / [data-locked],
+           for buildControls() filling and emptying, and for GO. -->
+      <div class="dock control-console" id="dock">
+        <!-- three subtle cockpit details and no more: two corner rivets
+             and one hairline divider before GO. -->
+        <i class="console-rivet rivet-l" aria-hidden="true"></i>
+        <i class="console-rivet rivet-r" aria-hidden="true"></i>
+        <div class="controls" id="controls"></div>
+        <i class="console-divider" aria-hidden="true"></i>
+        <button class="go-button go" id="btnGo" type="button"
+                aria-label="Start aircraft movement">
+          <svg class="go-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 4l14 8-14 8z"/>
+          </svg>
+          <span>GO</span>
+        </button>
       </div>
 
       <!-- IDLE NUDGE — the supplied artwork, not a drawn substitute.

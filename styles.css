@@ -299,7 +299,11 @@ button{font-family:inherit}
 .plane-holder{z-index:9}
 .layer-cine{z-index:10}
 .layer-ui{z-index:20}
-.mission{z-index:20}
+/* .question-wrapper carries the layer now, and the speaker has to sit
+   ABOVE the bar it overlaps — a z-index here beat the speaker's own and
+   the button ended up painted behind the panel. */
+.question-wrapper{z-index:20}
+.question-bar{z-index:1}
 .dock{z-index:21}
 .hand{z-index:24}
 .screen{z-index:30}
@@ -730,7 +734,17 @@ button{font-family:inherit}
   100%{opacity:1;transform:scale(1)}
 }
 /* gentle: opacity 0 -> 1, scale .85 -> 1, ~190ms (requirement 8) */
-.reveal-num{animation:numPop 190ms var(--ease-out) both}
+/* the deck's chip: dark rounded plate, white numeral, popped on */
+.reveal-num-chip{animation:numPop 190ms var(--ease-out) both}
+.reveal-chip{
+  fill:#3C4A57;stroke:rgba(255,255,255,.55);
+  stroke-width:calc(2px / var(--k, 1));
+}
+.reveal-num-chip .reveal-num{
+  fill:#FFFFFF;stroke:none;
+  font-size:calc(26px / var(--k, 1));
+  text-anchor:middle;dominant-baseline:central;
+}
 .num-hot{
   animation:numHot 900ms var(--ease-out);
   filter:drop-shadow(0 0 9px rgba(255,243,196,.95));
@@ -742,7 +756,7 @@ button{font-family:inherit}
   60% {transform:scale(1.08)}
   100%{fill:var(--cream);transform:scale(1)}
 }
-.reveal-num,.num-hot{transform-box:fill-box;transform-origin:center}
+.reveal-num-chip,.num-hot{transform-box:fill-box;transform-origin:center}
 
 /* THE POINTS THE AIRCRAFT REACHES
    Each whole-number crossing lights as the aircraft arrives, pulses three
@@ -1066,704 +1080,225 @@ button{font-family:inherit}
    live on the keyboard — see onKeyDown() in game.js. */
 
 /* ===================================================================
-   THE INSTRUCTION BANNER  (.aircraft-instruction-banner)
+   THE QUESTION BAR
    -------------------------------------------------------------------
-   ONE IMAGE, AS PAINTED. This used to be a CSS reconstruction of the
-   plaque — wings built from three divs each, rivets from four spans, a
-   badge with a hand-drawn SVG aircraft, gradients mixed by eye. The
-   supplied artwork replaced all of it, so what is left here is
-   placement and the text box, and the shapes can no longer drift out
-   of register with the drawing because there are no shapes.
+   A pale rounded instruction panel: speaker on the left, aircraft
+   roundel straddling the top edge, one line of text. Built in CSS,
+   which is the brief's instruction — the supplied plaque artwork it
+   replaced was a dark navy plate, and "dark navy plate" is on the
+   DO NOT list along with metallic surfaces and cockpit decoration.
 
-   ---- THE ARTWORK'S OWN GEOMETRY, MEASURED FROM ITS PIXELS ---------
-   The file is 2123x741 with transparent padding. Measured off the
-   alpha and the rim luminance:
-
-       opaque art        x   34..2088   y  211..464
-       writable plate    x  260..1874   y  236..439
-
-   Every inset below is one of those numbers over 2123 or 741, so the
-   text box is locked to the painted plate and stays locked at any
-   banner width. There is no crest on this artwork, so the plate is
-   writable top to bottom and the text is centred in the whole of it —
-   the previous plaque had a badge overhanging the middle of its top
-   edge, which is why that version's top inset was the badge's bottom.
-
-   ---- THE PLATE IS DEEP BLUE, SO THE TYPE IS WHITE -----------------
-   Measured plate colour runs #2C64C2 to #001661. White measures
-   5.66:1 at the lightest stop and 16.31:1 at the darkest — AA to AAA.
-   Navy, which the PALE second artwork needed, measures 1.42:1 here:
-   invisible. So the shadow is a dark drop again, not a white
-   under-highlight — light type on a dark plate needs the opposite
-   lift. This slot has now been pale once and deep blue twice, which
-   is exactly why the colour is decided by measuring the artwork
-   rather than by eye.
-
-   ---- THE VERTICAL BUDGET, AND WHY THE CHART IS NOW THE BIGGEST ----
-   The artwork's opaque region is 2055x254 — an aspect of 8.091:1 — so
-   its height follows from its width and cannot be traded against it.
-   That flatness is worth a great deal. At 900px wide this art is only
-   107px tall, where the 4.92:1 artwork needed 150 at 760px and the
-   3.68:1 plaque needed 207. So the banner is WIDER than either of them
-   (900px, giving a 684px text field) and still shorter, and the chart
-   plate starts at y=118 — CG.CHART.rect in levels.js, PLAY in grid.js
-   and every row of CG.STAGES derive from that one number. Stage 1 and
-   2 now reach cell 116, which is the DOCK's clearance ceiling rather
-   than the banner's, and stage 3 reaches 45.
-
-   ---- WHY THERE IS NO clamp() OR vw ---------------------------------
-   The game is a fixed 1920x1080 canvas scaled to fit by one transform
-   on .stage. A vw inside it is measured against the WINDOW and then
-   scaled again, so a scaled banner shrinks twice on a small screen and
-   drifts out of proportion with the chart it sits over — and the
-   clearance above the chart stops being true at some window sizes and
-   not others. Px here are design px; the stage makes them responsive.
-   Same reason .dock and .play-slot are in px.
+   ---- WHY PX AND NOT clamp() ----------------------------------------
+   The brief asks for clamp(). It would work against this project. The
+   game is a fixed 1920x1080 canvas scaled to fit by ONE transform on
+   .stage, so a clamp() measured in vw is sized against the window and
+   then scaled a second time: the bar shrinks twice on a small screen
+   and drifts out of proportion with the grid it sits over. The brief
+   also says "do not distort button proportions" and names 1920x1080 as
+   the primary resolution — px design units are what deliver that here,
+   and the stage transform is what makes them responsive. Same reason
+   .movement-controls and .play-slot are in px.
    =================================================================== */
-.aircraft-instruction-banner{
-  /* THE ONE KNOB. Everything else is a ratio of the artwork, so this
-     is the only number to change — but changing it changes the art's
-     height by the same factor, and CG.CHART.rect.y has to move with
-     it or the banner lands on the chart. */
-  --qb-w:900px;
+.question-wrapper{
+  position:absolute;left:50%;top:26px;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;
+}
 
-  position:absolute;left:50%;
-  /* The art starts 211/741 of the way down its own file, so the element
-     is lifted by exactly that much to put the painted top edge at y=4.
-     -85px = 4 - 211/2123 * 900. */
-  top:-85px;transform:translateX(-50%);
-  width:var(--qb-w);
+.question-bar{
+  position:relative;
+  width:706px;                  /* the brief's 650-760 band */
+  min-height:88px;              /* the brief's 82-95 band  */
+  box-sizing:border-box;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:16px 34px 14px;
+  border-radius:26px;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F4FAFF 55%,#E3F3FF 100%);
+  border:3px solid #4EA7E8;
+  /* the "subtle inner blue outline", as one inset ring rather than a
+     nested box: it cannot fall out of register with the radius */
+  box-shadow:
+    inset 0 0 0 3px #B7E1F8,
+    0 8px 20px rgba(18,77,140,.22);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
-.banner-art{display:block;width:100%;height:auto;pointer-events:none;user-select:none}
-.mission.mission-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-16px)}
+.mission.mission-away{opacity:0;pointer-events:none;transform:translateY(-16px)}
 
-/* ---- the writable plate --------------------------------------------
-   Insets are the measured plate, in percent, so they hold at any
-   --qb-w. With no crest in the way these are simply the plate's four
-   painted edges, which puts a single line dead centre in the plate
-   and gives 115px of height for two or three. */
-.banner-plate{
-  position:absolute;
-  left:12.247%;              /*  260 / 2123 */
-  right:11.729%;             /* (2123-1874) / 2123 */
-  top:31.849%;               /*  236 / 741  */
-  bottom:40.756%;            /* (741-439) / 741 */
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;
-  text-align:center;
-  /* the plate is painted, not laid out, so nothing here may ever grow
-     the element — a long line shrinks its type instead (fitPlate() in
-     ui.js) and this is the backstop if that is ever bypassed */
-  overflow:hidden;
-}
-.mission-text{
+/* ---- the instruction itself -------------------------------------- */
+.question-text{
   margin:0;
-  /* Set by fitPlate(); this is the largest size, used by short lines.
-     30px is nearly half again the 21px the old plaque could hold — the
-     new plate is 547x115 where that one gave 516x54 — and the floor is
-     20px rather than 15, because this is read at a distance by a class
-     and a line that will not fit at 20px is a content problem. */
-  font-size:var(--qb-fs,30px);line-height:1.16;font-weight:900;
-  color:#FFFFFF;letter-spacing:.2px;
-  text-shadow:0 2px 2px rgba(0,20,60,.5);
-  text-wrap:balance;
+  font-family:var(--font);font-weight:800;
+  font-size:29px;line-height:1.15;
+  color:#153F8E;
+  text-align:center;text-wrap:balance;
+  /* one line whenever it fits; fitPlate() in ui.js steps the size down
+     for the long teaching lines rather than letting the bar grow */
+  font-size:var(--qb-fs,29px);
 }
 .mission-sub{
-  margin:0;
-  font-size:calc(var(--qb-fs,30px) * .72);line-height:1.2;font-weight:800;
-  color:rgba(226,238,255,.86);
+  margin:2px 0 0;
+  font-family:var(--font);font-weight:800;
+  font-size:calc(var(--qb-fs,29px) * .68);
+  color:rgba(21,63,142,.72);
 }
-.mission-sub:empty,.mission-text:empty{display:none}
-.mission-actions{display:flex;gap:14px;justify-content:center;margin-top:4px}
+.mission-sub:empty,.question-text:empty{display:none}
+.mission-actions{display:flex;gap:14px;justify-content:center;margin-top:6px}
 .mission-actions:empty{display:none}
 
-/* ---- motion ---------------------------------------------------------
-   TWO ANIMATIONS, AND THEY ARE NOT THE SAME EVENT.
-
-   .gq-in is the ARRIVAL: the banner coming onto a screen that did not
-   have one. Once per session, alongside the dock's own entry.
-
-   .enter is a TEXT CHANGE: the same banner, a new instruction. ui.js
-   fires it on every line, so it must NOT move the banner — a plaque
-   that lifts itself every time the sentence changes is the continuous
-   bouncing to avoid. It animates the MESSAGE and gives the badge one
-   pulse; the plaque itself does not move at all.
-
-   The new text fades in; the old text is not faded out first. Doing
-   both would mean holding the old sentence for ~200ms after the voice
-   has already started the new one, and in this game the words on screen
-   are supposed to be the words being spoken. A swap that reads as a
-   swap, in step with the audio, beats a prettier one that lags it. */
-.aircraft-instruction-banner.gq-in{
-  animation:bannerIn 500ms cubic-bezier(.2,.9,.3,1.12) both;
-}
-@keyframes bannerIn{
-  from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(.97)}
-  to  {opacity:1;transform:translateX(-50%)}
-}
-.mission.enter .mission-text{animation:messageIn 300ms var(--ease-out) both}
-@keyframes messageIn{
-  from{opacity:0;transform:translateY(4px)}
-  to  {opacity:1;transform:none}
-}
-/* The badge pulse went with the reconstruction. The crest is painted
-   into the artwork, so it cannot be animated apart from the plaque, and
-   animating the plaque is the movement this banner must not make. */
-  55% {transform:translateX(-50%) scale(1.06)}
-  100%{transform:translateX(-50%) scale(1)}
-}
-
-/* the emphasised number inside a sentence is the thing to look at: it
-   gets the numeral face, tabular figures and a warm ground, so it reads
-   as a value rather than as bold text */
-/* RE-LIT FOR A BLUE PANEL. These were navy text on a warm orange wash,
-   which was right on a cream plaque and unreadable on this one — navy
-   ink on a dark blue ground. Same job, inverted: a pale cyan wash with
-   white figures, so an emphasised number still reads as a VALUE rather
-   than as bold text, and still reads at all. */
-.mission em{
-  font:900 1.06em/1 var(--font-num);font-style:normal;
-  font-variant-numeric:tabular-nums;
-  color:#FFFFFF;background:rgba(157,231,255,.26);
-  box-shadow:inset 0 0 0 1.5px rgba(189,239,255,.40);
-  padding:.06em .3em;border-radius:6px;
-  text-shadow:0 2px 1px rgba(0,45,100,.55);
-}
-.mission .coord{
-  font:900 1.04em/1 var(--font-num);font-variant-numeric:tabular-nums;
-  color:#EAF8FF;background:rgba(3,40,107,.42);
-  box-shadow:inset 0 0 0 1.5px rgba(117,217,255,.38);
-  padding:.06em .34em;border-radius:7px;letter-spacing:.01em;
-  text-shadow:0 2px 1px rgba(0,45,100,.55);
-}
-.fadeword{display:inline-block;opacity:0;transform:translateY(7px);animation:wordIn 620ms var(--ease-out) forwards}
-@keyframes wordIn{to{opacity:1;transform:none}}
-
-/* buttons */
-.btn{
-  border:3px solid var(--ui-stroke);border-radius:var(--ui-radius);
-  padding:0 26px;height:56px;font-size:22px;font-weight:900;letter-spacing:.06em;
-  cursor:pointer;color:#fff;
-  box-shadow:0 5px 0 rgba(0,0,0,.18),var(--ui-shadow);
-  transition:transform var(--t-press) var(--ease-out),filter var(--t-hover);
-}
-.btn:hover{transform:translateY(-1px) scale(1.03)}
-.btn:active{transform:translateY(3px) scale(.98);box-shadow:0 1px 0 rgba(0,0,0,.18)}
-.btn-primary{background:linear-gradient(180deg,var(--lime),var(--green));text-shadow:0 2px 0 rgba(0,0,0,.22)}
-
-/* coordinate tag beside aircraft */
-.coord-tag{
-  position:absolute;left:0;top:0;pointer-events:none;
-  transform:translate(-50%,-50%) scale(.7);
-  padding:9px 18px;border-radius:14px;
-  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
-  border:3px solid var(--ui-stroke);
-  box-shadow:var(--ui-shadow);
-  font-weight:900;color:var(--navy);white-space:nowrap;text-align:center;
-  display:grid;gap:1px;
-  opacity:0;transition:opacity 260ms var(--ease-out),transform 320ms var(--ease-out);
-}
-.coord-kicker{font-size:16px;letter-spacing:.16em;color:rgba(22,55,91,.58)}
-.coord-val{font:900 var(--fs-lg)/1.05 var(--font-num);font-variant-numeric:tabular-nums}
-
-/* the origin becomes tappable for one beat of the concept reveal */
-/* generous for touch, completely invisible: the glowing point drawn on
-   the grid is the only thing the learner sees */
-.origin-tap{
-  position:absolute;width:132px;height:132px;
-  transform:translate(-50%,-50%);
-  border-radius:50%;cursor:pointer;
-  background:none;border:0;padding:0;
-}
-.origin-tap[hidden]{display:none}
-.coord-tag.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-/* `display:grid` above is an AUTHOR rule, and an author rule beats the
-   browser's own `[hidden]{display:none}` — so el.coordTag.hidden = true
-   was doing nothing at all. The tag was only ever invisible because
-   removing .show takes it to opacity 0: still laid out, and still in the
-   accessibility tree, where a screen reader would read out a location
-   the aircraft left a minute ago. */
-.coord-tag[hidden]{display:none}
-
 /* ===================================================================
-   THE CONTROL CONSOLE  (.dock / .game-control-console)
+   THE MOVEMENT CONTROLS
    -------------------------------------------------------------------
-   A long cream aircraft panel — navy outside, gold trim inside, wing
-   fins off both ends — carrying four coloured direction plates, each
-   paired with a cream number capsule, with a round GO overlapping its
-   right end.
+   [ arrow ][ count ]  x4,  a divider, then GO. One colour per
+   direction, one big white arrow per button, one cream counter beside
+   it. This replaced a navy cockpit console with feathered wings and
+   gold trim: the brief rules that out in as many words — "not
+   realistic cockpit UI", "no dark metallic panels", "no screws
+   everywhere".
 
-   FIVE THINGS WORTH KNOWING BEFORE EDITING
-
-   1. THE MARKUP IS THE GAME'S, NOT THIS FILE'S. Every hook ui.js and
-      the tests use is untouched: .ctrl[data-dir][data-armed],
-      .ctrl-label, .ctrl-val (+.bump), .stepper, .step-btn[data-limit],
-      #btnGo.go (+.armed), and the console's own .dock-enter /
-      .dock-away / [data-locked]. buildControls() and
-      buildAxisControls() emit the same DOM they always did, and the
-      direct-entry steppers inherit this whole look for free because
-      they are that same DOM.
-
-   2. THE HEIGHT IS LOAD-BEARING, and it is the number that decides
-      every other number here. Stage 3's chart panel reaches y=924 and
-      the console sits 20px off the bottom of a 1080 stage, so the whole
-      thing has 130px to live in and it uses 118: an 84px control row,
-      24px of padding and 10px of border, putting its top edge at y=942
-      with 18px of clearance. THAT is why the controls are 84px and not
-      the 105px the brief asks for, and why GO is 100px and not 130 —
-      at the brief's sizes the console is ~180px tall and the last row
-      of the grid is underneath it. The only way to have those numbers
-      is to shorten the chart, which is a different decision.
-
-      Moving GO out of the flex row is what paid for the 84: the row's
-      height used to be set by GO's diameter, so every px of GO was a px
-      the plates could not have.
-
-   3. SIZES ARE IN PIXELS, NOT clamp()/vw, AND THAT IS DELIBERATE. The
-      game lives on a fixed 1920x1080 canvas scaled to fit by one
-      transform, so a px here is ALREADY responsive: the console, the
-      chart and the aircraft shrink together and the composition holds.
-      A vw inside that canvas is measured against the window and then
-      scaled again — the console would change proportion against the
-      grid as the window resized, and the clearance in note 2 would
-      stop being true at some window sizes and not others.
-
-   4. THE COLOURED PLATE IS A LABEL, NOT A BUTTON, and it deliberately
-      has no press state. The direction is the NAME of a spinner; the
-      thing you press is the capsule's arrows. Giving a chunky plate
-      hover-lift and travel would promise a tap that does nothing. The
-      plate and its capsule lift together on hover, which is true —
-      hovering the pair does lead to a live control.
-
-   5. NAVY OUTLINES EVERYWHERE, ONE HUE PER JOB. Every edge on the
-      console is the same navy, so the colour that survives is the
-      direction hue and the gold trim. The plates used to be outlined
-      in their own darker hue, which gave four different edge colours
-      competing along one row.
+   THE HIERARCHY IS ARROW, THEN COUNT, THEN WORD, and the sizes say so:
+   a 58px arrow, a 38px numeral, a 16px label. A Grade 2 reader is
+   meant to recognise the arrow before reading anything.
    =================================================================== */
-.dock{
-  --console-navy:#123F6B;
-  --console-navy-dark:#0A3156;
-  --console-gold:#F2B82C;
-  --console-gold-light:#FFD75B;
-  --console-cyan:#69D5F4;
+.movement-controls{
+  position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  padding:8px 14px;
+  border-radius:28px;
+  background:rgba(245,251,255,.94);
+  border:3px solid #8BCDF2;
+  box-shadow:0 8px 18px rgba(11,79,130,.18);
+}
+.controls{display:flex;align-items:center;gap:12px}
 
-  position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
-  /* The right padding is the seat GO sits in: 14px of margin, its own
-     98px box, and 14px of air before the last stepper. Change GO's
-     diameter and this changes with it. */
-  padding:12px 126px 12px 26px;
-  border-radius:38px;
-  background:linear-gradient(180deg,#FFFBEA 0%,#FFF5D7 60%,#FBE9B8 100%);
-  border:5px solid var(--console-navy);
-  /* THE THREE-RING EDGE, the same construction as the question bar:
-     one border and two inset shadows. Inset shadows do not affect
-     layout, so the gold trim costs no boxes and cannot fall out of
-     register with the corner radius. */
-  box-shadow:
-    inset 0 0 0 5px var(--console-gold),
-    inset 0 0 0 8px rgba(255,255,255,.62),
-    inset 0 4px 0 rgba(255,255,255,.55),
-    0 8px 0 rgba(10,49,86,.16),
-    0 12px 18px rgba(9,52,87,.20);
-  font-family:var(--font-ctl);
-  transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
+.direction-control{
+  display:flex;align-items:center;gap:8px;
+  /* the tiny word sits under the pair, so the pair is a row inside a
+     column — that is the brief's "labels BELOW the controls" */
+  flex-direction:row;flex-wrap:wrap;justify-content:center;
+  width:186px;
 }
-/* THE SCALLOPED HEM IS GONE. It was a soft cut-paper edge peeking out
-   from under a soft cream panel, and it read well against that. Under a
-   5px navy stroke and a gold trim it read as a second, competing edge
-   treatment on the same object — so the panel now has one edge. */
-
-/* ---- wing fins ------------------------------------------------------
-   Three a side, shortening downward, tucked under the console so only
-   their outboard ends show. Behind everything (z-index 0 against the
-   control row's 2), pointer-events:none, and carrying nothing — they
-   cannot get between a child and a button. */
-.console-wings{
-  position:absolute;z-index:0;top:50%;transform:translateY(-50%);
-  display:flex;flex-direction:column;gap:8px;pointer-events:none;
-}
-.console-wings-left {left:-86px;align-items:flex-end}
-.console-wings-right{right:-86px;align-items:flex-start}
-.console-wing{
-  display:block;height:15px;
-  border:3px solid #174A78;
-  background:linear-gradient(180deg,#F6FDFF 0%,#B9E9FC 100%);
-  box-shadow:0 2px 4px rgba(9,52,87,.18);
-}
-.console-wings-left  .console-wing{border-radius:22px 10px 10px 22px}
-.console-wings-right .console-wing{border-radius:10px 22px 22px 10px}
-.cw1{width:96px}
-.cw2{width:80px}
-.cw3{width:64px}
-
-/* ---- the four gold trim marks --------------------------------------
-   Read as instrument-panel dashes, not as decoration for its own sake.
-   One element per end, its two marks drawn as ::before / ::after, so
-   four marks cost two elements. */
-.console-trim{
-  position:absolute;z-index:1;top:14px;bottom:14px;width:34px;
-  pointer-events:none;
-}
-.console-trim-l{left:20px}
-.console-trim-r{right:20px}
-.console-trim::before,
-.console-trim::after{
-  content:"";position:absolute;left:0;width:34px;height:5px;border-radius:3px;
-  background:repeating-linear-gradient(90deg,
-    var(--console-gold-light) 0 5px,rgba(0,0,0,0) 5px 9px);
-  opacity:.75;
-}
-.console-trim::before{top:0}
-.console-trim::after {bottom:0}
-
-.dock.dock-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(18px)}
-/* played once when the gameplay screen opens — never per mission */
-.dock.dock-enter{animation:dockIn 360ms var(--ease-out) both}
-@keyframes dockIn{
-  from{opacity:0;transform:translateX(-50%) translateY(20px)}
-  to{opacity:1;transform:translateX(-50%)}
+.direction-label{
+  order:3;flex:0 0 100%;
+  text-align:center;margin-top:1px;
+  font-family:var(--font);font-weight:800;font-size:14px;
+  letter-spacing:.06em;color:#174280;
 }
 
-/* ONE ROW, always. Wrapping is what once pushed GO onto a second line
-   and made the console tall enough to reach into the grid. It never
-   needs to wrap: four pairs measure 1262px inside a 1920px stage. */
-.dock-inner{position:relative;z-index:2;display:flex;align-items:center;justify-content:center}
-.controls{display:flex;align-items:center;gap:18px;flex-wrap:nowrap;justify-content:center}
-.controls[hidden]{display:none}
-
-/* ---- one direction: a coloured plate and its number capsule -------- */
-.ctrl{
-  /* No default hue here on purpose — that would be RIGHT's quartet
-     written twice, and buildControls() always sets data-dir, so the
-     four rules below are the single source. */
-  /* gap:0 on purpose. A flex gap here applies between ALL three
-     children, which would drive a visible 8px slot down the middle of
-     the number capsule and destroy the one-object illusion the split
-     border-radius exists to create. The one gap that IS wanted — plate
-     to capsule — is a margin on .ctrl-val. */
-  display:flex;align-items:center;gap:0;
-  height:84px;
-  animation:ctrlIn 300ms var(--ease-out) both;
-}
-@keyframes ctrlIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
-.ctrl[data-dir="right"]{--c-top:var(--right-top);--c-main:var(--right-main);--c-bottom:var(--right-bottom);--c-edge:var(--right-edge)}
-.ctrl[data-dir="left"] {--c-top:var(--left-top); --c-main:var(--left-main); --c-bottom:var(--left-bottom); --c-edge:var(--left-edge)}
-.ctrl[data-dir="up"]   {--c-top:var(--up-top);   --c-main:var(--up-main);   --c-bottom:var(--up-bottom);   --c-edge:var(--up-edge)}
-.ctrl[data-dir="down"] {--c-top:var(--down-top); --c-main:var(--down-main); --c-bottom:var(--down-bottom); --c-edge:var(--down-edge)}
-
-/* the pair lifts as one — see note 4 above */
-.ctrl[data-armed="1"]{transition:transform 160ms cubic-bezier(.2,.8,.2,1)}
-@media (hover:hover){
-  .ctrl[data-armed="1"]:hover{transform:translateY(-2px)}
-}
-
-/* ---- the coloured plate ------------------------------------------- */
-.ctrl-label{
-  position:relative;
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  height:84px;min-width:168px;padding:0 20px;
-  /* bottom corners a touch rounder than the top: the pillow silhouette */
-  border-radius:26px 26px 29px 29px;
-  background:linear-gradient(180deg,var(--c-top) 0%,var(--c-main) 48%,var(--c-bottom) 100%);
-  /* NAVY, not --c-edge. Four plates outlined in four different darker
-     hues gave the row four edge colours; one navy outline lets the four
-     BODY colours be the only thing that differs, which is the fact the
-     colour coding is trying to carry. --c-edge still draws the solid
-     lower lip, where being the plate's own darker hue is what makes it
-     read as the same object seen from slightly above. */
-  border:4px solid var(--console-navy);
-  box-shadow:
-    0 6px 0 var(--c-edge),                  /* the solid lower edge   */
-    0 8px 11px rgba(13,69,99,.18),
-    inset 0 3px 0 rgba(255,255,255,.34),    /* the convex top         */
-    inset 0 -9px 0 rgba(0,0,0,.10);         /* the darker lower lip   */
-  color:var(--ctl-ink);
-  font-size:24px;font-weight:900;letter-spacing:.3px;
-  text-shadow:0 2px 0 rgba(37,66,89,.22);
-}
-/* NO GLOSS OVERLAY ON THE UPPER SIDE. There was one here, and its own
-   border-radius (21px on top, 40% on the bottom) gave it a silhouette
-   of its own — so instead of reading as a highlight it read as a
-   separate rounded blob sitting on the button. The plate is convex
-   enough without it: the three-stop gradient does the curvature and the
-   inset white line does the top edge. */
-/* the supplied glyphs are already directional triangles, so they are
-   the arrow — 1.35x the label, per the brief, and left of the word */
-.ctrl-label svg{
-  width:30px;height:30px;fill:#fff;flex:none;
-  filter:drop-shadow(0 2px 0 rgba(37,66,89,.22));
-}
-
-/* ---- the number capsule ------------------------------------------
-   .ctrl-val and .stepper are separate elements in the markup, so they
-   are butted together and share a rim to read as ONE capsule split by a
-   hairline. That is what avoids adding a wrapper element — and adding
-   one would have meant editing buildControls(). */
-.ctrl-val{
-  margin-left:10px;                    /* the only gap inside a .ctrl */
-  min-width:82px;height:84px;
-  border-radius:20px 0 0 20px;
-  background:linear-gradient(180deg,#FFFBEA 0%,#FFF2CC 100%);
-  border:4px solid var(--console-navy);border-right:none;
-  box-shadow:
-    inset 0 0 0 2px rgba(238,190,78,.55),   /* the gold interior edge */
-    inset 0 3px 0 rgba(255,255,255,.65),
-    inset 0 -4px 0 rgba(200,160,80,.14);
+/* ---- the arrow buttons ------------------------------------------- */
+.direction-button{
+  /* A THIRD SMALLER THAN THE BRIEF'S BAND, ON REQUEST. The brief asked
+     for 150-175 x 105-120; on screen that bar stood 171px tall and came
+     within 13px of the chart, and the note back was "its too big". The
+     proportions and the hierarchy are unchanged — arrow, then counter,
+     then label — everything is simply scaled down together. */
+  width:124px;height:84px;
+  border-radius:24px;
   display:grid;place-items:center;
-  font:900 36px/1 var(--font-ctl);color:#153F69;
+  cursor:pointer;
+  background:linear-gradient(180deg,var(--d-1) 0%,var(--d-2) 55%,var(--d-3) 100%);
+  border:3px solid var(--d-3);
+  box-shadow:
+    0 5px 0 var(--d-edge),
+    0 8px 14px rgba(20,60,100,.18),
+    inset 0 2px 0 rgba(255,255,255,.40);
+  transition:transform 120ms var(--ease-out),filter 120ms var(--ease-out),
+             box-shadow 120ms var(--ease-out);
+}
+.direction-button svg{width:44px;height:44px;fill:#FFFFFF;
+  /* the outline is a darker shade of the button's own colour, which is
+     what keeps a white arrow readable on yellow-orange */
+  stroke:var(--d-edge);stroke-width:2.4;paint-order:stroke fill}
+.direction-button:hover:not(:disabled){transform:translateY(-2px)}
+.direction-button:active:not(:disabled){
+  transform:translateY(4px);
+  box-shadow:
+    0 1px 0 var(--d-edge),
+    0 4px 7px rgba(20,60,100,.15),
+    inset 0 2px 0 rgba(255,255,255,.2);
+}
+.direction-button:disabled{cursor:default;filter:grayscale(.72) opacity(.5)}
+.direction-button[data-limit="1"]{filter:saturate(.72) brightness(.96)}
+
+/* ONE COLOUR PER DIRECTION, straight from the brief. */
+.right-button{--d-1:#FFC24A;--d-2:#FFA914;--d-3:#FF8508;--d-edge:#D95E00}
+.left-button {--d-1:#5FC6F8;--d-2:#19A8F4;--d-3:#087CF0;--d-edge:#0755C6}
+.up-button   {--d-1:#C489F3;--d-2:#A64CEB;--d-3:#7C2DD2;--d-edge:#5920A7}
+.down-button {--d-1:#FF8A90;--d-2:#FF535C;--d-3:#EF3042;--d-edge:#BC2336}
+
+/* ---- the counters ------------------------------------------------ */
+.move-counter{
+  width:50px;height:58px;
+  border-radius:15px;
+  display:grid;place-items:center;
+  background:linear-gradient(180deg,#FFFDF4,#FFEFC7);
+  border:3px solid #E5C47A;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 4px 10px rgba(20,60,100,.12);
+  font-family:var(--font-num,var(--font));font-weight:900;font-size:29px;
   font-variant-numeric:tabular-nums;
+  color:#173B74;
+  user-select:none;
 }
-/* only the NUMBER animates, never the bar around it */
-.ctrl-val.bump{animation:bump 180ms var(--ease-out)}
-@keyframes bump{50%{transform:scale(1.15) translateY(-2px)}}
+/* the pop when the number changes, 200ms, no particles */
+.move-counter.bump{animation:countPop 200ms var(--ease-out)}
+@keyframes countPop{
+  0%  {transform:scale(1)}
+  45% {transform:scale(1.25)}
+  100%{transform:scale(1)}
+}
+.direction-control[data-armed="0"] .move-counter{filter:grayscale(.6) opacity(.5)}
+/* at zero there is nothing to take off, so the counter stops inviting a tap */
+.move-counter[data-limit="1"]{cursor:default!important}
 
-.stepper{
-  display:flex;flex-direction:column;
-  height:84px;width:46px;
-  border-radius:0 20px 20px 0;
-  background:linear-gradient(180deg,#FFFBEA 0%,#FFF2CC 100%);
-  border:4px solid var(--console-navy);border-left:none;
-  box-shadow:
-    inset 0 0 0 2px rgba(238,190,78,.55),
-    inset 0 3px 0 rgba(255,255,255,.65),
-    inset 0 -4px 0 rgba(200,160,80,.14);
-  overflow:hidden;
+.control-divider{
+  width:3px;height:56px;border-radius:2px;
+  background:linear-gradient(180deg,rgba(139,205,242,0),#8BCDF2 22%,#8BCDF2 78%,rgba(139,205,242,0));
 }
-.step-btn{
-  flex:1;width:100%;border:none;background:rgba(0,0,0,0);cursor:pointer;
-  display:grid;place-items:center;
+
+/* ---- GO ---------------------------------------------------------- */
+.go-button{
   position:relative;
-  transition:background 140ms var(--ease-out),transform var(--t-press) var(--ease-out);
-}
-/* the hairline between the two keys */
-.step-btn:first-child{box-shadow:inset 0 -1.5px 0 rgba(200,160,80,.42)}
-/* THE 44px TARGET, WITHOUT A 44px KEY.
-   The capsule is 84px tall, so two stacked keys are 38px each — under
-   the 44px this game holds itself to. Each target is therefore extended
-   8px OUTWARD ONLY, away from the hairline they share: 52x46 apiece,
-   and they cannot overlap, so the boundary between increase and
-   decrease stays unambiguous. Extending both inward would have made a
-   tap near the middle land on either one. */
-.step-btn::after{content:"";position:absolute}
-.step-btn:first-child::after{inset:-8px -6px 0 -6px}
-.step-btn:last-child::after {inset:0 -6px -8px -6px}
-.step-btn svg{width:21px;height:21px;fill:#17466F;transition:fill 140ms}
-@media (hover:hover){
-  .step-btn:hover:not(:disabled){background:rgba(255,208,72,.22)}
-}
-.step-btn:active:not(:disabled){transform:translateY(2px)}
-/* the brief's focus ring, scoped here so the game-wide one is untouched */
-.dock :where(button):focus-visible{outline:4px solid rgba(90,210,245,.65);outline-offset:4px}
-
-/* ---- NOT YET -----------------------------------------------------
-   On screen, but this direction's airspace has not unfolded. In
-   quadrant I that is LEFT and DOWN; LEFT arrives with quadrant II and
-   DOWN with quadrant III — see the controls table in levels.js.
-
-   GREY, AND DELIBERATELY LIGHT GREY. It was a warm tan, on the
-   reasoning that a cool grey would read as a hole in a cream panel.
-   Neutral grey says "off" far more plainly, which is the whole job of
-   this state, and it stays light for the original reason: a DARK plate
-   reads as broken, and this direction is not broken — it is coming.
-
-   Distinct from both LIMIT (the stepper has hit its end stop) and
-   LOCKED (the aircraft is flying, so nothing is available). The navy
-   outline stays on all three, because the plate has not gone anywhere.
-
-   The keys are genuinely disabled, not just styled: buildControls()
-   sets `disabled` on both step buttons, and onStep() refuses any
-   direction outside level().controls even if something reaches it
-   another way. */
-.ctrl[data-armed="0"] .ctrl-label{
-  background:linear-gradient(180deg,#D6D3CC,#BFBCB4);
-  border-color:rgba(18,63,107,.42);
-  color:#67655F;
-  text-shadow:none;
-  box-shadow:0 6px 0 #ADAAA2,inset 0 3px 0 rgba(255,255,255,.34);
-}
-.ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(103,101,95,.62);filter:none}
-.ctrl[data-armed="0"] .ctrl-val,
-.ctrl[data-armed="0"] .stepper{
-  background:linear-gradient(180deg,#EDEBE6,#DEDBD4);
-  border-color:rgba(18,63,107,.42);
-  box-shadow:inset 0 0 0 2px rgba(190,188,180,.55);
-}
-.ctrl[data-armed="0"] .ctrl-val{color:rgba(70,72,78,.38)}
-.ctrl[data-armed="0"] .step-btn{cursor:not-allowed}
-.ctrl[data-armed="0"] .step-btn svg{fill:rgba(70,72,78,.24)}
-
-/* LIMIT — "that is as far as it goes". The key stays; only its arrow
-   hollows out, so it reads as an end stop rather than as broken. */
-.step-btn[data-limit="1"]{cursor:default}
-.step-btn[data-limit="1"] svg{fill:rgba(18,58,99,.24)}
-
-/* LOCKED — "not right now", while the aircraft is flying. Carried by a
-   diagonal hatch as well as a tint, never by opacity alone, so it stays
-   distinguishable from LIMIT at a glance.
-
-   Every rule here is keyed to [data-locked="1"] and NOT to the bare
-   attribute, which matters: the opening brief closes the console too,
-   with data-locked="brief", and it must not get this treatment. Nine
-   seconds of hatched console at the start of the game reads as a fault
-   rather than as a pause. The quiet lock takes the buttons out and
-   leaves them looking like buttons. */
-.dock[data-locked="1"] .step-btn,
-.dock[data-locked="1"] .go{cursor:default}
-.dock[data-locked="1"] .stepper{
-  background:repeating-linear-gradient(135deg,
-    #F2E8D0 0 5px,#E4D7B6 5px 10px);
-}
-.dock[data-locked="1"] .step-btn svg{fill:rgba(18,58,99,.30)}
-.dock[data-locked="1"] .ctrl-label{filter:saturate(.55) brightness(.96)}
-
-/* ---- GO -----------------------------------------------------------
-   Round, ringed, and SEATED INSIDE the console's right end — not
-   hanging off it. It was overhanging for one revision, half on the
-   panel and half on the ocean, and it read as a button that had come
-   loose: the navy console edge ran behind it and stopped, the wing fins
-   appeared to sprout from the button rather than from the panel, and
-   nothing on screen explained why this one control was outside the box
-   every other control was inside. In the panel it is obviously part of
-   the same instrument, and the round silhouette does all the work of
-   telling it apart from the four rectangular plates.
-
-   THE RINGS ARE ONE BORDER AND TWO INSET SHADOWS: navy outside, gold,
-   then cream, then the face. Same construction as the console edge and
-   the question bar's roundel, for the same reason — inset shadows cost
-   no layout and cannot fall out of register with a 50% radius.
-
-   88px, not the 130 the brief asks for, and the number is arithmetic
-   rather than taste. Sitting inside, GO has to clear the console's
-   padding box, which is 108px tall (84 control row + 24 padding). Its
-   own box is 88 + 10 of border = 98, so it centres with 5px above and
-   below, and its 4px solid lower edge lands inside that. Any larger and
-   the edge prints through the console's bottom border. See THE HEIGHT
-   IS LOAD-BEARING in note 2 for where the 108 comes from. */
-.go{
-  position:absolute;z-index:3;
-  /* `right` is measured from the console's PADDING box, so this is
-     14px inside the navy border, not 14px from the outside edge. */
-  right:14px;top:50%;transform:translateY(-50%);
-  width:88px;height:88px;padding:0;
-  border-radius:50%;cursor:pointer;
-  font-family:var(--font-ctl);
-  font-size:32px;font-weight:900;letter-spacing:.04em;
-  color:#FFFFFF;
-  text-shadow:0 2px 0 rgba(6,70,88,.30);
-  background:linear-gradient(180deg,var(--go-top) 0%,var(--go-main) 48%,var(--go-bottom) 100%);
-  border:5px solid var(--console-navy);
+  width:146px;height:90px;
+  border-radius:30px;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;
+  background:linear-gradient(180deg,#7DE74A 0%,#35C943 45%,#0BA637 100%);
+  border:4px solid #087D2A;
   box-shadow:
-    inset 0 0 0 5px var(--console-gold-light),
-    inset 0 0 0 9px #FFF2C9,
-    inset 0 5px 8px rgba(255,255,255,.22),
-    inset 0 -8px 10px rgba(0,0,0,.12),
-    0 4px 0 rgba(10,49,86,.20),
-    0 7px 12px rgba(9,46,72,.20);
-  transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press),
-             filter var(--t-hover);
+    0 5px 0 #087E28,
+    0 9px 16px rgba(12,90,40,.24),
+    inset 0 2px 0 rgba(255,255,255,.34);
+  transition:transform 120ms var(--ease-out),filter 120ms var(--ease-out),
+             box-shadow 120ms var(--ease-out);
 }
-/* --- GO, four states -------------------------------------------------
-   idle      nothing selected yet: present but clearly not ready
-   armed     a movement is set: saturated, with a 4px breathing ring
-   pressed   travels down onto the strip
-   locked    the aircraft is flying: hatched, like the rest of the dock */
-/* Every state has to re-state translateY(-50%): it is not a hover
-   flourish here, it is what centres the button on the console's edge,
-   and a transform that omits it drops GO half its own height. */
-@media (hover:hover){
-  .go:hover:not(:disabled){transform:translateY(-50%) scale(1.035)}
+.go-button span{
+  font-family:var(--font);font-weight:900;font-size:32px;
+  letter-spacing:.04em;color:#FFFFFF;
+  text-shadow:0 2px 0 rgba(6,74,26,.55);
 }
-.go:active:not(:disabled){
-  transform:translateY(-50%) scale(.97);
+/* the "ready" accents: two short yellow strokes, deliberately small */
+/* THE "READY" ACCENTS, dialled back. At 5x26 hard against the word
+   they read as two pipe characters — "|GO|" — rather than as accents.
+   Shorter, thinner, softer and pushed out to the button's shoulders. */
+.go-spark{
+  width:3px;height:11px;border-radius:2px;
+  background:#FFE04D;opacity:.55;
+  box-shadow:0 0 6px rgba(255,224,77,.5);
+}
+.go-spark-l{margin-right:4px}
+.go-spark-r{margin-left:4px}
+.go-button{gap:6px}
+.go-button:hover:not(:disabled){transform:translateY(-2px)}
+.go-button:active:not(:disabled){
+  transform:translateY(4px);
   box-shadow:
-    inset 0 0 0 5px var(--console-gold-light),
-    inset 0 0 0 9px #FFF2C9,
-    inset 0 2px 6px rgba(0,0,0,.14),
-    0 1px 0 rgba(10,49,86,.18),
-    0 3px 7px rgba(9,46,72,.20);
+    0 1px 0 #087E28,
+    0 4px 7px rgba(12,90,40,.18),
+    inset 0 2px 0 rgba(255,255,255,.2);
 }
-/* DISABLED IS DESATURATED, NOT FADED. Dropping the opacity of a ringed
-   circle takes the rings with it and the button stops being a shape;
-   draining the colour leaves it perfectly legible and obviously not
-   ready, which is the actual message. */
-.go:disabled{
-  cursor:not-allowed;
-  filter:saturate(.55) brightness(.95);
-  color:rgba(255,255,255,.65);
-  text-shadow:none;
-}
-/* ARMED. A 4px ring expansion over 2s — the one loop in the dock, and
-   it only ever runs once a route is set, which is the moment the child
-   has stopped reading and is about to act. */
-/* THE RING IS A PSEUDO-ELEMENT, NOT AN ANIMATED box-shadow.
+.go-button:disabled{cursor:default;filter:grayscale(.7) opacity(.55)}
 
-   It used to be the fifth value of a six-value box-shadow, animated from
-   0 to 5px of spread and back, forever, for as long as a route was set —
-   which is most of the time anyone spends in this game. A box-shadow
-   cannot be composited: every frame of that was a full repaint of the
-   button, its four inset rings and its two outer shadows, on the CPU,
-   to change one ring nobody was looking at directly.
-
-   The same picture, drawn as a ring that is rasterised ONCE and then
-   only faded and scaled: transform and opacity are the two properties
-   the compositor can animate on its own, without waking the main thread
-   at all. `will-change` is deliberately absent — the ring is 100px and
-   promoting it costs more than it saves. */
-.go::before{
-  /* -10px, not -5px: an absolutely positioned pseudo measures `inset`
-     from its parent's PADDING box, and GO has a 5px border. -10 puts
-     this ring's outer edge 5px OUTSIDE the button, which is where the
-     box-shadow spread it replaces used to draw. At -5 it would sit on
-     top of the navy border instead of around it. */
-  content:"";position:absolute;inset:-10px;
-  border-radius:50%;
-  border:5px solid #69D5F4;
-  opacity:0;pointer-events:none;
-}
-.go.armed:not(:disabled)::before{animation:goReady 2000ms var(--ease-io) infinite}
-@keyframes goReady{
-  /* .90 is 88/98 — the ring collapsed onto the button's own edge, which
-     is what "0 spread" looked like. Not an eyeballed number. */
-  0%,100%{opacity:0;   transform:scale(.90)}
-  50%    {opacity:.42; transform:scale(1)}
-}
-.dock[data-locked="1"] .go,
-.dock[data-locked="1"] .go::before{animation:none}
-.dock[data-locked="1"] .go{
-  background:repeating-linear-gradient(135deg,#8FB6BE 0 6px,#7FA8B1 6px 12px);
-  color:rgba(255,253,242,.62);
-  box-shadow:
-    inset 0 0 0 5px #E7CE8E,inset 0 0 0 9px #F3E6C4,
-    0 4px 0 rgba(10,49,86,.16);
-}
-
-/* ---- THE ACTIVE DIRECTION -----------------------------------------
-   The mission line names one direction at a time, and UI.highlight()
-   already marks it with .tut-hi. On a .ctrl that now means a warm
-   ring and the gentlest possible breath rather than the dashed tutorial
-   outline — an emphasis, not an alarm. Inactive plates are NOT dimmed:
-   quieter would read as disabled, and they are not. */
-/* GO keeps the dashed tutorial ring, but round — a 26px-radius rect
-   around an 88px circle reads as a mistake. */
-.go.tut-hi{z-index:5}
-.go.tut-hi::after{inset:-14px;border-radius:50%}
-.ctrl.tut-hi{position:relative;z-index:4}
-.ctrl.tut-hi::after{content:none}
-.ctrl.tut-hi .ctrl-label{
-  transform:translateY(-2px);
-  box-shadow:
-    0 6px 0 var(--c-edge),
-    0 0 0 3px rgba(255,244,181,.90),
-    0 0 14px rgba(255,167,40,.28),
-    inset 0 3px 0 rgba(255,255,255,.34),
-    inset 0 -9px 0 rgba(0,0,0,.10);
-  animation:ctrlBreathe 2000ms var(--ease-io) infinite;
-}
-@keyframes ctrlBreathe{
-  0%,100%{transform:translateY(-2px) scale(1)}
-  50%    {transform:translateY(-2px) scale(1.025)}
+/* every control keeps a visible keyboard focus */
+.direction-button:focus-visible,.go-button:focus-visible{
+  outline:4px solid #FFF3C4;outline-offset:3px;
 }
 
 /* tutorial highlight */
@@ -2085,6 +1620,16 @@ button{font-family:inherit}
    paints the browser's broken icon plus its alt text — a flash of
    "Co-ordinate Geometry" in the top-left corner on every boot. Nothing
    to show is better than something wrong. */
+/* THE hidden ATTRIBUTE HAS TO WIN.
+   Setting `display` on an element defeats the UA's [hidden] rule, and
+   this file does that all over: .tray, .hand, .screen, .coord-tag,
+   .origin-tap, .play-btn all set display and all use hidden. Four of
+   them carried their own .x[hidden]{display:none} guard; .tray and
+   .hand did not, so an EMPTY DRAG TRAY rendered as a small dark pill
+   at the bottom of the stage through every mission, and the idle hand
+   was never really taken away. One rule instead of six, so the next
+   element to use hidden cannot reintroduce it. */
+[hidden]{display:none!important}
 img:not([src]){visibility:hidden}
 
 /* THE INTRO STATE
@@ -2432,7 +1977,7 @@ img:not([src]){visibility:hidden}
   .go.armed:not(:disabled)::before,.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,.play-btn::before,
   .axis-span-line,.axis-span-head,.axis-pip,#axisHot line.on,
-  .aircraft-instruction-banner.gq-in,
+  .mission.gq-in,.move-counter.bump,
   .mission.enter .mission-text,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,

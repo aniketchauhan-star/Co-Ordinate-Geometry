@@ -35,6 +35,15 @@ CG.UI = (function () {
     el.hand = q('hand');
     el.coordTag = q('coordTag');
 
+    /* THE SPEAKER REPLAYS THE LINE ON SCREEN. It reads #missionText
+       rather than holding its own copy, so it can never say something
+       different from what the learner is looking at. */
+    var say = q('btnSay');
+    if (say) say.addEventListener('click', function () {
+      var line = (el.missionText.textContent || '').trim();
+      if (line) CG.Voice.say(line);
+    });
+
     el.go.addEventListener('click', function () {
       if (el.go.disabled) return;
       if (handlers.onGo) handlers.onGo();
@@ -52,6 +61,43 @@ CG.UI = (function () {
      the dock keeps a constant width, but a direction not in `usable` is
      drawn in a "not yet" state: its airspace has not unfolded, and flying
      that way would leave the chart. */
+  /* ---------------- direction controls ----------------
+     ONE ARROW BUTTON AND ONE COUNTER PER DIRECTION.
+
+     The stepper is gone. It was a value plus a pair of small
+     up/down chevrons, and the brief rules those out for this age
+     group: "DO NOT use tiny HTML number-input spinner arrows... The
+     child should NOT see desktop-style up/down inside the number
+     field." A Grade 2 learner taps the big arrow and the counter goes
+     up; that is the whole model.
+
+     Tapping the COUNTER takes one back off. The brief makes that
+     conditional — "only implement this if the existing game's
+     mechanic requires it" — and it does: a learner who overshoots has
+     to be able to correct without resetting the whole mission, and
+     the engine already supports a -1 step (Shift+Arrow uses it).
+
+     Everything not in `usable` is still drawn so the bar keeps a
+     constant width, but it is dimmed and disabled: its airspace has
+     not unfolded and flying that way would leave the chart. */
+  var ARROW = {
+    right: 'M14 30h22l-9-11 5-3 15 16-15 16-5-3 9-11H14z',
+    left:  'M50 30H28l9-11-5-3-15 16 15 16 5-3-9-11h22z',
+    up:    'M30 50V28l-11 9-3-5 16-15 16 15-3 5-11-9v22z',
+    down:  'M30 14v22l-11-9-3 5 16 15 16-15-3-5-11 9V14z'
+  };
+
+  function bigArrow(dir) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 64 64');
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('aria-hidden', 'true');
+    var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', ARROW[dir] || ARROW.right);
+    svg.appendChild(p);
+    return svg;
+  }
+
   function buildControls(visible, usable) {
     usable = usable || visible;
     el.controls.innerHTML = '';
@@ -61,60 +107,57 @@ CG.UI = (function () {
       var armed = usable.indexOf(d.key) !== -1;
 
       var wrap = document.createElement('div');
-      wrap.className = 'ctrl';
+      wrap.className = 'control-group ctrl';
       wrap.dataset.dir = d.key;
       wrap.dataset.armed = armed ? '1' : '0';
-      wrap.setAttribute('role', 'group');
-      wrap.setAttribute('aria-label', armed ? d.label + ' spaces'
-        : d.label + ' \u2014 this part of the airspace has not opened yet');
 
-      var label = document.createElement('div');
-      label.className = 'ctrl-label';
-      label.appendChild(svgIcon(d.glyph));
-      var span = document.createElement('span');
-      span.textContent = d.label;
-      label.appendChild(span);
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'direction-button step-btn direction-button--' + d.key;
+      btn.appendChild(bigArrow(d.key));
+      btn.setAttribute('aria-label', armed
+        ? 'Move ' + d.label.toLowerCase()
+        : 'Move ' + d.label.toLowerCase() + ' \u2014 this part of the airspace has not opened yet');
 
       var val = document.createElement('output');
-      val.className = 'ctrl-val';
+      val.className = 'move-counter ctrl-val';
       val.id = 'val-' + d.key;
       val.textContent = '0';
       val.setAttribute('aria-live', 'polite');
-      val.setAttribute('aria-label', d.label + ' value');
-
-      var stepper = document.createElement('div');
-      stepper.className = 'stepper';
-      var up = document.createElement('button');
-      up.type = 'button';
-      up.className = 'step-btn';
-      up.appendChild(svgIcon('M12 6l7 9H5z'));
-      up.setAttribute('aria-label', 'Increase ' + d.label);
-      var dn = document.createElement('button');
-      dn.type = 'button';
-      dn.className = 'step-btn';
-      dn.appendChild(svgIcon('M12 18l7-9H5z'));
-      dn.setAttribute('aria-label', 'Decrease ' + d.label);
+      val.setAttribute('aria-label', d.label + ' moves');
 
       if (armed) {
-        up.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, +1); });
-        dn.addEventListener('click', function () { if (handlers.onStep) handlers.onStep(d.key, -1); });
+        btn.addEventListener('click', function () {
+          if (handlers.onStep) handlers.onStep(d.key, +1);
+        });
+        /* the counter is the correction, not a spinner */
+        val.style.cursor = 'pointer';
+        val.setAttribute('title', 'Tap to take one off');
+        val.addEventListener('click', function () {
+          if (handlers.onStep) handlers.onStep(d.key, -1);
+        });
       } else {
-        up.disabled = dn.disabled = true;
-        up.setAttribute('aria-disabled', 'true');
-        dn.setAttribute('aria-disabled', 'true');
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
       }
 
-      stepper.appendChild(up);
-      stepper.appendChild(dn);
+      var label = document.createElement('span');
+      label.className = 'control-label';
+      label.textContent = d.label;
 
-      wrap.appendChild(label);
+      wrap.appendChild(btn);
       wrap.appendChild(val);
-      wrap.appendChild(stepper);
+      wrap.appendChild(label);
       el.controls.appendChild(wrap);
 
-      ctrlMap[d.key] = { root: wrap, val: val, up: up, down: dn, armed: armed };
+      /* `up` and `down` are kept pointing at the one button so every
+         existing caller — applyLock, the tests, the idle nudge — keeps
+         working without knowing the stepper went away. */
+      ctrlMap[d.key] = { root: wrap, val: val, up: btn, down: btn,
+                         armed: armed, signed: false, dir: d.key };
     });
   }
+
 
   /* =====================================================================
      FLOW 58 — THE X / Y STEPPERS
@@ -191,8 +234,23 @@ CG.UI = (function () {
     /* a signed stepper stops at -RANGE, not at zero */
     var hi = c.signed ? CG.DIRECT_RANGE_OF(c.dir) : CG.CONFIG.maxStep;
     var lo = c.signed ? -CG.DIRECT_RANGE_OF(c.dir) : 0;
-    c.up.dataset.limit = v >= hi ? '1' : '0';
-    c.down.dataset.limit = v <= lo ? '1' : '0';
+    /* QUEUED. A control with moves entered gets a quiet ring so the
+       learner can see at a glance which directions they have asked for
+       — the brief's "selected / queued direction", on the module rather
+       than as a glow on the whole button. */
+    if (c.root) c.root.classList.toggle('is-queued', v > 0);
+    if (c.up === c.down) {
+      /* ONE BUTTON, so there is only one limit worth showing. Writing
+         both flags to the same element let the second overwrite the
+         first, and "at zero" would have masked "at maximum" on every
+         direction control. The arrow only ever adds, so its limit is
+         the ceiling; the counter shows the floor by reading 0. */
+      c.up.dataset.limit = v >= hi ? '1' : '0';
+      c.val.dataset.limit = v <= lo ? '1' : '0';
+    } else {
+      c.up.dataset.limit = v >= hi ? '1' : '0';
+      c.down.dataset.limit = v <= lo ? '1' : '0';
+    }
     applyLock(c);
   }
 
@@ -225,11 +283,22 @@ CG.UI = (function () {
     Object.keys(ctrlMap).forEach(function (k) { applyLock(ctrlMap[k]); });
   }
 
+  var goWasOn = false;
   function setGoEnabled(on) {
     el.go.disabled = !on;
     /* armed = a route is set and the aircraft can be sent */
     el.go.classList.toggle('armed', !!on && !locked);
     el.go.setAttribute('aria-disabled', String(!on));
+    /* ONE pulse on the transition into enabled, never a loop: the brief
+       asks for a single 400ms activation and explicitly rules out a
+       continuous one. Keyed off the change, so re-asserting the same
+       state does not re-fire it. */
+    if (!!on && !goWasOn) {
+      el.go.classList.remove('go-armed-pop');
+      void el.go.offsetWidth;
+      el.go.classList.add('go-armed-pop');
+    }
+    goWasOn = !!on;
   }
 
   /* the dock steps aside during the concept reveal and final recap */

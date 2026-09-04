@@ -692,23 +692,68 @@ CG.Grid = (function () {
   }
 
   /* ---------------- movement number reveal ---------------- */
+  /* THE NUMBERS THE AIRCRAFT REVEALS AS IT FLIES (deck pages 5-10).
+     ------------------------------------------------------------------
+     They used to be placed 46 canonical px OUTSIDE the axis — below it
+     for x, left of it for y, which is where the deck draws them. On
+     this chart they were never visible: #revealLayer sits inside both
+     clip groups, and anything more than STROKE_PAD outside the charted
+     rect is clipped away. Five numbers were being created on every
+     flight, at full opacity, and none of them could be seen. A
+     bounding-box check does not catch that, which is why it survived.
+
+     Moving the layer out of the clip does not work either. At stage 1
+     the origin is the grid's bottom-left CORNER, so 46px below the axis
+     lands at y~923 and the control bar starts at 933 — the numbers
+     would sit under the dock.
+
+     So they go just INSIDE the axis, and they carry the deck's own
+     treatment to stay legible over the grid: a dark rounded chip with a
+     white numeral, exactly as pages 5 to 10 draw them. */
+  var CHIP_W = 46, CHIP_H = 40;      /* canonical; scaled with the chart */
+
   function markNumber(axis, value) {
     if (value === 0) return;
     if (permanentNums) { highlightRevealed(axis, value, true); return; }
-    if (el.reveal.querySelector('text[data-rv="' + axis + value + '"]')) return;
-    var t = (axis === 'x')
-      ? mk('text', { x: toX(value), y: toY(0) + 46 }, 'reveal-num')
-      : mk('text', { x: toX(0) - 42, y: toY(value) }, 'reveal-num');
-    t.setAttribute('data-rv', axis + value);
+    if (el.reveal.querySelector('g[data-rv="' + axis + value + '"]')) return;
+
+    /* hugging the axis on the INSIDE, on the side the aircraft flew:
+       a positive leg reads on the positive side, a negative one on the
+       negative side, so the chip is never on top of the route */
+    var cx, cy;
+    if (axis === 'x') {
+      cx = toX(value);
+      cy = toY(0) + (value < 0 ? -1 : 1) * 0 - 36;   /* just above the axis */
+    } else {
+      cx = toX(0) + 40;                              /* just right of it   */
+      cy = toY(value);
+    }
+
+    /* TWO GROUPS, AND IT HAS TO BE TWO. The outer one carries the
+       position as an SVG transform attribute; the inner one carries the
+       pop animation. Putting both on one element does not work: a CSS
+       animation on `transform` REPLACES the element's transform
+       attribute, so every chip rendered at the untranslated origin,
+       stacked on top of one another at (0,0) of the chart. */
+    var g = mk('g', { transform: 'translate(' + cx + ',' + cy + ')' });
+    g.setAttribute('data-rv', axis + value);
+    var pop = mk('g', null, 'reveal-num-chip');
+    pop.appendChild(mk('rect', {
+      x: -CHIP_W / 2, y: -CHIP_H / 2, width: CHIP_W, height: CHIP_H,
+      rx: 9, ry: 9
+    }, 'reveal-chip'));
+    var t = mk('text', { x: 0, y: 0 }, 'reveal-num');
     t.textContent = String(value);
-    el.reveal.appendChild(t);
+    pop.appendChild(t);
+    g.appendChild(pop);
+    el.reveal.appendChild(g);
   }
 
   function highlightRevealed(axis, value, on) {
     var host = permanentNums ? el.nums : el.reveal;
     var sel = permanentNums
       ? 'text[data-axis="' + axis + '"][data-v="' + value + '"]'
-      : 'text[data-rv="' + axis + value + '"]';
+      : 'g[data-rv="' + axis + value + '"]';
     var node = host.querySelector(sel);
     if (!node) return;
     node.classList.remove('num-hot');
