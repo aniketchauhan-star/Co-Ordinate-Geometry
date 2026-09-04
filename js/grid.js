@@ -70,6 +70,7 @@ CG.Grid = (function () {
     el.ticks = document.getElementById('ticks');
     el.nums = document.getElementById('axisNums');
     el.ends = document.getElementById('axisEnds');
+    el.axisHot = document.getElementById('axisHot');
     el.hint = document.getElementById('hintLayer');
     el.pulse = document.getElementById('pulseLayer');
     el.path = document.getElementById('pathLayer');
@@ -93,6 +94,14 @@ CG.Grid = (function () {
       { x1: toX(0), y1: toY(MAX.yMax), x2: toX(0), y2: toY(MAX.yMin) }, nss));
     el.axes.appendChild(el.axisX);
     el.axes.appendChild(el.axisY);
+
+    /* the naming overlay — same geometry, own group, own glow */
+    el.hotX = mk('line', Object.assign(
+      { x1: toX(MAX.xMin), y1: toY(0), x2: toX(MAX.xMax), y2: toY(0) }, nss), 'axis-hot');
+    el.hotY = mk('line', Object.assign(
+      { x1: toX(0), y1: toY(MAX.yMax), x2: toX(0), y2: toY(MAX.yMin) }, nss), 'axis-hot');
+    el.axisHot.appendChild(el.hotX);
+    el.axisHot.appendChild(el.hotY);
 
     /* ticks + permanent numbers; numbers stay hidden until the concept
        reveal names them (the grid must not read as graph paper) */
@@ -342,7 +351,7 @@ CG.Grid = (function () {
      mark that actually answers the question. The count is carried by the
      segments and their pips, drawn along the route, where the learner is
      already looking. */
-  var HINT_STEP = 520;                   /* ms between one space and the next */
+  var HINT_STEP = 700;                   /* ms between one space and the next */
 
   function showHint(axis, value) {
     clearHint();
@@ -406,7 +415,7 @@ CG.Grid = (function () {
      so it never becomes a full-height column — it is a measurement of
      how far up, drawn where the learner is already looking.
      ===================================================================*/
-  var AXIS_STEP = 240;            /* ms between one pip and the next */
+  var AXIS_STEP = 340;            /* ms between one pip and the next */
 
   function glowAxisSpan(axis, value, at) {
     clearAxisSpan();
@@ -463,20 +472,34 @@ CG.Grid = (function () {
     for (i = 0; i < n.length; i++) n[i].parentNode.removeChild(n[i]);
   }
 
+  /* TWO LINES, NOT ONE, AND THE REASON IS PERFORMANCE.
+
+     The pulse used to be a single line animating its own stroke-width
+     between 3.2 and 5.6. Stroke width is GEOMETRY: changing it makes the
+     browser re-tessellate the path every frame, and because the line
+     also carries a two-stop glow, re-run the blur on the result. Sixty
+     times a second, for as long as the sentence naming that line is on
+     screen.
+
+     Drawn as a thin line and a thick one stacked and cross-faded, the
+     geometry never changes and neither blur is ever recomputed: each is
+     rasterised once and the compositor fades between them on its own.
+     The picture is the same — the eye reads a line thickening, because
+     that is what a thin line dissolving into a thick one looks like. */
   function pulseLine(axis, value) {
     clearPulseLines();
     if (!value) return;                      /* 0 is the axis itself */
-    var nss = { 'vector-effect': 'non-scaling-stroke' };
-    var line = axis === 'x'
-      ? mk('line', Object.assign({ x1: toX(value), y1: toY(charted.yMax),
-                                   x2: toX(value), y2: toY(charted.yMin) }, nss), 'pulse-line')
-      : mk('line', Object.assign({ x1: toX(charted.xMin), y1: toY(value),
-                                   x2: toX(charted.xMax), y2: toY(value) }, nss), 'pulse-line');
-    el.pulse.appendChild(line);
+    var geom = axis === 'x'
+      ? { x1: toX(value), y1: toY(charted.yMax), x2: toX(value), y2: toY(charted.yMin) }
+      : { x1: toX(charted.xMin), y1: toY(value), x2: toX(charted.xMax), y2: toY(value) };
+    geom['vector-effect'] = 'non-scaling-stroke';
+    el.pulse.appendChild(mk('line', geom, 'pulse-line pulse-thin'));
+    el.pulse.appendChild(mk('line', geom, 'pulse-line pulse-thick'));
   }
 
   function clearPulseLines() {
-    clearAxisSpan(); if (el.pulse) el.pulse.innerHTML = ''; }
+    clearAxisSpan(); clearNamedValue();
+    if (el.pulse) el.pulse.innerHTML = ''; }
 
   /* ---------------- origin beacon ---------------- */
   function drawOrigin() {
@@ -665,9 +688,84 @@ CG.Grid = (function () {
     });
   }
 
+  /* THE NAMED AXIS BRIGHTENS BY CROSS-FADE, NOT BY GROWING.
+
+     This used to add .axis-hot to the real axis line, which then
+     animated its own stroke-width between 5.6 and 7.2 forever. Two
+     problems in one: stroke-width is geometry, so the path was
+     re-tessellated every frame, and the line lives inside #axes, which
+     carries a group filter — and a filter's region is the bounding box
+     of the whole group, which here is the entire chart. Every frame of
+     that pulse was a full-chart gaussian blur.
+
+     The overlay is a fatter, brighter copy of the same line sitting in
+     its own unfiltered group. Fading it in and out over the real axis
+     reads as the axis thickening and blooming, and the only property
+     moving is opacity — which the compositor animates without touching
+     the main thread or the filter beneath it. */
   function highlightAxis(which) {
-    el.axisX.classList.toggle('axis-hot', which === 'x');
-    el.axisY.classList.toggle('axis-hot', which === 'y');
+    el.hotX.classList.toggle('on', which === 'x');
+    el.hotY.classList.toggle('on', which === 'y');
+  }
+
+  /* ---------------- naming a value ON the chart ----------------------
+     "X = 3", drawn at the place on the chart it is a statement about,
+     instead of printed as a sub-line under the question.
+
+     WHY IT MOVED OUT OF THE PANEL. Under the question it was a caption:
+     the learner read "X = 3" at the top of the screen and then had to
+     carry it back down to the chart and work out which 3 it meant.
+     Sitting on the axis it names, directly above the point the aircraft
+     reached, it is not a caption any more — it is a label on a thing,
+     and the thing is right there underneath it.
+
+     THE AXIS IS UNDER THE DIGIT, LITERALLY. The plate is placed just
+     INSIDE the chart from the axis, not beyond it, and the axis is lit
+     at the same time (see highlightAxis) — so the line the number
+     describes runs directly beneath the number describing it. Inside
+     rather than beyond is not a preference: in stage 1 the origin sits
+     on the panel's bottom-left corner, so there is nothing below the
+     x-axis or left of the y-axis except the clip.
+
+     The plate is drawn into #markerLayer rather than #pulseLayer because
+     the flight trail is painted between the two and would otherwise run
+     across the label. */
+  function nameValue(axis, value) {
+    clearNamedValue();
+    var label = (axis === 'x' ? 'X' : 'Y') + ' = ' + value;
+    var w = 48 + label.length * 19, h = 58, cx, cy;
+
+    if (axis === 'x') { cx = toX(value); cy = toY(0) - h / 2 - 18; }
+    else              { cx = toX(0) + w / 2 + 24; cy = toY(value); }
+
+    /* TWO GROUPS, AND IT HAS TO BE TWO. The outer one carries the
+       position as a `transform` ATTRIBUTE; the inner one is what the
+       stylesheet animates. A CSS transform overrides the attribute
+       outright, so animating scale on the positioned group would drop
+       the plate on the chart's origin the moment the breath started.
+       Position and animation never share an element here. */
+    var holder = mk('g', { transform: 'translate(' + cx + ',' + cy + ')' },
+                    'named-val-holder');
+    var g = mk('g', null, 'named-val');
+    holder.appendChild(g);
+    g.appendChild(mk('rect', {
+      x: -w / 2, y: -h / 2, width: w, height: h, rx: 17, ry: 17
+    }, 'named-val-plate'));
+    /* the gold trim, as a second rect inset by the navy stroke's own
+       width — SVG has no inset-shadow, so the three-ring edge the rest
+       of the interface gets from box-shadow has to be drawn here */
+    g.appendChild(mk('rect', {
+      x: -w / 2 + 5, y: -h / 2 + 5, width: w - 10, height: h - 10, rx: 13, ry: 13
+    }, 'named-val-trim'));
+    var t = mk('text', { x: 0, y: 2 }, 'named-val-text');
+    t.textContent = label;
+    g.appendChild(t);
+    el.markers.appendChild(holder);
+  }
+
+  function clearNamedValue() {
+    var n = el.markers.querySelectorAll('.named-val-holder'), i;
+    for (i = 0; i < n.length; i++) n[i].parentNode.removeChild(n[i]);
   }
 
   /* ---------------- effects ---------------- */
@@ -979,6 +1077,7 @@ CG.Grid = (function () {
     showPermanentNumbers: showPermanentNumbers,
     setLetter: setLetter,
     highlightAxis: highlightAxis,
+    nameValue: nameValue, clearNamedValue: clearNamedValue,
     showQuadrants: showQuadrants,
     showAxes: showAxes,
     pingPoint: pingPoint,

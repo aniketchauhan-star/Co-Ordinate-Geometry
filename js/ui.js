@@ -253,7 +253,24 @@ CG.UI = (function () {
     barArriving = true;
   }
 
-  /* ---------------- mission panel ---------------- */
+  /* ---------------- mission panel ----------------
+     ONE LINE AT A TIME, ALWAYS.
+
+     The panel used to stack a main line and a sub-line, and a child
+     reading the first one had the second one already sitting under it —
+     two sentences competing for the same glance, in a template that is
+     meant to ask exactly one thing. A `sub` is now a SECOND BEAT: the
+     main line is shown, held, and then replaced by it. Nothing else
+     changed for callers — they still pass {text, sub} and the panel
+     does the sequencing, so no game code had to learn about this.
+
+     WORD_STEP and SUB_HOLD are the two pacing knobs. They are here
+     rather than in levels.js because they are properties of reading a
+     line, not of the flow between lines — CFG.beat* owns that. */
+  var WORD_STEP = 110;     /* ms between one word appearing and the next */
+  var SUB_HOLD  = 2800;    /* how long the first line holds before the second */
+  var subTimer  = null;
+
   function fadeWords(node, html) {
     node.innerHTML = '';
     /* split on spaces but keep inline markup groups intact */
@@ -268,7 +285,7 @@ CG.UI = (function () {
           var s = document.createElement('span');
           s.className = 'fadeword';
           s.textContent = w;
-          s.style.animationDelay = (i++ * 70) + 'ms';
+          s.style.animationDelay = (i++ * WORD_STEP) + 'ms';
           node.appendChild(s);
         });
       } else {
@@ -277,7 +294,7 @@ CG.UI = (function () {
            spacing, so punctuation stays tight against it. */
         var c = child.cloneNode(true);
         c.classList.add('fadeword');
-        c.style.animationDelay = (i++ * 70) + 'ms';
+        c.style.animationDelay = (i++ * WORD_STEP) + 'ms';
         node.appendChild(c);
       }
     });
@@ -289,15 +306,25 @@ CG.UI = (function () {
      can never drift apart (requirement 22). */
   function mission(opts) {
     opts = opts || {};
+
+    /* A queued sub-line belongs to the message being replaced, so it
+       goes with it. Without this, a sub scheduled by the previous call
+       would land on top of whatever is on screen by then. */
+    if (subTimer) { window.clearTimeout(subTimer); subTimer = null; }
+
     if (opts.voice !== false) {
       CG.Voice.say(opts.voice || opts.text || '');
     }
+
+    /* #missionSub is kept in the markup — it is a hook the game and the
+       tests know — but it is never written to any more. Two lines in
+       this panel is the thing this rewrite exists to prevent. */
+    el.missionSub.innerHTML = '';
+
     if (opts.animate === 'words') {
       fadeWords(el.missionText, opts.text || '');
-      if (opts.sub) fadeWords(el.missionSub, opts.sub); else el.missionSub.innerHTML = '';
     } else {
       el.missionText.innerHTML = opts.text || '';
-      el.missionSub.innerHTML = opts.sub || '';
       if (opts.animate !== false) {
         var arrival = barArriving ? 'gq-in' : 'enter';
         barArriving = false;
@@ -306,6 +333,15 @@ CG.UI = (function () {
         el.mission.classList.add(arrival);
       }
     }
+
+    /* the second beat */
+    if (opts.sub) {
+      subTimer = window.setTimeout(function () {
+        subTimer = null;
+        fadeWords(el.missionText, opts.sub);
+      }, SUB_HOLD);
+    }
+
     /* The question template carries no buttons: the flow is paced by
        voice-over and by the learner's own next action. */
     el.missionActions.innerHTML = '';
@@ -317,8 +353,16 @@ CG.UI = (function () {
   function setLevelPill() {}
 
 
-  /* ---------------- coordinate tag beside the aircraft ---------------- */
+  /* ---------------- coordinate tag beside the aircraft ----------------
+     hideCoordTag() fades the tag out and only takes it out of the
+     document once the fade has finished. That trailing timer has to be
+     cancellable: show the tag again inside those 280ms and the stale
+     timer would otherwise fire and hide the one that had just been
+     put up. */
+  var coordTagHide = null;
+
   function coordTag(stageX, stageY, text, kicker) {
+    if (coordTagHide) { window.clearTimeout(coordTagHide); coordTagHide = null; }
     el.coordTag.hidden = false;
     el.coordTag.innerHTML = '';
     if (kicker) {
@@ -353,7 +397,11 @@ CG.UI = (function () {
 
   function hideCoordTag() {
     el.coordTag.classList.remove('show');
-    window.setTimeout(function () { el.coordTag.hidden = true; }, 280);
+    if (coordTagHide) window.clearTimeout(coordTagHide);
+    coordTagHide = window.setTimeout(function () {
+      coordTagHide = null;
+      el.coordTag.hidden = true;
+    }, 280);
   }
 
   /* ---------------- tutorial highlight + hand ---------------- */
@@ -368,17 +416,43 @@ CG.UI = (function () {
   }
 
   /* anchor the hand under a control's stepper (stage-space coords) */
-  function handAt(what) {
-    var node = null;
-    if (what === 'go') node = el.go;
-    else if (ctrlMap[what]) node = ctrlMap[what].up;
-    if (!node) { hideHand(); return; }
+  /* handAt(target) — put the nudge on anything.
 
-    var sRect = el.stage.getBoundingClientRect();
-    var scale = sRect.width / 1920;
-    var r = node.getBoundingClientRect();
-    var x = (r.left + r.width / 2 - sRect.left) / scale;
-    var y = (r.top + r.height / 2 - sRect.top) / scale;
+     It used to take one of five hard-coded names, which is why it was
+     only ever usable on the control dock. The lesson arc is full of
+     things that have to be TAPPED — the origin, a point inside a
+     quadrant, a label's drop zone — and none of them are dock buttons,
+     so none of them could be nudged. Three forms now:
+
+       'go' | 'right' | 'left' | 'up' | 'down'   a dock control
+       {x, y}                                     stage co-ordinates
+       an Element                                 its own centre
+
+     Stage co-ordinates are the useful one on the chart: Grid.stageX()
+     and Grid.stageY() convert a chart position into them, so a caller
+     can say "nudge (0,0)" without knowing anything about the DOM. */
+  function handAt(target) {
+    var x, y;
+
+    if (target && typeof target === 'object' &&
+        typeof target.x === 'number' && typeof target.y === 'number') {
+      x = target.x; y = target.y;
+    } else {
+      var node = null;
+      if (target === 'go') node = el.go;
+      else if (typeof target === 'string' && ctrlMap[target]) node = ctrlMap[target].up;
+      else if (target && target.getBoundingClientRect) node = target;
+      if (!node) { hideHand(); return; }
+
+      /* A DOM node's position has to come back through the stage's own
+         scale: the stage is a 1920x1080 canvas scaled by one transform,
+         and .hand is positioned in those design pixels. */
+      var sRect = el.stage.getBoundingClientRect();
+      var scale = sRect.width / 1920;
+      var r = node.getBoundingClientRect();
+      x = (r.left + r.width / 2 - sRect.left) / scale;
+      y = (r.top + r.height / 2 - sRect.top) / scale;
+    }
 
     el.hand.hidden = false;
     el.hand.style.left = x + 'px';

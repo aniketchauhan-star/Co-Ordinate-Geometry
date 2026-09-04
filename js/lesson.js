@@ -35,8 +35,35 @@
     return new Promise(function (resolve) { gate = resolve; });
   }
   function release(v) {
+    UI.hideHand();          /* they found it — the nudge has no more to say */
+    if (nudgeTimer) { window.clearTimeout(nudgeTimer); nudgeTimer = null; }
     var g = gate; gate = null;
     if (g) g(v);
+  }
+
+  /* ---- the nudge -------------------------------------------------------
+     THE LESSON IS ALL TAPPING, and until now none of it was nudged: the
+     hand only knew how to point at the control dock, which the lesson
+     takes off the screen. Every beat here that waits on the learner —
+     find the origin, tap a point in this region, drag a label — now puts
+     the hand on the thing to touch if they hesitate.
+
+     It waits CFG.idleHintDelay first. A hand that appears the instant a
+     question does is not a nudge, it is the answer, and it robs the
+     learner of the moment of working it out. */
+  var nudgeTimer = null;
+
+  function nudgeAt(target) {
+    if (nudgeTimer) window.clearTimeout(nudgeTimer);
+    nudgeTimer = window.setTimeout(function () {
+      nudgeTimer = null;
+      if (gate) UI.handAt(target);      /* only if still waiting on them */
+    }, CFG.idleHintDelay);
+  }
+
+  /* a chart position, in the stage pixels UI.handAt wants */
+  function nudgeChart(x, y) {
+    nudgeAt({ x: Grid.stageX(x), y: Grid.stageY(y) });
   }
 
   /* ---- a single narrated beat ---------------------------------------- */
@@ -121,6 +148,10 @@
       CG.demoHome();
       await wait(360); if (!alive(tk)) return false;
     }
+    /* THE AIRCRAFT'S PART IS OVER. Everything from here is about the
+       chart — the axes, the origin, the four regions — and most of it
+       asks the learner to tap a place on it. See CG.showPlane(). */
+    CG.showPlane(false);
 
     /* and now the whole set, as markers */
     Grid.clearLesson();
@@ -167,6 +198,7 @@
                  voice: 'Tap where the two axes meet.', animate: 'words' });
     /* the intersection is made tappable but never labelled beforehand */
     CG.originTap(function () { release(true); });
+    nudgeChart(0, 0);
     await waitForAction(); if (!alive(tk)) return false;
 
     Grid.clearPing();
@@ -190,10 +222,16 @@
     /* --- 31. label the plane ----------------------------------------- */
     if (!await dragActivity(tk, {
       prompt: 'Drag each label to the correct position.',
+      /* All three sit inside x -6..6. The x-axis zone used to be at
+         x=8, which was inside the old 28-cell-wide stage 3 and is
+         outside the square one that replaced it — the chart is clipped
+         to the charted area, so a zone out there would have been
+         invisible AND undroppable. The origin zone moved to the left
+         half at the same time, to keep clear of it. */
       zones: [
-        { key: 'xaxis',  x: 8,  y: 0.9, lead: { x: 8, y: 0 } },
-        { key: 'yaxis',  x: -4, y: 5.2, lead: { x: 0, y: 4.6 } },
-        { key: 'origin', x: 4,  y: 2.2, lead: { x: 0, y: 0 } }
+        { key: 'xaxis',  x: 3.8,  y: 0.9, lead: { x: 3.8, y: 0 } },
+        { key: 'yaxis',  x: -4,   y: 5.2, lead: { x: 0, y: 4.6 } },
+        { key: 'origin', x: -4,   y: 2.2, lead: { x: 0, y: 0 } }
       ],
       chips: [
         { key: 'xaxis',  label: 'x-axis' },
@@ -326,6 +364,19 @@
 
     UI.mission({ text: spec.prompt, voice: stripTags(spec.prompt), animate: 'words' });
 
+    /* THE NUDGE FOLLOWS THE WORK. A drop zone that has already been
+       filled is not where to point next, so this is re-armed on every
+       attempt and walks to the first zone still empty. */
+    function nudgeNextZone() {
+      for (var i = 0; i < spec.zones.length; i++) {
+        if (!placed[spec.zones[i].key]) {
+          nudgeChart(spec.zones[i].x, spec.zones[i].y);
+          return;
+        }
+      }
+      UI.hideHand();
+    }
+
     UI.dragTray(spec.chips, spec.zones.map(function (z) { return z.key; }),
       function (chipKey, zoneKey) {
         if (placed[zoneKey]) return;
@@ -337,6 +388,7 @@
           UI.chipDone(chipKey);
           Audio.play('reveal');
           if (Object.keys(placed).length === keys.length) release(true);
+          else { UI.hideHand(); nudgeNextZone(); }
         } else {
           wrongs++;
           Grid.fillDropZone(zoneKey, '', false);
@@ -356,9 +408,11 @@
             voice: wrongs === 1 ? 'Not quite. Try again.' : h2v,
             animate: 'words'
           });
+          nudgeNextZone();
         }
       });
 
+    nudgeNextZone();
     await waitForAction(); if (!alive(tk)) return false;
     UI.clearDragTray();
     if (!await say(tk, { text: 'Yay! That’s correct.', beat: CFG.beatShort })) return false;
@@ -414,6 +468,11 @@
         animate: 'words'
       });
       Grid.showTapPoints(spec.q, function (x, y) { release({ x: x, y: y }); });
+      /* (2,2) of the quadrant being taught — a real tap dot, well clear
+         of both axes, so the hand is never ambiguous about which
+         region it means */
+      nudgeChart((spec.q === 1 || spec.q === 4) ? 2 : -2,
+                 (spec.q === 1 || spec.q === 2) ? 2 : -2);
       var picked = await waitForAction(); if (!alive(tk)) return false;
       Grid.clearTapPoints();
 

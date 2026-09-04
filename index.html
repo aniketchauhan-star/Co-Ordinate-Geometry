@@ -124,6 +124,14 @@
           <g id="gridLines"></g>
           <!-- 5: axes / origin -->
           <g id="axes"></g>
+          <!-- The "this axis, the one being named" overlay. It is a
+               SIBLING of #axes and not a child, and that is a
+               performance decision: #axes carries a group filter whose
+               region is the whole chart, so anything animating inside
+               it re-runs a full-chart blur every frame. Out here the
+               overlay carries its own static glow and animates nothing
+               but opacity. -->
+          <g id="axisHot"></g>
           <g id="ticks"></g>
           <g id="axisNums"></g>
         </g>

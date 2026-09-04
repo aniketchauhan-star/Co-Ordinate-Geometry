@@ -137,11 +137,17 @@ window.CG = window.CG || {};
     Grid.highlightTarget(force === undefined ? true : !!force);
   }
 
+  /* "the learner has chosen a destination" — the one condition GO and
+     the idle nudge both need, so it is asked in one place */
+  function routeIsSet() {
+    var c = gameState.controls;
+    if (gameState.direct) return c.x !== 0 || c.y !== 0;
+    return (c.right + c.left + c.up + c.down) > 0;
+  }
+
   function refreshGo() {
     if (gameState.inputLocked) { UI.setGoEnabled(false); return; }
-    var c = gameState.controls;
-    if (gameState.direct) { UI.setGoEnabled(c.x !== 0 || c.y !== 0); return; }
-    UI.setGoEnabled((c.right + c.left + c.up + c.down) > 0);
+    UI.setGoEnabled(routeIsSet());
   }
 
   /* lockInput(on, quiet) — `quiet` is the opening brief's lock, which is
@@ -510,6 +516,14 @@ window.CG = window.CG || {};
     });
     await wait(CFG.beatMed); if (tk !== seqToken) return;
 
+    /* THE CALLOUT'S BEAT IS OVER, SO THE CALLOUT GOES. It was shown for
+       "Location (3, −3)" and then never taken down on this path — only
+       the CFU branch above hid it — so it sat over the chart through the
+       whole route replay, the X and Y plates and the closing line, which
+       is most of a minute, and outlived its own sentence by every one of
+       them. Everything that follows is drawn ON the grid it was covering. */
+    UI.hideCoordTag();
+
     /* FLOW 10 / PDF p14 — replay the route, one direction at a time, and
        do it after EVERY mission: "First, we moved 3 spaces horizontally.
        Then, we moved 2 spaces vertically." The horizontal run lights up
@@ -556,9 +570,18 @@ window.CG = window.CG || {};
       Grid.glowAxisSpan('x', sel.x);
       Grid.clearRoutePoints();
       Grid.markLeg('x', sel.x);
+      /* "X = 3" IS A STATEMENT ABOUT THE CHART, SO IT IS SAID ON THE
+         CHART. It used to be a sub-line under the question, which made
+         it a caption: read at the top of the screen, then carried back
+         down and matched to a 3 the learner had to find for themselves.
+         The plate now sits on the x-axis at the point the aircraft
+         reached, pulsing, with the axis lit underneath it — the number,
+         the line it describes and the place it describes are one object
+         in one glance. The voice-over is unchanged. */
+      Grid.nameValue('x', sel.x);
+      Grid.highlightAxis('x');
       UI.mission({
         text: 'That is <em>' + Math.abs(sel.x) + '</em> spaces across.',
-        sub: 'X = ' + sel.x,
         voice: 'The first number tells us the horizontal position. X is ' +
                CG.Voice.numWord(sel.x) + '.',
         animate: 'words'
@@ -567,16 +590,18 @@ window.CG = window.CG || {};
 
       Grid.glowAxisSpan('y', sel.y, sel.x);
       Grid.markLeg('y', sel.y, sel.x);
+      Grid.nameValue('y', sel.y);
+      Grid.highlightAxis('y');
       UI.mission({
         text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
-        sub: 'Y = ' + sel.y,
         voice: 'The second number tells us the vertical position. Y is ' +
                CG.Voice.numWord(sel.y) + '.',
         animate: 'words'
       });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
-      Grid.clearPulseLines();
+      Grid.clearPulseLines();      /* takes the named-value plate with it */
+      Grid.highlightAxis(null);
       Grid.clearRoutePoints();
       UI.mission({
         text: 'Together: <span class="coord">' + coordText(sel) + '</span>',
@@ -709,6 +734,7 @@ window.CG = window.CG || {};
     setHeading(0);
     setAircraftPosition(0, 0, true);
     setPlaneMood('bob');
+    CG.showPlane(true);          /* the lesson may have sent it away */
     UI.setLevelPill(gameState.levelIndex + 1, LEVELS.length);
     UI.showDock(true);
     UI.showMission(true);
@@ -720,9 +746,16 @@ window.CG = window.CG || {};
        are the air traffic controller." The brief's step 0 therefore has
        nothing to write: the words are already here. */
     var briefTakesOver = lv.tutorial && gameState.tutorialStep < 0;
+    /* THE NOTE COMES FIRST AND THE MISSION LINE COMES SECOND, because
+       the panel now shows one line at a time and whichever is second is
+       the one left on screen. "The airspace now extends to the left" is
+       news — it is true once, and then it is over. "Guide the aircraft
+       to the target" is the instruction, and it has to be readable for
+       as long as the learner is working. So the news opens the panel and
+       the instruction is what it settles on. */
     UI.mission({
-      text: briefTakesOver ? briefText(0) : lv.mission,
-      sub: briefTakesOver ? '' : (lv.unlockNote || ''),
+      text: briefTakesOver ? briefText(0) : (lv.unlockNote || lv.mission),
+      sub: (!briefTakesOver && lv.unlockNote) ? lv.mission : '',
       voice: briefTakesOver ? false
         : lv.unlockVoice ? lv.unlockVoice + ' ' + lv.mission
         : lv.mission
@@ -730,6 +763,7 @@ window.CG = window.CG || {};
     lockInput(false);
 
     if (briefTakesOver) startTutorial();
+    else armIdleHint();      /* nothing touched yet; the nudge waits */
   }
 
   /* Reset: cancels flight safely, never restarts progression. */
@@ -753,6 +787,7 @@ window.CG = window.CG || {};
     setPlaneMood('bob');
     gameState.screen = 'playing';
     lockInput(false);
+    armIdleHint();
     var lv = level();
     UI.mission({ text: lv.mission, sub: '' });
     /* RESET is itself an interaction, so the brief has served its
@@ -776,6 +811,7 @@ window.CG = window.CG || {};
   async function runLesson() {
     gameState.screen = 'lesson';
     lockInput(true);
+    UI.hideCoordTag();     /* the lesson arc owns the chart from here */
     var flown = gameState.reached.filter(function (p) { return !!p; }).slice(0, 4);
     var ok = await CG.Lesson.run(flown);
     if (!ok) return;
@@ -837,8 +873,8 @@ window.CG = window.CG || {};
     { text: 'You are the air traffic controller.' },
     { text: null }
   ];
-  var BRIEF_GAP = 320;        /* ms of air between one line and the next */
-  var BRIEF_MAX = 9000;       /* per-line deadline — see THE BACKSTOP    */
+  var BRIEF_GAP = 550;        /* ms of air between one line and the next */
+  var BRIEF_MAX = 13000;      /* per-line deadline — see THE BACKSTOP    */
   /* NO HINT UNDER THE QUESTION. "That glowing waypoint is its
      destination." stood here and was answering a question nobody had:
      the waypoint is the only thing on the chart that glows, and the
@@ -903,11 +939,46 @@ window.CG = window.CG || {};
     refreshTargetGlow();
     if (gameState.screen === 'tutorial') gameState.screen = 'playing';
     lockInput(false);
+    armIdleHint();
   }
 
-  /* the learner did something — drop the nudge */
+  /* THE IDLE NUDGE, BACK.
+
+     It went out with the button walkthrough, and it should not have:
+     the walkthrough was four prompts nobody asked for, but this is one
+     hand that appears only after the learner has done nothing at all
+     for five seconds. It answers "what do I press?" for a child who is
+     stuck, and it is silent for everyone who is not.
+
+     It points at the thing that is actually next: GO if a route is set,
+     otherwise the first direction they can still use. Never during a
+     teaching sequence, never while the aircraft is flying — armIdleHint
+     checks the lock, so a nudge can never point at a dead control. */
   function onLearnerInteraction() {
     clearIdleHint();
+    armIdleHint();
+  }
+
+  function nextUsefulControl() {
+    if (routeIsSet()) return 'go';
+    /* direct mode swapped the four directions for a signed X and Y —
+       same DOM, different keys, so the nudge has to ask which it is */
+    var usable = gameState.direct ? ['x', 'y'] : (level().controls || []);
+    for (var i = 0; i < usable.length; i++) {
+      if (!gameState.controls[usable[i]]) return usable[i];
+    }
+    return usable[0] || null;
+  }
+
+  function armIdleHint() {
+    clearIdleHint();
+    if (gameState.inputLocked) return;
+    if (gameState.screen !== 'playing' && gameState.screen !== 'direct') return;
+    idleTimer = window.setTimeout(function () {
+      if (gameState.inputLocked) return;
+      var what = nextUsefulControl();
+      if (what) UI.handAt(what);
+    }, CFG.idleHintDelay);
   }
 
   function clearIdleHint() {
@@ -967,20 +1038,42 @@ window.CG = window.CG || {};
   /* the origin becomes tappable — used by the lesson arc */
   CG.originTap = function (cb) { showOriginTap(cb); };
 
+  /* THE AIRCRAFT LEAVES DURING THE LESSON.
+
+     It belongs to the missions: it is the thing the learner flies, and
+     while they are flying it, it is the subject. The lesson arc is about
+     the CHART — the axes, the origin, the quadrants — and every one of
+     those beats asks the learner to look at, or tap, a place on the
+     plane. An aircraft parked on the origin through all of it covers
+     the one point the origin lesson is about, and reads as something
+     they are meant to be doing something with.
+
+     It stays for the recap flights at the top of the arc, which are
+     nothing but the aircraft, and goes when the naming begins. */
+  CG.showPlane = function (on) {
+    dom.planeHolder.classList.toggle('plane-away', !on);
+  };
+
   /* ---- the discovery recap's demonstration flights -----------------
      FLOW 32 wants three of the places the learner actually reached
      re-flown from the origin, quickly, before any explanation starts.
      It is the SAME flight machinery the missions use — one leg, a
-     pivot, the other leg — just at roughly two-and-a-half times the
-     speed and with the number reveals suppressed, because the point
-     here is the shape of the journey and not the counting. */
+     pivot, the other leg — with the number reveals suppressed, because
+     the point here is the shape of the journey and not the counting.
+
+     IT USED TO RUN AT TWO-AND-A-HALF TIMES SPEED and that was too fast
+     to be a demonstration of anything. The learner is being shown a
+     route they flew themselves several missions ago; at 0.40 the
+     aircraft was across the chart before they had found it. At 0.80 it
+     is still visibly quicker than a mission — this is a recap, not a
+     re-run — but it can be followed. */
   CG.demoFlight = async function (x, y) {
     setHeading(0);
     setAircraftPosition(0, 0, false);
     Grid.clearPath();
     Grid.clearReveal();
     var ok = await animateAircraft(x, y, {
-      cellMs: Math.round(CFG.cellDuration * 0.40),
+      cellMs: Math.round(CFG.cellDuration * 0.80),
       silentNumbers: true
     });
     gameState.animationState = 'idle';
@@ -1047,6 +1140,7 @@ window.CG = window.CG || {};
   function startDirectMode() {
     clearAuto(); seqToken++; animToken++;
     gameState.direct = { index: 0 };
+    CG.showPlane(true);
     gameState.screen = 'direct';
     gameState.coordinateMode = true;
     gameState.tutorialStep = -1;
@@ -1086,6 +1180,7 @@ window.CG = window.CG || {};
     setAircraftPosition(0, 0, true);
     setPlaneMood('bob');
     lockInput(false);
+    armIdleHint();           /* direct mode gets the nudge too */
   }
 
   async function directSuccess(sel) {
@@ -1143,7 +1238,7 @@ window.CG = window.CG || {};
     /* the flight home, at the same speed as the demo flights */
     setPlaneMood(null);
     var back = await animateAircraft(-sel.x, -sel.y, {
-      cellMs: Math.round(CFG.cellDuration * 0.45),
+      cellMs: Math.round(CFG.cellDuration * 0.80),
       silentNumbers: true
     });
     if (!back || tk !== seqToken) return;
@@ -1164,6 +1259,70 @@ window.CG = window.CG || {};
   /* FLOW §E — the aircraft arrives before its world does, and before the
      introduction. Nothing here is interactive: it plays, and then the
      introduction screen comes up with START. */
+  /* ============================================================
+     THE LOW-END TIER
+
+     WHY THIS MEASURES INSTEAD OF ASKING. navigator.deviceMemory and
+     navigator.hardwareConcurrency are the obvious test and they are the
+     wrong one: deviceMemory is absent on Safari and iOS entirely, and
+     hardwareConcurrency reports core COUNT, which on a throttled tablet
+     or a laptop on battery says nothing about the frames it can
+     actually paint. They are kept below only as a fallback for the case
+     where the probe cannot run.
+
+     WHAT IT MEASURES. The intro cinematic is the ideal probe: it runs
+     unattended for ~4 seconds, it drives the aircraft, the ocean and
+     the whole compositor at once, and nobody is waiting on input. If
+     the average frame over the first 1.6s of it is worse than ~22ms
+     (~45fps), this machine is not going to hold 60 through a mission
+     either, and the ambient layers come off.
+
+     THE FIRST FEW FRAMES ARE THROWN AWAY. Layer promotion, first paint
+     and the tail of asset decoding all land in them, so they are slow
+     on every machine and would mislabel a fast one.
+
+     It never upgrades back. A tier that flickers between states as the
+     load varies is worse than either tier — the ocean would start and
+     stop moving while a child watched it. */
+  var PROBE_WARMUP = 8;        /* frames discarded before timing starts */
+  var PROBE_FRAMES = 90;       /* ~1.5s at 60fps, ~1.9s at 48           */
+  var PROBE_BUDGET = 22;       /* ms per frame; above this, go lite     */
+
+  function setPerfLite(on, why) {
+    if (!on || dom.stage.classList.contains('perf-lite')) return;
+    dom.stage.classList.add('perf-lite');
+    console.info('[perf] lite mode on —', why);
+  }
+
+  function probeFrameRate() {
+    if (!window.requestAnimationFrame || !window.performance) {
+      /* No probe available, so fall back to what the device claims. */
+      var cores = navigator.hardwareConcurrency;
+      var mem = navigator.deviceMemory;
+      if ((cores && cores <= 4) || (mem && mem <= 4)) {
+        setPerfLite(true, 'no probe; device reports cores=' + cores + ' mem=' + mem);
+      }
+      return;
+    }
+    var seen = 0, t0 = 0;
+    function frame(now) {
+      seen++;
+      if (seen === PROBE_WARMUP) { t0 = now; }
+      if (seen < PROBE_WARMUP + PROBE_FRAMES) {
+        window.requestAnimationFrame(frame);
+        return;
+      }
+      var avg = (now - t0) / PROBE_FRAMES;
+      if (avg > PROBE_BUDGET) {
+        setPerfLite(true, avg.toFixed(1) + 'ms average frame over ' +
+                          PROBE_FRAMES + ' frames');
+      } else {
+        console.info('[perf] full mode —', avg.toFixed(1) + 'ms average frame');
+      }
+    }
+    window.requestAnimationFrame(frame);
+  }
+
   function runApproach() {
     var toIntro = function () {
       dom.stage.dataset.screen = 'start';
@@ -1174,6 +1333,7 @@ window.CG = window.CG || {};
     gameState.screen = 'approach';
     dom.stage.dataset.screen = 'approach';
     Grid.setStage(1, false);
+    probeFrameRate();          /* times the cinematic it runs alongside */
     CG.Intro.run().then(toIntro);
   }
 
@@ -1350,6 +1510,20 @@ window.CG = window.CG || {};
     if (ev.key === 'm' || ev.key === 'M') {
       ev.preventDefault();
       if (handlers.onSoundToggle) handlers.onSoundToggle();
+      return;
+    }
+    /* THE PERFORMANCE TIER, OVERRIDABLE. The probe decides at boot (see
+       probeFrameRate) and it can be wrong in both directions — a machine
+       busy with something else during the cinematic gets demoted, and a
+       machine that coped with a cinematic can still struggle later. P
+       flips it either way. It is sat here with mute, above the screen
+       guards, because a game that has started stuttering is exactly when
+       someone reaches for it. Nothing is remembered between sessions:
+       the probe runs fresh each load. */
+    if (ev.key === 'p' || ev.key === 'P') {
+      ev.preventDefault();
+      var lite = dom.stage.classList.toggle('perf-lite');
+      console.info('[perf] lite mode ' + (lite ? 'on' : 'off') + ' (P)');
       return;
     }
     if (gameState.screen === 'start') {

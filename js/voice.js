@@ -144,10 +144,11 @@ CG.Voice = (function () {
       u.onerror = finish;
       u.voice = voice;
       u.lang = (voice && voice.lang) || 'en-GB';
-      /* ITEM 12: "slow, not too fast". This is below the 0.88-0.95 band
-         an earlier brief gave, deliberately — that brief and this one
-         disagree, and this one is the later of the two. */
-      u.rate = 0.84;
+      /* ITEM 12: "slow, not too fast". Below the 0.88-0.95 band an
+         earlier brief gave, and now below the 0.84 that replaced it —
+         each revision has asked for slower, and this is a game read
+         aloud to children who are also being asked to count. */
+      u.rate = 0.76;
       u.pitch = 1.0;
       u.volume = 0.9;
       synth.speak(u);

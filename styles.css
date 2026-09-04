@@ -271,13 +271,29 @@ button{font-family:inherit}
   box-shadow:0 24px 70px rgba(0,0,0,.45);
 }
 .layer{position:absolute;inset:0}
-/* strict rendering order (requirement 24) */
+/* strict rendering order (requirement 24)
+
+   THE CHART GOES UNDER THE COASTLINE, NOT OVER IT. The field used to sit
+   at 5, above the terrain at 3, and the result was the grid and the
+   panel's top two corners painting straight across the islands — the
+   headlands came out looking washed over and vaguely out of focus,
+   because a translucent plate and a graticule were sitting on top of
+   them. The chart-veil's own comment has always claimed the opposite
+   ("the chart appears to tuck under the coastline"); it was describing
+   an intent this list did not deliver.
+
+   Field below terrain fixes it, and the clouds can stay above the
+   islands — where the two standing cloud masses need to be — because
+   .layer-clouds is masked to fade out entirely by y=148, the panel's top
+   edge. They cannot reach the chart to drift over it. That mask is what
+   makes this order possible at all; do not remove it without moving the
+   clouds back under the field. */
 .layer-bg{z-index:0}
 .layer-water{z-index:1}
 .chart-veil{z-index:2}
-.layer-terrain{z-index:3}
-.layer-clouds{z-index:4}
-.layer-field{z-index:5}
+.layer-field{z-index:3}
+.layer-terrain{z-index:4}
+.layer-clouds{z-index:5}
 .layer-runway{z-index:6}
 .layer-cine-back{z-index:8}
 .plane-holder{z-index:9}
@@ -624,13 +640,20 @@ button{font-family:inherit}
     drop-shadow(0 0 20px var(--grid-glow));
 }
 /* the voice is naming this axis right now: it goes white, thickens, and
-   blooms, so there is no doubt which line is being talked about */
-#axes line.axis-hot{
-  stroke:#FFFFFF;stroke-width:6.4;
+   blooms, so there is no doubt which line is being talked about.
+
+   Drawn as an overlay in #axisHot rather than as a state on the axis
+   itself — see highlightAxis() in grid.js for why. Geometry is fixed;
+   only opacity moves. */
+#axisHot{pointer-events:none}
+#axisHot line{
+  stroke:#FFFFFF;stroke-width:7.2;
+  opacity:0;
   filter:drop-shadow(0 0 6px #B7E7EF) drop-shadow(0 0 18px var(--grid-glow));
-  animation:axisNamed 1600ms var(--ease-io) infinite;
+  transition:opacity 240ms var(--ease-out);
 }
-@keyframes axisNamed{0%,100%{stroke-width:5.6;opacity:.9}50%{stroke-width:7.2;opacity:1}}
+#axisHot line.on{animation:axisNamed 1600ms var(--ease-io) infinite}
+@keyframes axisNamed{0%,100%{opacity:.45}50%{opacity:1}}
 #ticks line{stroke:var(--grid-axis);stroke-width:2.8;stroke-linecap:round}
 #ticks{filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 12px var(--grid-glow))}
 /* THE ARROWHEADS ARE FURNITURE, and they are dressed as furniture.
@@ -714,6 +737,10 @@ button{font-family:inherit}
    naming that number. A perpetual pulse is wrong for idle furniture, but
    this is not idle — it exists only while a sentence is being said, and
    it is cleared the moment the sentence ends. */
+/* Two stacked lines cross-faded — see pulseLine() in grid.js for why it
+   is not one line changing width. The glow sits on each line rather than
+   on a shared parent: that way each is its own layer with its blur
+   rasterised once, and the only thing moving is opacity. */
 .pulse-line{
   /* the same gold as the crossed lines, because it is the same claim:
      this line, the one in the sentence */
@@ -723,12 +750,11 @@ button{font-family:inherit}
   filter:
     drop-shadow(0 0 8px var(--cross-glow))
     drop-shadow(0 0 24px rgba(255,170,20,.45));
-  animation:linePulse 1150ms var(--ease-io) infinite;
 }
-@keyframes linePulse{
-  0%,100%{opacity:.50;stroke-width:3.2}
-  50%    {opacity:1;  stroke-width:5.6}
-}
+.pulse-thin {stroke-width:3.2;animation:pulseThin  1150ms var(--ease-io) infinite}
+.pulse-thick{stroke-width:5.6;animation:pulseThick 1150ms var(--ease-io) infinite}
+@keyframes pulseThin { 0%,100%{opacity:.50} 50%{opacity:0} }
+@keyframes pulseThick{ 0%,100%{opacity:0}   50%{opacity:1} }
 
 /* ===================================================================
    THE LINES THE AIRCRAFT CROSSED
@@ -785,6 +811,61 @@ button{font-family:inherit}
 }
 
 
+
+/* ===================================================================
+   "X = 3" ON THE CHART
+
+   The same cream-and-gold plate the rest of the interface is built
+   from, shrunk to a chip and parked on the axis it is a statement
+   about. It replaces a sub-line under the question — see nameValue()
+   in grid.js for why it moved.
+
+   IT PULSES, AND THAT IS WHAT MAKES IT AN INSTRUCTION rather than a
+   sticker. It is on screen for one spoken sentence and then gone; a
+   static chip on a busy chart is read once, if at all, and this one has
+   to hold attention against a lit axis and a gold route directly
+   The breath is a plain `scale()`, which is only safe because the
+   plate's POSITION lives on a separate outer group — a CSS transform
+   overrides a transform attribute outright, so the two can never share
+   an element. transform-box/transform-origin make it grow about its own
+   centre rather than about the chart's origin.
+   =================================================================== */
+.named-val{
+  transform-box:fill-box;transform-origin:center;
+  animation:namedIn 300ms var(--ease-out) both,
+            namedBreath 1700ms var(--ease-io) 300ms infinite;
+}
+@keyframes namedIn{
+  0%  {opacity:0;transform:scale(.72)}
+  70% {opacity:1;transform:scale(1.08)}
+  100%{opacity:1;transform:scale(1)}
+}
+@keyframes namedBreath{
+  0%,100%{transform:scale(1)}
+  50%    {transform:scale(1.055)}
+}
+/* The navy edge and the gold trim inside it are two rects, because SVG
+   has no inset shadow — the box-shadow trick the rest of the interface
+   uses for this is not available here. The shadow sits on the outer
+   plate only, so the trim cannot cast one of its own. */
+.named-val-plate{
+  fill:#FFF8E3;
+  stroke:var(--ui-stroke);stroke-width:4;
+  paint-order:stroke fill;      /* the stroke goes under: no size creep */
+  filter:drop-shadow(0 4px 0 rgba(126,99,57,.22))
+         drop-shadow(0 6px 12px rgba(13,69,99,.28));
+}
+.named-val-trim{
+  fill:none;
+  stroke:#EFC24A;stroke-width:2.5;
+}
+.named-val-text{
+  font:900 34px/1 var(--font-num);
+  fill:var(--ctl-navy);
+  font-variant-numeric:tabular-nums;
+  text-anchor:middle;dominant-baseline:middle;
+  letter-spacing:.5px;
+}
 
 /* quadrant labels + sign patterns (concept reveal only) */
 .quad{animation:numPop 320ms var(--ease-out) both}
@@ -948,7 +1029,11 @@ button{font-family:inherit}
   --gq-stroke:5px;        /* navy outer                          */
 
   position:absolute;left:50%;top:14px;transform:translateX(-50%);
-  min-width:760px;max-width:1180px;
+  /* 1280, not 1180: the panel shows ONE line at a time now (see
+     mission() in ui.js), so the only thing that can still put it onto
+     two is a single sentence too long to fit. The longest one in
+     levels.js measures ~1160px at --fs-lg, and this leaves it room. */
+  min-width:760px;max-width:1280px;
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
 .mission.mission-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-16px)}
@@ -1127,7 +1212,7 @@ button{font-family:inherit}
   color:var(--navy);background:rgba(22,55,91,.09);
   padding:.06em .34em;border-radius:7px;letter-spacing:.01em;
 }
-.fadeword{display:inline-block;opacity:0;transform:translateY(7px);animation:wordIn 460ms var(--ease-out) forwards}
+.fadeword{display:inline-block;opacity:0;transform:translateY(7px);animation:wordIn 620ms var(--ease-out) forwards}
 @keyframes wordIn{to{opacity:1;transform:none}}
 
 /* buttons */
@@ -1168,6 +1253,13 @@ button{font-family:inherit}
 }
 .origin-tap[hidden]{display:none}
 .coord-tag.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+/* `display:grid` above is an AUTHOR rule, and an author rule beats the
+   browser's own `[hidden]{display:none}` — so el.coordTag.hidden = true
+   was doing nothing at all. The tag was only ever invisible because
+   removing .show takes it to opacity 0: still laid out, and still in the
+   accessibility tree, where a screen reader would read out a location
+   the aircraft left a minute ago. */
+.coord-tag[hidden]{display:none}
 
 /* ===================================================================
    THE CONTROL CONSOLE  (.dock / .game-control-console)
@@ -1441,29 +1533,41 @@ button{font-family:inherit}
 .dock :where(button):focus-visible{outline:4px solid rgba(90,210,245,.65);outline-offset:4px}
 
 /* ---- NOT YET -----------------------------------------------------
-   On screen, but this direction's airspace has not unfolded. Distinct
-   from both LIMIT and LOCKED, and deliberately still legible: the hue
-   drains toward the cream panel instead of going dark, so the learner
-   can see the direction exists and that it is coming. */
+   On screen, but this direction's airspace has not unfolded. In
+   quadrant I that is LEFT and DOWN; LEFT arrives with quadrant II and
+   DOWN with quadrant III — see the controls table in levels.js.
+
+   GREY, AND DELIBERATELY LIGHT GREY. It was a warm tan, on the
+   reasoning that a cool grey would read as a hole in a cream panel.
+   Neutral grey says "off" far more plainly, which is the whole job of
+   this state, and it stays light for the original reason: a DARK plate
+   reads as broken, and this direction is not broken — it is coming.
+
+   Distinct from both LIMIT (the stepper has hit its end stop) and
+   LOCKED (the aircraft is flying, so nothing is available). The navy
+   outline stays on all three, because the plate has not gone anywhere.
+
+   The keys are genuinely disabled, not just styled: buildControls()
+   sets `disabled` on both step buttons, and onStep() refuses any
+   direction outside level().controls even if something reaches it
+   another way. */
 .ctrl[data-armed="0"] .ctrl-label{
-  background:linear-gradient(180deg,#D9CDB2,#C4B694);
-  /* the navy outline stays — the plate is not gone, it is not open yet,
-     and keeping its edge is what says so */
+  background:linear-gradient(180deg,#D6D3CC,#BFBCB4);
   border-color:rgba(18,63,107,.42);
-  color:#6E6449;
+  color:#67655F;
   text-shadow:none;
-  box-shadow:0 6px 0 #B3A483,inset 0 3px 0 rgba(255,255,255,.34);
+  box-shadow:0 6px 0 #ADAAA2,inset 0 3px 0 rgba(255,255,255,.34);
 }
-.ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(110,100,73,.62);filter:none}
+.ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(103,101,95,.62);filter:none}
 .ctrl[data-armed="0"] .ctrl-val,
 .ctrl[data-armed="0"] .stepper{
-  background:linear-gradient(180deg,#F0E7D2,#E2D6B8);
+  background:linear-gradient(180deg,#EDEBE6,#DEDBD4);
   border-color:rgba(18,63,107,.42);
-  box-shadow:inset 0 0 0 2px rgba(196,182,148,.55);
+  box-shadow:inset 0 0 0 2px rgba(190,188,180,.55);
 }
-.ctrl[data-armed="0"] .ctrl-val{color:rgba(18,58,99,.36)}
-.ctrl[data-armed="0"] .step-btn{cursor:default}
-.ctrl[data-armed="0"] .step-btn svg{fill:rgba(18,58,99,.22)}
+.ctrl[data-armed="0"] .ctrl-val{color:rgba(70,72,78,.38)}
+.ctrl[data-armed="0"] .step-btn{cursor:not-allowed}
+.ctrl[data-armed="0"] .step-btn svg{fill:rgba(70,72,78,.24)}
 
 /* LIMIT — "that is as far as it goes". The key stays; only its arrow
    hollows out, so it reads as an end stop rather than as broken. */
@@ -1568,23 +1672,43 @@ button{font-family:inherit}
 /* ARMED. A 4px ring expansion over 2s — the one loop in the dock, and
    it only ever runs once a route is set, which is the moment the child
    has stopped reading and is about to act. */
-.go.armed:not(:disabled){animation:goReady 2000ms var(--ease-io) infinite}
-@keyframes goReady{
-  0%,100%{box-shadow:
-    inset 0 0 0 5px var(--console-gold-light),inset 0 0 0 9px #FFF2C9,
-    inset 0 5px 8px rgba(255,255,255,.22),inset 0 -8px 10px rgba(0,0,0,.12),
-    0 0 0 0 rgba(105,213,244,0),
-    0 4px 0 rgba(10,49,86,.20),0 7px 12px rgba(9,46,72,.20)}
-  50%{box-shadow:
-    inset 0 0 0 5px var(--console-gold-light),inset 0 0 0 9px #FFF2C9,
-    inset 0 5px 8px rgba(255,255,255,.22),inset 0 -8px 10px rgba(0,0,0,.12),
-    0 0 0 5px rgba(105,213,244,.42),
-    0 4px 0 rgba(10,49,86,.20),0 7px 12px rgba(9,46,72,.20)}
+/* THE RING IS A PSEUDO-ELEMENT, NOT AN ANIMATED box-shadow.
+
+   It used to be the fifth value of a six-value box-shadow, animated from
+   0 to 5px of spread and back, forever, for as long as a route was set —
+   which is most of the time anyone spends in this game. A box-shadow
+   cannot be composited: every frame of that was a full repaint of the
+   button, its four inset rings and its two outer shadows, on the CPU,
+   to change one ring nobody was looking at directly.
+
+   The same picture, drawn as a ring that is rasterised ONCE and then
+   only faded and scaled: transform and opacity are the two properties
+   the compositor can animate on its own, without waking the main thread
+   at all. `will-change` is deliberately absent — the ring is 100px and
+   promoting it costs more than it saves. */
+.go::before{
+  /* -10px, not -5px: an absolutely positioned pseudo measures `inset`
+     from its parent's PADDING box, and GO has a 5px border. -10 puts
+     this ring's outer edge 5px OUTSIDE the button, which is where the
+     box-shadow spread it replaces used to draw. At -5 it would sit on
+     top of the navy border instead of around it. */
+  content:"";position:absolute;inset:-10px;
+  border-radius:50%;
+  border:5px solid #69D5F4;
+  opacity:0;pointer-events:none;
 }
+.go.armed:not(:disabled)::before{animation:goReady 2000ms var(--ease-io) infinite}
+@keyframes goReady{
+  /* .90 is 88/98 — the ring collapsed onto the button's own edge, which
+     is what "0 spread" looked like. Not an eyeballed number. */
+  0%,100%{opacity:0;   transform:scale(.90)}
+  50%    {opacity:.42; transform:scale(1)}
+}
+.dock[data-locked="1"] .go,
+.dock[data-locked="1"] .go::before{animation:none}
 .dock[data-locked="1"] .go{
   background:repeating-linear-gradient(135deg,#8FB6BE 0 6px,#7FA8B1 6px 12px);
   color:rgba(255,253,242,.62);
-  animation:none;
   box-shadow:
     inset 0 0 0 5px #E7CE8E,inset 0 0 0 9px #F3E6C4,
     0 4px 0 rgba(10,49,86,.16);
@@ -1627,6 +1751,16 @@ button{font-family:inherit}
   animation:tutPulse 2000ms var(--ease-io) infinite;
 }
 @keyframes tutPulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.035)}}
+
+/* THE AIRCRAFT, SENT AWAY FOR THE LESSON. See CG.showPlane() in
+   game.js. A transition rather than a cut, because it leaves in the
+   middle of a sentence about something else and a disappearing aircraft
+   would pull the eye straight back to it. pointer-events go too: it
+   must not sit over a chart the learner is being asked to tap. */
+.plane-holder.plane-away{
+  opacity:0;pointer-events:none;
+  transition:opacity 520ms var(--ease-out);
+}
 
 /* idle hand nudge */
 .hand{position:absolute;left:0;top:0;width:58px;height:58px;pointer-events:none;
@@ -1719,14 +1853,40 @@ button{font-family:inherit}
 
 /* the breath, and the glow that goes with it */
 .play-btn:not([hidden]) img{
-  animation:playIdle 3200ms ease-in-out 400ms infinite,
-            playGlow  3200ms ease-in-out 400ms infinite;
+  animation:playIdle 3200ms ease-in-out 400ms infinite;
 }
-@keyframes playGlow{
-  0%,100%{filter:drop-shadow(0 10px 20px rgba(8,45,70,.45))
-                 drop-shadow(0 0 10px rgba(255,243,196,.30))}
-  50%    {filter:drop-shadow(0 10px 20px rgba(8,45,70,.45))
-                 drop-shadow(0 0 22px rgba(255,243,196,.70))}
+/* THE WARM GLOW IS A HALO BEHIND THE BUTTON, NOT AN ANIMATED FILTER.
+
+   It used to be the second stop of a two-stop `drop-shadow` animated
+   from 10px to 22px of blur, forever, on the first screen the player
+   ever sees. A blur is the one thing the compositor cannot help with:
+   every frame re-ran a 22px gaussian over the artwork on the CPU, and
+   it did so while `playIdle` was scaling that same element, so nothing
+   could be cached between frames either.
+
+   A radial gradient with its opacity animated is the same picture for
+   none of the cost — and it is the same picture specifically because
+   this button is a circle. A shape-hugging glow and a radial halo are
+   only distinguishable around a shape that is not round.
+
+   The button's own cast shadow stays a real drop-shadow on the <img>:
+   it is static, so it is rasterised once, and it hugs the artwork's
+   alpha the way a painted-on ellipse could not. */
+.play-btn::before{
+  content:"";position:absolute;
+  left:50%;top:95px;                 /* the image's own centre */
+  width:250px;height:250px;margin:-125px 0 0 -125px;
+  border-radius:50%;pointer-events:none;z-index:-1;
+  background:radial-gradient(circle,
+    rgba(255,243,196,.55) 0 34%,
+    rgba(255,243,196,.22) 56%,
+    rgba(255,243,196,0)   72%);
+  opacity:.42;
+  animation:playHalo 3200ms ease-in-out 400ms infinite;
+}
+@keyframes playHalo{
+  0%,100%{opacity:.42;transform:scale(.94)}
+  50%    {opacity:1;  transform:scale(1)}
 }
 
 /* THE RINGS. Two, offset by half the cycle, so one is always leaving
@@ -1767,6 +1927,12 @@ button{font-family:inherit}
    appears on a delay, it appears when the assets are actually here. */
 .play-btn{
   position:relative;
+  /* The halo below is z-index:-1 so it paints behind the <img>. Without
+     a stacking context here that -1 would escape to the nearest one and
+     put the glow behind the title artwork instead of behind the button.
+     `isolation` creates the context without the side effects a
+     transform or an opacity would bring. */
+  isolation:isolate;
   width:300px;height:auto;padding:0;background:none;border:0;cursor:pointer;
   display:grid;justify-items:center;gap:4px;
   transition:transform var(--t-hover) var(--ease-out);
@@ -1799,6 +1965,8 @@ button{font-family:inherit}
   transform:scale(.93) translateY(4px);
   transition-duration:var(--t-press);
 }
+.play-btn:active:not(:disabled)::before,
+.play-btn.pressed::before{animation:none;opacity:.42}
 .play-btn:active:not(:disabled) img,
 .play-btn.pressed img{
   animation:none;
@@ -2129,20 +2297,102 @@ img:not([src]){visibility:hidden}
 .stage.page-idle .layer-water > *,
 .stage.page-idle .cloud{will-change:auto}
 
+/* ===================================================================
+   THE IDLE PAUSE, EXTENDED
+
+   page-idle came from `visibilitychange` — nobody is looking, stop
+   compositing. The same argument holds in three more states, and they
+   are cheaper to detect than a tab switch:
+
+     loading    the ocean is not on screen yet
+     approach   the intro cinematic; the world is fading up under it
+     start      the title art covers the stage
+
+   In each of those the ambient water is either hidden or irrelevant,
+   and on a weak machine the intro cinematic is exactly where a first
+   impression is formed. The selector list is the same one page-idle
+   uses, so the two states can never drift apart.
+   =================================================================== */
+.stage[data-screen="loading"] .swell,
+.stage[data-screen="loading"] .caustic,
+.stage[data-screen="loading"] .glint,
+.stage[data-screen="loading"] .surf-band,
+.stage[data-screen="loading"] .cloud,
+.stage[data-screen="approach"] .swell,
+.stage[data-screen="approach"] .caustic,
+.stage[data-screen="approach"] .glint,
+.stage[data-screen="approach"] .surf-band,
+.stage[data-screen="approach"] .cloud,
+.stage[data-screen="start"] .swell,
+.stage[data-screen="start"] .caustic,
+.stage[data-screen="start"] .glint,
+.stage[data-screen="start"] .surf-band,
+.stage[data-screen="start"] .cloud{animation-play-state:paused}
+/* and the compositor hints go back with them */
+.stage[data-screen="loading"] .layer-water > *,
+.stage[data-screen="approach"] .layer-water > *,
+.stage[data-screen="start"] .layer-water > *,
+.stage[data-screen="loading"] .cloud,
+.stage[data-screen="approach"] .cloud,
+.stage[data-screen="start"] .cloud{will-change:auto}
+
+/* ===================================================================
+   PERF-LITE — the low-end tier
+
+   Set from game.js by MEASURING, not by asking the device what it is:
+   the first two seconds of the intro cinematic are timed, and if the
+   average frame is over ~22ms the class goes on. Device hints
+   (deviceMemory, hardwareConcurrency) are a fallback only — they are
+   routinely wrong, and on iPads they are absent or misleading.
+
+   WHAT IT DROPS: ambient motion and decorative glow. What it must never
+   drop is content — the artwork, the layout, the colours, the aircraft,
+   the beacon and every mark that carries meaning are all still here. A
+   child on a slow tablet is playing the same game, not a stripped one.
+
+   The list below is deliberately the same shape as the reduced-motion
+   block: if something is expensive enough to turn off for a weak GPU it
+   is usually expensive enough to turn off for someone who asked for
+   less motion, and keeping the two lists parallel is how they stay
+   honest with each other.
+   =================================================================== */
+.stage.perf-lite .swell,
+.stage.perf-lite .caustic,
+.stage.perf-lite .glint,
+.stage.perf-lite .surf-band,
+.stage.perf-lite .cloud,
+.stage.perf-lite .rw-heat{animation:none}
+/* Not `animation-play-state:paused` — paused still holds the layer.
+   `animation:none` lets the compositor drop the texture entirely, which
+   on a 1920x1080 surface is ~8MB back per layer. */
+.stage.perf-lite .layer-water > *,
+.stage.perf-lite .cloud,
+.stage.perf-lite .layer-runway{will-change:auto}
+/* decorative breathing, none of which says anything */
+.stage.perf-lite .game-question-panel::after,
+.stage.perf-lite .named-val,
+.stage.perf-lite .play-btn::before{animation:none}
+/* the glint is a moving highlight over the whole ocean — the single
+   most expensive decoration on the screen, and the least missed */
+.stage.perf-lite .glint{display:none}
+
 /* ---------------- reduced motion ---------------- */
 /* ONE block, deliberately. A second @media (prefers-reduced-motion)
    block elsewhere in the file is how a rule gets quietly missed — by
    anyone reading the file, and by anything checking it. */
 @media (prefers-reduced-motion:reduce){
-  .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-line,.go,.wp-pulse,.wp-ping,.play-btn img,
+  .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-thin,.pulse-thick,.go,.wp-pulse,.wp-ping,.play-btn img,
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff,
-  .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label,
-  .play-slot::before,.play-slot::after,
-  .axis-span-line,.axis-span-head,.axis-pip,
+  .go.armed:not(:disabled)::before,.ctrl.tut-hi .ctrl-label,
+  .play-slot::before,.play-slot::after,.play-btn::before,
+  .axis-span-line,.axis-span-head,.axis-pip,#axisHot line.on,
   .game-question-panel::after,.game-question-bar.gq-in,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
+  /* the chip keeps its entrance — the breath is the part that loops */
+  .named-val{animation-name:namedIn!important}
+  #axisHot line.on{opacity:1}
   .rw-puff,.cine-puff{display:none}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still

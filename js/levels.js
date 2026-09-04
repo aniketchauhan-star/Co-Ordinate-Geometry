@@ -47,16 +47,26 @@ CG.STAGES = {
        stage 2   cell 112  ->  1344 x 672    72 cells — the SAME cell,
                                              so it is a pure sideways
                                              unfold with no zoom at all
-       stage 3   cell  59  ->  1652 x 708   336 cells
+       stage 3   cell  59  ->   708 x 708   144 cells  -- SQUARE
 
-     Every unfold makes the chart bigger and gives it more squares:
-     451k -> 903k -> 1170k px of grid, and 36 -> 72 -> 336 cells. The
-     third stage fills the width rather than closing back into a square,
-     because a four-quadrant SQUARE is bounded by the 768px height and
-     would be barely half the width of stage 2 — the chart would visibly
-     shrink at the exact moment the airspace doubles. Restoring the
-     square is a one-line change: set stage 3/4 extent to xMin -6,
-     xMax 6.
+     THE THIRD STAGE IS A SQUARE, AND IT COSTS WIDTH TO BE ONE.
+
+     It used to run x from -14 to 14 and fill the width — 1652 x 708,
+     336 cells — on the argument that a four-quadrant square is bounded
+     by the play box's 768px height and would therefore be narrower than
+     stage 2, so the chart would visibly shrink at the exact moment the
+     airspace doubles. That shrink is real and it is what you now see:
+     the panel goes from 1420px wide at stage 2 to 768px at stage 3.
+
+     It is the right trade anyway, because the old shape made the two
+     axes different lengths — 1652px of x against 708px of y — and this
+     is the screen where the lesson finally names them as a matched pair
+     of perpendicular lines. A plane whose axes are visibly unequal
+     argues against the thing being taught. Equal axes win; the width
+     was decoration.
+
+     Reverting is the same one-line change it always was: set stage 3
+     and 4 extent back to xMin -14, xMax 14.
 
      In stage 1 the origin sits ON the grid's bottom-left corner, so the
      aircraft starts in the corner of its own airspace the way the PDF
@@ -75,10 +85,10 @@ CG.STAGES = {
      --------------------------------------------------------------------- */
   1: { cell: 112, origin: { x: 624, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
   2: { cell: 112, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
-  3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -14, xMax: 14, yMin: -6, yMax: 6 } },
+  3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } },
   /* quadrant IV opens no new airspace beyond stage 3, so it shares the
      geometry and nothing lurches. */
-  4: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -14, xMax: 14, yMin: -6, yMax: 6 } }
+  4: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } }
 };
 
 /* ============================================================
@@ -96,26 +106,44 @@ CG.STAGES = {
      `controls`  what the learner can use   (grows with the plane)
 
    `controls` drives the keyboard and the geometry audit, which proves
-   every destination the learner can select stays on the charted area. */
+   every destination the learner can select stays on the charted area.
+
+   AND IT IS NOW ACTUALLY USED. Every level used to list all four in
+   BOTH lists, which made the split decorative and left two real
+   problems on screen: in quadrant I the learner could set LEFT or DOWN
+   and send the aircraft off a chart that has no left or down — the
+   audit this comment claims exists would have failed — and the dock
+   gave no sign that the airspace was going to grow. It grows now, one
+   direction at a time, and each one arrives in the mission that needs
+   it:
+
+     quadrant I     right, up                 LEFT and DOWN wait
+     quadrant II    right, left, up           LEFT arrives with it
+     quadrant III   all four                  DOWN arrives with it
+     quadrant IV    all four
+
+   `visible` stays all four throughout, so the dock never changes width
+   and a direction that is coming is visible as a thing that is coming
+   — see the NOT YET state in styles.css. */
 CG.LEVELS = [
   /* ---------- FIRST QUADRANT : right + up ---------- */
   {
     quadrant: 1, target: { x: 3, y: 2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
     mission: 'Guide the aircraft to the target.',
     tutorial: true,
     coordinateReveal: true          /* FLOW 10 — the "X = 3, Y = 2" moment */
   },
   {
     quadrant: 1, target: { x: 5, y: 4 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
     mission: 'Guide the aircraft to the target.'
   },
 
   /* ---------- SECOND QUADRANT : left + up ---------- */
   {
     quadrant: 2, target: { x: -2, y: 4 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
     mission: 'Guide the aircraft to the target.',
     unlockNote: 'The airspace now extends to the left.',
     unlockVoice: 'Now the airspace extends to the left.',
@@ -123,7 +151,7 @@ CG.LEVELS = [
   },
   {
     quadrant: 2, target: { x: -5, y: 2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
     mission: 'Guide the aircraft to the target.'
   },
 
@@ -215,7 +243,7 @@ CG.CONFIG = {
   /* --- flight: one continuous timeline (see animateAircraft) ---
      Deliberately unhurried: the learner has to be able to watch the
      aircraft cross each grid line and read the number as it appears. */
-  cellDuration: 640,   /* ms of travel per grid cell, at cruise speed   */
+  cellDuration: 760,   /* ms of travel per grid cell, at cruise speed   */
   accelFraction: 0.18, /* share of the flight spent easing in / out     */
   pivotMs: 420,        /* pause-and-turn on the corner point, in ms.
                           The aircraft stops dead on the corner, rotates
@@ -228,13 +256,24 @@ CG.CONFIG = {
 
   /* --- pacing of the button-free flow ---
      Every teaching line waits one of these beats. They are the single
-     place to speed the whole game up or slow it down. */
-  beatShort: 2300,
-  beatMed: 3500,
-  beatLong: 4800,
-  arrivalBeat: 1600,   /* pause between landing and naming the location */
-  retryDelay: 3200,    /* wait before the aircraft glides home to retry */
-  quadrantBeat: 9500,  /* the four sign patterns need reading time      */
+     place to speed the whole game up or slow it down.
+
+     SLOWED THROUGHOUT, ON PURPOSE. The whole flow used to run about a
+     third quicker, and it was quick for the wrong audience: an adult
+     who already knows what a co-ordinate is can follow it, and the
+     child it is built for is still reading the first half of a sentence
+     when the second one replaces it. A beat here is not dead time — it
+     is the time the learner spends looking at the chart the sentence is
+     about, which is where the teaching actually happens.
+
+     If it ever needs to move again, move it HERE. Nothing else in the
+     game holds a hard-coded pause. */
+  beatShort: 3000,
+  beatMed: 4600,
+  beatLong: 6200,
+  arrivalBeat: 2200,   /* pause between landing and naming the location */
+  retryDelay: 4000,    /* wait before the aircraft glides home to retry */
+  quadrantBeat: 11500, /* the four sign patterns need reading time      */
 
   idleHintDelay: 5000  /* ms of inactivity before the hand nudge appears */
 };
