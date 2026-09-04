@@ -32,10 +32,6 @@ CG.UI = (function () {
     el.go = q('btnGo');
     el.dock = q('dock');
     el.tray = q('dragTray');
-    el.levelNow = q('levelNow');
-    el.levelTotal = q('levelTotal');
-    el.btnSound = q('btnSound');
-    el.btnReset = q('btnReset');
     el.hand = q('hand');
     el.coordTag = q('coordTag');
 
@@ -43,23 +39,13 @@ CG.UI = (function () {
       if (el.go.disabled) return;
       if (handlers.onGo) handlers.onGo();
     });
-    el.btnReset.addEventListener('click', function () {
-      el.btnReset.classList.remove('spin');
-      void el.btnReset.offsetWidth;
-      el.btnReset.classList.add('spin');
-      if (handlers.onReset) handlers.onReset();
-    });
-    el.btnSound.addEventListener('click', function () {
-      if (handlers.onSoundToggle) handlers.onSoundToggle();
-    });
-    syncSoundButton();
   }
 
-  function syncSoundButton() {
-    var on = CG.Audio.isEnabled();
-    el.btnSound.setAttribute('aria-pressed', on ? 'true' : 'false');
-    el.btnSound.setAttribute('aria-label', on ? 'Sound on' : 'Sound off');
-  }
+  /* The sound and reset buttons are gone from the screen, so there is
+     nothing left to keep in sync. Both actions survive on the keyboard
+     — see onKeyDown() in game.js — because a game that talks needs a
+     way to be quietened, and §BE requires a reset to exist. */
+
 
   /* ---------------- direction controls ---------------- */
   /* buildControls(visible, usable) — everything in `visible` is drawn so
@@ -304,10 +290,11 @@ CG.UI = (function () {
     el.missionActions.innerHTML = '';
   }
 
-  function setLevelPill(now, total) {
-    el.levelNow.textContent = String(now);
-    el.levelTotal.textContent = String(total);
-  }
+  /* The mission counter was removed from the screen. A no-op is kept
+     rather than making every caller check, and it is the one place to
+     put a counter back if one is ever wanted again. */
+  function setLevelPill() {}
+
 
   /* ---------------- coordinate tag beside the aircraft ---------------- */
   function coordTag(stageX, stageY, text, kicker) {
@@ -547,7 +534,6 @@ CG.UI = (function () {
     highlight: highlight,
     handAt: handAt,
     hideHand: hideHand,
-    syncSoundButton: syncSoundButton,
     dragTray: dragTray, clearDragTray: clearDragTray,
     chipDone: chipDone, chipWrong: chipWrong
   };

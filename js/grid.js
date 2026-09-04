@@ -131,7 +131,13 @@ CG.Grid = (function () {
 
     drawOrigin();
     setStage(1, false);
-    showAxes(false);          /* tutorial missions show a plain grid */
+    /* The axes are on from the first mission. The aircraft parks on the
+       origin, and the two lines it is standing on are the only lines on
+       the chart that mean anything yet — leaving them looking like any
+       other gridline made the origin unreadable. They carry their own
+       weight, colour, glow and arrowheads; the lesson still NAMES them
+       later, which was always the part that mattered. */
+    showAxes(true);
   }
 
   /* EVERY INTEGER LINE, AT ONE WEIGHT. There used to be three: n=0 drawn as a stand-in
@@ -142,9 +148,9 @@ CG.Grid = (function () {
 
      A graticule's job is to be an even backdrop you can count on. The
      things allowed to stand out are the aircraft, the target, and the
-     #axes layer once the lesson gives the axes their names — and that
-     layer has arrowheads, ticks, labels and its own weight to do it
-     with, so it never needed the graticule to be dim.
+     #axes layer — which is up from the first mission and has
+     arrowheads, ticks, labels and its own weight to do it with, so it
+     never needed the graticule to be dim.
 
      No class is passed at all now, which is why .grid-major and
      .grid-centre are deleted from the stylesheet rather than left
@@ -253,9 +259,18 @@ CG.Grid = (function () {
     el.letters.x.setAttribute('y', toY(0) - 44);
     el.letters.y.setAttribute('x', toX(0) + 40);
     el.letters.y.setAttribute('y', toY(c.yMax) + 54);
-    /* an axis only grows an arrowhead once that direction exists */
-    el.arrows.xn.style.opacity = c.xMin <= -2 ? 1 : 0;
-    el.arrows.yn.style.opacity = c.yMin <= -2 ? 1 : 0;
+    /* THE ARROWHEADS WAIT FOR THE FULL PLANE. An arrow means "this axis
+       carries on", and in quadrant I alone it points at the two edges
+       the chart does not actually have yet — it promises a direction
+       the learner cannot fly in. So all four appear together, at the
+       moment the last quadrant unfolds and the promise becomes true.
+       Until then the axes are lines with an origin, which is exactly
+       what they are. */
+    var whole = c.xMin <= -2 && c.yMin <= -2;
+    el.arrows.xp.style.opacity = whole ? 1 : 0;
+    el.arrows.yp.style.opacity = whole ? 1 : 0;
+    el.arrows.xn.style.opacity = whole ? 1 : 0;
+    el.arrows.yn.style.opacity = whole ? 1 : 0;
 
     /* The aircraft lives outside this SVG, so it does not inherit the
        chart transform. Without this it keeps the pixel position it had
@@ -371,22 +386,43 @@ CG.Grid = (function () {
      each integer it crossed and an arrowhead at the far end pointing
      the way it travelled.
 
-     That is why this is drawn on the axis itself rather than reusing
-     pulseLine: a full-height line through x=3 says "this column",
-     which is a different statement from "this is how far it went".
+     That is why this is drawn as a span rather than reusing pulseLine:
+     a full-height line through x=3 says "this column", which is a
+     different statement from "this is how far it went".
+
+     The vertical span is drawn on the aircraft's own column, not up the
+     y-axis: pass the aircraft's x as the third argument and the ladder
+     appears directly beneath it. It still stops where the plane stops,
+     so it never becomes a full-height column — it is a measurement of
+     how far up, drawn where the learner is already looking.
      ===================================================================*/
   var AXIS_STEP = 240;            /* ms between one pip and the next */
 
-  function glowAxisSpan(axis, value) {
+  function glowAxisSpan(axis, value, at) {
     clearAxisSpan();
     if (!value) return;
+    /* ONE span, on the line the aircraft actually flew.
+       The vertical leg is flown at x = at, not up the y-axis, so that
+       is where it is drawn. Lighting the axis as well was tried and
+       dropped: two identical ladders side by side made the learner
+       look at the empty one, and the measurement that matters is the
+       one running back from under the plane. When at is 0 — which is
+       every horizontal leg, since those really are flown along the
+       x-axis — this is the axis span, unchanged. */
+    el.pulse.appendChild(spanGroup(axis, value, at || 0));
+  }
+
+  /* One lit span, built `off` spaces sideways from the axis it measures:
+     off = 0 is the axis itself, off = 3 is the aircraft's own column. */
+  function spanGroup(axis, value, off) {
     var g = mk('g', null, 'axis-span'), i;
     var n = Math.abs(value), sgn = value < 0 ? -1 : 1;
+    var base = axis === 'x' ? toY(off) : toX(off);
 
     /* the lit segment, origin outwards */
     var seg = axis === 'x'
-      ? { x1: toX(0), y1: toY(0), x2: toX(value), y2: toY(0) }
-      : { x1: toX(0), y1: toY(0), x2: toX(0),     y2: toY(value) };
+      ? { x1: toX(0), y1: base,   x2: toX(value), y2: base }
+      : { x1: base,   y1: toY(0), x2: base,       y2: toY(value) };
     seg['vector-effect'] = 'non-scaling-stroke';
     g.appendChild(mk('line', seg, 'axis-span-line'));
 
@@ -396,20 +432,20 @@ CG.Grid = (function () {
     var head = axis === 'x'
       ? (sgn > 0 ? 'M0,-11 L20,0 L0,11 Z' : 'M0,-11 L-20,0 L0,11 Z')
       : (sgn > 0 ? 'M-11,0 L0,-20 L11,0 Z' : 'M-11,0 L0,20 L11,0 Z');
-    var hx = axis === 'x' ? toX(value) : toX(0);
-    var hy = axis === 'x' ? toY(0)     : toY(value);
+    var hx = axis === 'x' ? toX(value) : base;
+    var hy = axis === 'x' ? base       : toY(value);
     g.appendChild(mk('path', { d: head, transform: 'translate(' + hx + ',' + hy + ')' },
                      'axis-span-head'));
 
     /* a pip on every integer it crossed, in the order it crossed them */
     for (i = 1; i <= n; i++) {
-      var px = axis === 'x' ? toX(i * sgn) : toX(0);
-      var py = axis === 'x' ? toY(0)       : toY(i * sgn);
+      var px = axis === 'x' ? toX(i * sgn) : base;
+      var py = axis === 'x' ? base         : toY(i * sgn);
       var pip = mk('circle', { cx: px, cy: py, r: 7 }, 'axis-pip');
       pip.style.animationDelay = ((i - 1) * AXIS_STEP) + 'ms';
       g.appendChild(pip);
     }
-    el.pulse.appendChild(g);
+    return g;
   }
 
   function clearAxisSpan() {

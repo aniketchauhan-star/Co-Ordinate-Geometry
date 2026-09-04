@@ -88,7 +88,9 @@
     Grid.clearPath(); Grid.clearReveal(); Grid.clearFx(); Grid.clearHint();
     Grid.clearLesson();
     Grid.setStage(4, true);
-    Grid.showAxes(false);
+    /* the axes stay up — they have been on screen for eight missions,
+       and blanking them here just to bring them back three beats later
+       would read as a glitch. §22/23 still highlights and names them. */
     Grid.showPermanentNumbers(false);
     await wait(700); if (!alive(tk)) return false;
 

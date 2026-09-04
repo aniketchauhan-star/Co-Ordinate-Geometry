@@ -49,6 +49,15 @@
      hue #B7E7EF clears it, at 111.5 — see the note on #gridLines. */
   --grid-line: rgba(125, 195, 210, 0.87);
   --grid-axis: #B7E7EF;
+  /* THE AXIS STROKE, lifted off --grid-axis (which still tints the
+     ticks, arrowheads and spans) so the two lines through the origin
+     out-read the graticule on their own, before any glow is applied.
+     Measured the same way as everything above: 132.8 delta at the
+     plate's worst stop, against the axis hue's 114.9 and the one grid
+     hue's 62.0. It is the only stroke on the chart with real headroom
+     over the 100/255 floor, which is right — it is the only stroke the
+     learner is asked to find. */
+  --grid-axis-line: #DCF4F9;
   --grid-border: #559DB8;
   --grid-glow: rgba(125, 211, 229, 0.30);
 
@@ -59,7 +68,6 @@
   --dock-bg: #0E1B31;
   --dock-2: #2E4463;
   --dock-rim: #44769C;
-  --ui-text: #F3F7FA;
 
   /* ---- SEMANTIC vs DIRECTION -----------------------------------------
      The four direction hues (orange 30deg, green 112, purple 264, coral 0)
@@ -163,8 +171,11 @@
   --fs-lg:30px;     /* mission instruction, callouts   */
   --fs-md:23px;     /* mission sub-line, buttons       */
   --fs-sm:21px;     /* control labels                  */
-  --fs-xs:16px;     /* eyebrows, kickers               */
-  --tracking-label:.09em;
+  /* --fs-xs and --tracking-label went with the mission pill, the only
+     thing that read them. The two kickers left on the screen carry
+     their own hand-tuned size and tracking (15px/.18em on the load
+     gauge, 20px/.22em on the completion card), so folding them into a
+     token would change the design rather than tidy it. */
 }
 
 *,*::before,*::after{box-sizing:border-box}
@@ -204,7 +215,6 @@ button{font-family:inherit}
 .plane-holder{z-index:9}
 .layer-cine{z-index:10}
 .layer-ui{z-index:20}
-.hud{z-index:20}
 .mission{z-index:20}
 .dock{z-index:21}
 .hand{z-index:24}
@@ -523,21 +533,24 @@ button{font-family:inherit}
    stroke:var(--grid-axis) at full opacity measures 111.5. It costs the
    graticule its recession — every line would then be as bright as the
    axes are, and the aircraft and target would have to fight it. */
-/* During the tutorial missions the field is a plain, even grid. The axes,
-   their ticks and their arrowheads only appear once the concept reveal
-   gives them names. */
+/* THE AXES. Up from the first mission, because the aircraft parks on
+   the origin and the two lines running out of it are the whole point.
+   They out-read the graticule on four counts at once — a brighter
+   stroke, nearly twice the weight, a real glow, and arrowheads — so
+   there is never any question which two lines are the axes. The
+   graticule stays flat and even underneath (#gridLines has no filter);
+   contrast is made by lifting these, not by dimming those. */
 #axes,#ticks,#axisEnds{opacity:0;transition:opacity 620ms var(--ease-out)}
 #axes.axes-shown,#ticks.axes-shown,#axisEnds.axes-shown{opacity:1}
-#axes line{stroke:var(--grid-axis);stroke-width:3.4;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
-/* Two shadows, for the same reason as the graticule: chained
-   drop-shadows blur the previous one's output, so a third was blooming
-   a bloom. The axes still read brighter than the grid — that is their
-   colour, their 3.4 weight, their round caps, their arrowheads and
-   their labels doing it, not an extra glow layer. */
+#axes line{stroke:var(--grid-axis-line);stroke-width:4.6;stroke-linecap:round;transition:stroke 340ms,stroke-width 340ms}
+/* Two shadows, never three: chained drop-shadows blur the previous
+   one's output, so a third blooms a bloom rather than adding light.
+   One tight halo to thicken the line, one wide one to sit it in the
+   water. */
 #axes{
   filter:
-    drop-shadow(0 0 4px var(--grid-glow))
-    drop-shadow(0 0 16px var(--grid-glow));
+    drop-shadow(0 0 5px #FFFFFF)
+    drop-shadow(0 0 20px var(--grid-glow));
 }
 /* the voice is naming this axis right now: it goes white, thickens, and
    blooms, so there is no doubt which line is being talked about */
@@ -785,41 +798,10 @@ button{font-family:inherit}
 .layer-ui{pointer-events:none}
 .layer-ui > *{pointer-events:auto}
 
-/* HUD */
-.hud{position:absolute;left:0;right:0;top:20px;height:64px;pointer-events:none;padding:0 34px;display:flex;justify-content:space-between;align-items:flex-start}
-.hud > *{pointer-events:auto}
-.pill{
-  display:inline-flex;align-items:center;gap:10px;
-  height:56px;padding:0 22px;border-radius:999px;
-  background:linear-gradient(180deg,rgba(255,251,239,.96),rgba(255,240,204,.94));
-  border:2.5px solid var(--ui-stroke);
-  box-shadow:var(--ui-shadow);
-}
-.pill-key{font-size:var(--fs-xs);font-weight:800;letter-spacing:var(--tracking-label);color:rgba(22,55,91,.55)}
-.pill-val{font:900 25px/1 var(--font-num);font-variant-numeric:tabular-nums;color:var(--navy)}
-.pill-val i{font-style:normal;opacity:.4;margin:0 3px}
-.pill-val span{opacity:.55}
-
-.hud-right{display:flex;gap:14px}
-.icon-btn{
-  width:56px;height:56px;border-radius:50%;
-  background:linear-gradient(180deg,var(--cream-hi),var(--cream));
-  border:2.5px solid var(--ui-stroke);
-  box-shadow:var(--ui-shadow);
-  display:grid;place-items:center;cursor:pointer;
-  transition:transform var(--t-hover) var(--ease-out),background var(--t-hover);
-}
-.icon-btn svg{width:30px;height:30px;fill:none;stroke:var(--navy);stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
-.icon-btn svg path:first-child{fill:var(--navy);stroke-width:1.6}
-.icon-btn .ic-off{display:none}
-.icon-btn .ic-off path:not(:first-child){fill:none}
-.icon-btn[aria-pressed="false"] .ic-on{display:none}
-.icon-btn[aria-pressed="false"] .ic-off{display:block}
-.icon-btn:hover{transform:scale(1.06)}
-.icon-btn:active{transform:scale(.94)}
-#btnReset.spin .ic-reset{animation:spin 520ms var(--ease-out)}
-@keyframes spin{from{transform:rotate(0)}to{transform:rotate(-360deg)}}
-.ic-reset path{fill:none!important}
+/* THE HUD IS GONE. The mission counter and the sound / reset icon
+   buttons were removed at the designer's request, so the top strip
+   holds nothing but the mission panel now. Sound (M) and reset (R)
+   live on the keyboard — see onKeyDown() in game.js. */
 
 /* MISSION PANEL */
 .mission{
@@ -1607,35 +1589,9 @@ img:not([src]){visibility:hidden}
   100%{transform:translate3d(var(--dx,0),var(--dy,900px),0) scale(var(--k,2.6));opacity:0}
 }
 
-/* The tower's clearance. Same kicker language as the completion card,
-   so it reads as part of the same air-traffic-control world. */
-.cine-call{
-  position:absolute;left:50%;top:132px;
-  display:flex;align-items:center;gap:14px;
-  margin:0;padding:13px 28px;border-radius:999px;
-  background:rgba(14,27,49,.82);
-  border:1px solid var(--dock-rim);
-  box-shadow:0 14px 34px rgba(4,26,44,.42);
-  color:var(--ui-text);
-  font-size:22px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
-  white-space:nowrap;
-  animation:callIn 420ms var(--ease-out) both;
-}
-.cine-call[hidden]{display:none}
-.cine-call.out{animation:callOut 320ms var(--ease-out) both}
-.cine-call b{
-  flex:0 0 auto;width:12px;height:12px;border-radius:50%;
-  background:var(--ok);color:var(--ok);
-  box-shadow:0 0 12px currentColor;
-  animation:callBlink 880ms steps(1,end) infinite;
-}
-@keyframes callBlink{0%,49%{opacity:1}50%,100%{opacity:.22}}
-@keyframes callIn{
-  from{opacity:0;transform:translate(-50%,-16px)}
-  to  {opacity:1;transform:translate(-50%,0)}
-}
-@keyframes callOut{
-  from{opacity:1;transform:translate(-50%,0)}
+/* The arrival carries no caption. The tower's clearance pill used to
+   sit here; it was removed so the landing is wordless — nothing to
+   read while the aircraft is the thing to watch. */
   to  {opacity:0;transform:translate(-50%,-12px)}
 }
 
@@ -1749,7 +1705,7 @@ img:not([src]){visibility:hidden}
   .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,
   .axis-span-line,.axis-span-head,.axis-pip,
-  .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,.cine-call,.cine-call b,
+  .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
   .rw-puff,.cine-puff{display:none}

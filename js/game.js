@@ -39,6 +39,10 @@ window.CG = window.CG || {};
   /* set the moment the game may be started — by the preloader finishing,
      or by the boot watchdog. See startGame() and releaseBoot(). */
   var bootReleased = false;
+  /* Held at module scope so onKeyDown() can reach onReset and
+     onSoundToggle: their on-screen buttons were removed, and the
+     keyboard is now the only way in. */
+  var handlers = {};
 
   var animToken = 0;              /* bumped to cancel an in-flight sequence */
   var seqToken = 0;               /* bumped to cancel a teaching sequence   */
@@ -526,7 +530,7 @@ window.CG = window.CG || {};
     await wait(CFG.beatMed); if (tk !== seqToken) return;
 
     for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
-    Grid.glowAxisSpan('y', sel.y);
+    Grid.glowAxisSpan('y', sel.y, sel.x);
     Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
       text: 'Then, you moved <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
@@ -550,7 +554,7 @@ window.CG = window.CG || {};
       });
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
-      Grid.glowAxisSpan('y', sel.y);
+      Grid.glowAxisSpan('y', sel.y, sel.x);
       Grid.markLeg('y', sel.y, sel.x);
       UI.mission({
         text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
@@ -676,9 +680,11 @@ window.CG = window.CG || {};
     UI.hideCoordTag();
     UI.highlight(null);
 
-    /* Tutorial missions show a plain grid: the axes are not drawn until
-       the concept reveal gives them their names. */
-    if (!gameState.coordinateMode) Grid.showAxes(false);
+    /* The axes are always drawn. The aircraft stands on the origin, so
+       the two lines through it have to read as the axes from the first
+       mission — brighter, glowing, arrow-tipped — and not as two more
+       gridlines. Naming them is still the concept reveal's job. */
+    Grid.showAxes(true);
 
     /* the coordinate plane unfolds one quadrant at a time */
     Grid.setStage(lv.quadrant, true);
@@ -1117,7 +1123,6 @@ window.CG = window.CG || {};
     gameState.screen = 'approach';
     dom.stage.dataset.screen = 'approach';
     Grid.setStage(1, false);
-    Grid.showAxes(false);
     CG.Intro.run().then(toIntro);
   }
 
@@ -1170,8 +1175,12 @@ window.CG = window.CG || {};
        runway, the landing — and hands over to the first mission. */
     var slot = dom.btnPlay.parentNode;
     if (slot) slot.classList.remove('rings-live');
-    dom.screenStart.classList.add('leaving');
+    /* The state goes on FIRST, then the fade. Both land in the same
+       task, so nothing is painted in between either way — but ordering
+       it this way means no future refactor that puts a paint between
+       them can flash the bare game under the dissolving start screen. */
     beginFlightDeck();
+    dom.screenStart.classList.add('leaving');
     window.setTimeout(function () {
       dom.screenStart.hidden = true;
       dom.btnPlay.disabled = false;
@@ -1191,7 +1200,10 @@ window.CG = window.CG || {};
     Grid.setLetter('x', false);
     Grid.setLetter('y', false);
     Grid.showQuadrants(null);
-    Grid.showAxes(false);
+    /* the axes are NOT hidden here. They are permanent furniture now,
+       and the whole chart is held back by the cinematic's stage state
+       anyway — so hiding them only created a frame where they could
+       pop in behind the handover. */
     Grid.setStage(1, false);
 
     function toGame() {
@@ -1228,7 +1240,6 @@ window.CG = window.CG || {};
     Grid.showQuadrants(null);
     Grid.clearLesson();
     Grid.clearPing();
-    Grid.showAxes(false);
     Grid.setStage(1, false);
     syncPlaneScale();
     loadLevel(0);
@@ -1261,6 +1272,18 @@ window.CG = window.CG || {};
 
   function onKeyDown(ev) {
     if (gameState.screen === 'loading') return;
+    /* MUTE COMES FIRST, before every screen guard below. The icon
+       button it replaced worked on every screen, and the two screens
+       the guards would have excluded — the introduction and the
+       completion card — are the two where the music is loudest and
+       least wanted. During a cinematic the capture-phase handler gets
+       the key first and skips the cinematic, which ends its audio
+       anyway, so nothing is lost there either. */
+    if (ev.key === 'm' || ev.key === 'M') {
+      ev.preventDefault();
+      if (handlers.onSoundToggle) handlers.onSoundToggle();
+      return;
+    }
     if (gameState.screen === 'start') {
       if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); startGame(); }
       return;
@@ -1271,6 +1294,15 @@ window.CG = window.CG || {};
     if (gameState.screen === 'complete') return;
     var tag = (ev.target && ev.target.tagName) || '';
     if (tag === 'INPUT') return;
+    /* RESET, which the icon button used to do. Unlike mute it belongs
+       down here behind the guards: there is nothing to reset on the
+       introduction screen or the completion card, and a reset during a
+       teaching sequence is already refused by the handler itself. */
+    if (ev.key === 'r' || ev.key === 'R') {
+      ev.preventDefault();
+      if (handlers.onReset) handlers.onReset();
+      return;
+    }
     if (KEYMAP[ev.key]) {
       var dir = KEYMAP[ev.key];
       if ((level().controls || []).indexOf(dir) === -1) return;
@@ -1309,7 +1341,7 @@ window.CG = window.CG || {};
       setAircraftPosition(gameState.aircraft.x, gameState.aircraft.y, false);
       syncPlaneScale();
     });
-    UI.init({
+    handlers = {
       onStep: updateControls,
       onGo: onGo,
       onReset: function () {
@@ -1322,10 +1354,10 @@ window.CG = window.CG || {};
         var on = !CG.Audio.isEnabled();
         CG.Audio.setEnabled(on);       /* SFX  */
         CG.Voice.setEnabled(on);       /* + voice-over — one control */
-        UI.syncSoundButton();
         if (on) Audio.play('uiClick');
       }
-    });
+    };
+    UI.init(handlers);
 
     syncPlaneScale();
     setAircraftPosition(0, 0, false);

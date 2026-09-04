@@ -317,7 +317,6 @@ CG.Arrival = (function () {
     el.wake     = document.getElementById('rwWake');
     el.back     = document.getElementById('cineBack');
     el.front    = document.getElementById('cineFront');
-    el.call     = document.getElementById('cineCall');
     el.flash    = document.getElementById('cineFlash');
     el.plane    = document.getElementById('plane');
     el.heat     = el.runway ? el.runway.querySelector('.rw-heat') : null;
@@ -389,13 +388,6 @@ CG.Arrival = (function () {
     el.flash.classList.add(kind);
   }
 
-  function call(text) {
-    if (!el.call) return;
-    el.call.hidden = false;
-    el.call.classList.remove('out');
-    el.call.querySelector('span').textContent = text;
-  }
-
   /* ---- the writing end -------------------------------------------- */
   function tick() {
     var f = frame(Date.now() - t0);
@@ -433,10 +425,9 @@ CG.Arrival = (function () {
       if (el.art) { el.art.style.transform = ''; el.art.style.opacity = ''; }
     }
     if (el.wake)  el.wake.innerHTML = '';
-    if (el.call)  { el.call.hidden = true; el.call.classList.remove('out'); }
     if (el.plane) el.plane.classList.remove('flying');
 
-    /* only the spawned cloud: cineCall and cineFlash live in these
+    /* only the spawned cloud: cineFlash lives in these
        layers permanently and must survive the clear */
     [el.back, el.front].forEach(function (host) {
       if (!host) return;
@@ -494,7 +485,6 @@ CG.Arrival = (function () {
       CG.planeControl.heading(HEADING, 0);
       CG.planeControl.opacity(1);
     }
-    call('LANDED \u00b7 RUNWAY 09');
     later(900, function () {
       if (el.stage) el.stage.classList.add('intro-land');
       CG.Audio.play('landfall');
@@ -537,13 +527,12 @@ CG.Arrival = (function () {
         el.runway.style.opacity = '0';
       }
 
-      /* SCENE 1 — the engine bed, the clearance, and cloud rushing up.
-         There is no voice line anywhere in the arrival: the caption is
-         what says where you are, and the game does its own talking once
-         it has control. */
+      /* SCENE 1 — the engine bed and cloud rushing up. The arrival is
+         wordless and silent of speech: no caption, no voice line. The
+         aircraft, the water and the runway say where you are, and the
+         game does its own talking once it has control. */
       CG.Audio.duck('flight', true);          /* the bed steps back */
       CG.Audio.engineStart();
-      later(240, function () { call('CLEARED TO LAND \u00b7 RUNWAY 09'); });
       CLOUDS.forEach(function (c) {
         later(BEAT.approach + c.at, function () { cloud(c); });
       });
@@ -554,10 +543,8 @@ CG.Arrival = (function () {
          pushes the effect out of step with the flight it belongs to. */
       later(BEAT.veil, function () {
         veil('mid');
-        if (el.call) el.call.classList.add('out');
         CG.Audio.play('airframeRush');
       });
-      later(BEAT.veil + 320, function () { if (el.call) el.call.hidden = true; });
       /* the mid veil's class has to be off again before the closing one
          goes on, or the second animation never starts */
       later(BEAT.veil + MID_MS + 40, function () {
