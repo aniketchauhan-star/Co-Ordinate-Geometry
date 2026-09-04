@@ -80,16 +80,21 @@ CG.UI = (function () {
      Everything not in `usable` is still drawn so the bar keeps a
      constant width, but it is dimmed and disabled: its airspace has
      not unfolded and flying that way would leave the chart. */
+  /* STROKED ARROWS, NOT FILLED SHAPES. The console draws these with
+     fill:none and a 3.2px round-capped white stroke, which is what the
+     brief asks for — a filled silhouette would render as a hollow
+     outline under those rules. A shaft plus a two-segment head, on a
+     32x32 grid so the stroke width reads the same on all four. */
   var ARROW = {
-    right: 'M14 30h22l-9-11 5-3 15 16-15 16-5-3 9-11H14z',
-    left:  'M50 30H28l9-11-5-3-15 16 15 16 5-3-9-11h22z',
-    up:    'M30 50V28l-11 9-3-5 16-15 16 15-3 5-11-9v22z',
-    down:  'M30 14v22l-11-9-3 5 16 15 16-15-3-5-11 9V14z'
+    right: 'M7 16h15M16 9.5l7 6.5-7 6.5',
+    left:  'M25 16H10M16 9.5l-7 6.5 7 6.5',
+    up:    'M16 25V10M9.5 17l6.5-7 6.5 7',
+    down:  'M16 7v15M9.5 15l6.5 7 6.5-7'
   };
 
   function bigArrow(dir) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 64 64');
+    svg.setAttribute('viewBox', '0 0 32 32');
     svg.setAttribute('focusable', 'false');
     svg.setAttribute('aria-hidden', 'true');
     var p = document.createElementNS('http://www.w3.org/2000/svg', 'path');

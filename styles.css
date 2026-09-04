@@ -1080,225 +1080,278 @@ button{font-family:inherit}
    live on the keyboard — see onKeyDown() in game.js. */
 
 /* ===================================================================
-   THE QUESTION BAR
+   THE QUESTION PANEL AND THE CONTROL CONSOLE
    -------------------------------------------------------------------
-   A pale rounded instruction panel: speaker on the left, aircraft
-   roundel straddling the top edge, one line of text. Built in CSS,
-   which is the brief's instruction — the supplied plaque artwork it
-   replaced was a dark navy plate, and "dark navy plate" is on the
-   DO NOT list along with metallic surfaces and cockpit decoration.
+   The two areas the brief redesigns, and the only two it changes:
+   everything else on screen — ocean, coastline, grid, aircraft, target,
+   composition — is untouched.
 
-   ---- WHY PX AND NOT clamp() ----------------------------------------
-   The brief asks for clamp(). It would work against this project. The
-   game is a fixed 1920x1080 canvas scaled to fit by ONE transform on
-   .stage, so a clamp() measured in vw is sized against the window and
-   then scaled a second time: the bar shrinks twice on a small screen
-   and drifts out of proportion with the grid it sits over. The brief
-   also says "do not distort button proportions" and names 1920x1080 as
-   the primary resolution — px design units are what deliver that here,
-   and the stage transform is what makes them responsive. Same reason
-   .movement-controls and .play-slot are in px.
+   ---- THE PALETTE IS DELIBERATELY NOT BLUE -------------------------
+   The ocean and the coordinate board already carry almost all the cyan
+   on screen, so the interactive controls are warm and neutral instead:
+   orange, steel, violet, dusty rose, green. Every value is a variable
+   here so it can be retuned without touching a rule.
+
+   ---- WHY PX AND NOT clamp() ---------------------------------------
+   The game is a fixed 1920x1080 canvas scaled to fit by ONE transform
+   on .stage, so a vw measured inside it is sized against the window and
+   then scaled a second time. A clamp(760px, 57vw, 920px) console comes
+   out ~15% narrower relative to the grid at a 1366 window than at 1920
+   — the opposite of "scale the complete console proportionally". Px
+   here are design px and the stage transform is what makes them
+   responsive, which is why .play-slot is in px too.
    =================================================================== */
+:root{
+  /* interaction palette — retune freely */
+  --ui-right-main:#FF9418; --ui-right-hi:#FFB43C; --ui-right-dark:#D9680B;
+  --ui-left-main:#AEBFD0;  --ui-left-hi:#D9E5EF;  --ui-left-dark:#73889E;
+  --ui-up-main:#9147E8;    --ui-up-hi:#B567F2;    --ui-up-dark:#6423B7;
+  --ui-down-main:#D49399;  --ui-down-hi:#E7B3B6;  --ui-down-dark:#A96E76;
+  --ui-go-main:#68C96C;    --ui-go-hi:#8DDD8D;    --ui-go-dark:#3E9A50;
+  --ui-go-rim:#378645;     --ui-go-off:#AFC9B0;
+  --ui-count-fill:#FFF7DE; --ui-count-rim:#E9C76C; --ui-count-ink:#183B78;
+  --ui-ink:#173B7A;        --ui-ink-panel:#183F82;
+}
+
+/* ---- 1. THE QUESTION PANEL --------------------------------------- */
 .question-wrapper{
   position:absolute;left:50%;top:26px;transform:translateX(-50%);
   display:flex;align-items:center;justify-content:center;
+  z-index:20;
 }
-
-.question-bar{
-  position:relative;
-  width:706px;                  /* the brief's 650-760 band */
-  min-height:88px;              /* the brief's 82-95 band  */
+.game-question-panel{
+  position:relative;z-index:1;
+  width:752px;                    /* the brief's 720-780 band */
+  min-height:82px;                /* its 76-86 band           */
   box-sizing:border-box;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:16px 34px 14px;
-  border-radius:26px;
-  background:linear-gradient(180deg,#FFFFFF 0%,#F4FAFF 55%,#E3F3FF 100%);
-  border:3px solid #4EA7E8;
-  /* the "subtle inner blue outline", as one inset ring rather than a
-     nested box: it cannot fall out of register with the radius */
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:12px 26px;
+  border-radius:24px;
+  background:linear-gradient(180deg,#FFFFFF 0%,#F5FBFF 46%,#EAF5FB 100%);
+  border:2px solid rgba(80,160,205,.65);
+  /* depth in layers, no glow: bright top lip, soft lower recess, one
+     pale aviation rim outside the border, and a single drop */
   box-shadow:
-    inset 0 0 0 3px #B7E1F8,
-    0 8px 20px rgba(18,77,140,.22);
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 -3px 5px rgba(43,92,138,.08),
+    0 0 0 3px rgba(226,244,252,.85),
+    0 6px 14px rgba(18,66,110,.18);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
 .mission.mission-away{opacity:0;pointer-events:none;transform:translateY(-16px)}
 
-/* ---- the instruction itself -------------------------------------- */
+.mission-tag{
+  flex:0 0 auto;
+  padding:5px 11px;border-radius:9px;
+  background:linear-gradient(180deg,#FFFDF2,#FFF3CE);
+  border:1.5px solid #E9D08A;
+  font-family:var(--font);font-weight:800;font-size:12px;
+  letter-spacing:.09em;color:#1B3F72;
+  box-shadow:inset 0 1px 0 #FFFFFF;
+}
 .question-text{
   margin:0;
   font-family:var(--font);font-weight:800;
-  font-size:29px;line-height:1.15;
-  color:#153F8E;
+  font-size:var(--qb-fs,27px);line-height:1.16;
+  color:var(--ui-ink-panel);
   text-align:center;text-wrap:balance;
-  /* one line whenever it fits; fitPlate() in ui.js steps the size down
-     for the long teaching lines rather than letting the bar grow */
-  font-size:var(--qb-fs,29px);
+  text-shadow:0 1px 0 #FFFFFF;
 }
 .mission-sub{
-  margin:2px 0 0;
-  font-family:var(--font);font-weight:800;
-  font-size:calc(var(--qb-fs,29px) * .68);
-  color:rgba(21,63,142,.72);
+  margin:0;font-family:var(--font);font-weight:800;
+  font-size:calc(var(--qb-fs,27px) * .66);
+  color:rgba(24,63,130,.7);
 }
 .mission-sub:empty,.question-text:empty{display:none}
-.mission-actions{display:flex;gap:14px;justify-content:center;margin-top:6px}
+.mission-actions{display:flex;gap:14px;justify-content:center}
 .mission-actions:empty{display:none}
 
-/* ===================================================================
-   THE MOVEMENT CONTROLS
-   -------------------------------------------------------------------
-   [ arrow ][ count ]  x4,  a divider, then GO. One colour per
-   direction, one big white arrow per button, one cream counter beside
-   it. This replaced a navy cockpit console with feathered wings and
-   gold trim: the brief rules that out in as many words — "not
-   realistic cockpit UI", "no dark metallic panels", "no screws
-   everywhere".
-
-   THE HIERARCHY IS ARROW, THEN COUNT, THEN WORD, and the sizes say so:
-   a 58px arrow, a 38px numeral, a 16px label. A Grade 2 reader is
-   meant to recognise the arrow before reading anything.
-   =================================================================== */
-.movement-controls{
-  position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
-  display:flex;align-items:center;justify-content:center;gap:12px;
-  padding:8px 14px;
-  border-radius:28px;
-  background:rgba(245,251,255,.94);
-  border:3px solid #8BCDF2;
-  box-shadow:0 8px 18px rgba(11,79,130,.18);
+/* ---- 2. THE CONTROL CONSOLE -------------------------------------- */
+.control-console{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  display:flex;align-items:center;justify-content:center;gap:26px;
+  width:884px;                    /* the brief's 850-920 band */
+  box-sizing:border-box;
+  /* the height is CONTENT plus these two paddings, and the brief caps it
+     at 125: button 79 + row-gap 4 + label 13 = 96, groove 5+5, console
+     6+6 -> 118. Raising either padding pushes it over the cap. */
+  padding:6px 24px;
+  border-radius:26px;
+  background:linear-gradient(180deg,rgba(252,255,255,.98) 0%,rgba(230,242,248,.98) 100%);
+  border:2px solid rgba(100,170,200,.55);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.95),
+    inset 0 -5px 8px rgba(34,75,110,.10),
+    0 8px 18px rgba(22,66,100,.20);
 }
-.controls{display:flex;align-items:center;gap:12px}
-
-.direction-control{
-  display:flex;align-items:center;gap:8px;
-  /* the tiny word sits under the pair, so the pair is a row inside a
-     column — that is the brief's "labels BELOW the controls" */
-  flex-direction:row;flex-wrap:wrap;justify-content:center;
-  width:186px;
+/* the three cockpit details, and no more */
+.console-rivet{
+  position:absolute;top:9px;width:7px;height:7px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,#FFFFFF,#B9CEDD 70%,#8FA9BC);
+  box-shadow:0 1px 0 rgba(255,255,255,.8);
 }
-.direction-label{
-  order:3;flex:0 0 100%;
-  text-align:center;margin-top:1px;
-  font-family:var(--font);font-weight:800;font-size:14px;
-  letter-spacing:.06em;color:#174280;
+.rivet-l{left:12px} .rivet-r{right:12px}
+.console-divider{
+  width:2px;height:60px;border-radius:2px;flex:0 0 auto;
+  background:linear-gradient(180deg,rgba(120,175,205,0),rgba(120,175,205,.55) 22%,
+                             rgba(120,175,205,.55) 78%,rgba(120,175,205,0));
+}
+/* the recessed groove the four modules sit in */
+.controls{
+  display:flex;align-items:flex-start;justify-content:center;gap:23px;
+  flex:0 1 auto;
+  padding:5px 13px;border-radius:18px;
+  background:rgba(206,229,241,.34);
+  box-shadow:inset 0 2px 4px rgba(34,75,110,.10),inset 0 -1px 0 rgba(255,255,255,.8);
 }
 
-/* ---- the arrow buttons ------------------------------------------- */
+/* ---- one control family: button + counter + label ---------------- */
+.control-group{
+  display:grid;
+  grid-template-columns:auto auto;
+  grid-template-rows:auto auto;
+  align-items:center;justify-items:center;
+  column-gap:11px;row-gap:4px;
+}
+.control-group .direction-button{grid-column:1;grid-row:1}
+.control-group .move-counter    {grid-column:2;grid-row:1}
+.control-group .control-label   {grid-column:1 / -1;grid-row:2}
+
+.control-label{
+  font-family:var(--font);font-weight:800;font-size:13px;
+  letter-spacing:.055em;color:var(--ui-ink);
+  line-height:1;
+}
+
 .direction-button{
-  /* A THIRD SMALLER THAN THE BRIEF'S BAND, ON REQUEST. The brief asked
-     for 150-175 x 105-120; on screen that bar stood 171px tall and came
-     within 13px of the chart, and the note back was "its too big". The
-     proportions and the hierarchy are unchanged — arrow, then counter,
-     then label — everything is simply scaled down together. */
-  width:124px;height:84px;
-  border-radius:24px;
+  width:108px;height:79px;
+  border-radius:19px;
   display:grid;place-items:center;
   cursor:pointer;
-  background:linear-gradient(180deg,var(--d-1) 0%,var(--d-2) 55%,var(--d-3) 100%);
-  border:3px solid var(--d-3);
+  background:linear-gradient(180deg,var(--d-hi) 0%,var(--d-main) 60%,var(--d-dark) 100%);
+  border:2px solid rgba(255,255,255,.55);
   box-shadow:
-    0 5px 0 var(--d-edge),
-    0 8px 14px rgba(20,60,100,.18),
-    inset 0 2px 0 rgba(255,255,255,.40);
-  transition:transform 120ms var(--ease-out),filter 120ms var(--ease-out),
-             box-shadow 120ms var(--ease-out);
+    inset 0 2px 0 rgba(255,255,255,.55),
+    inset 0 -4px 0 rgba(0,0,0,.10),
+    0 4px 6px rgba(20,50,80,.18);
+  transition:transform 100ms var(--ease-out),filter 100ms var(--ease-out),
+             box-shadow 100ms var(--ease-out);
 }
-.direction-button svg{width:44px;height:44px;fill:#FFFFFF;
-  /* the outline is a darker shade of the button's own colour, which is
-     what keeps a white arrow readable on yellow-orange */
-  stroke:var(--d-edge);stroke-width:2.4;paint-order:stroke fill}
-.direction-button:hover:not(:disabled){transform:translateY(-2px)}
-.direction-button:active:not(:disabled){
-  transform:translateY(4px);
-  box-shadow:
-    0 1px 0 var(--d-edge),
-    0 4px 7px rgba(20,60,100,.15),
-    inset 0 2px 0 rgba(255,255,255,.2);
+.direction-button svg{
+  width:32px;height:32px;fill:none;
+  stroke:#FFFFFF;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;
+  filter:drop-shadow(0 2px 1px rgba(0,0,0,.18));
 }
-.direction-button:disabled{cursor:default;filter:grayscale(.72) opacity(.5)}
-.direction-button[data-limit="1"]{filter:saturate(.72) brightness(.96)}
+.direction-button--right{--d-hi:var(--ui-right-hi);--d-main:var(--ui-right-main);--d-dark:var(--ui-right-dark)}
+.direction-button--left {--d-hi:var(--ui-left-hi); --d-main:var(--ui-left-main); --d-dark:var(--ui-left-dark)}
+.direction-button--up   {--d-hi:var(--ui-up-hi);   --d-main:var(--ui-up-main);   --d-dark:var(--ui-up-dark)}
+.direction-button--down {--d-hi:var(--ui-down-hi); --d-main:var(--ui-down-main); --d-dark:var(--ui-down-dark)}
 
-/* ONE COLOUR PER DIRECTION, straight from the brief. */
-.right-button{--d-1:#FFC24A;--d-2:#FFA914;--d-3:#FF8508;--d-edge:#D95E00}
-.left-button {--d-1:#5FC6F8;--d-2:#19A8F4;--d-3:#087CF0;--d-edge:#0755C6}
-.up-button   {--d-1:#C489F3;--d-2:#A64CEB;--d-3:#7C2DD2;--d-edge:#5920A7}
-.down-button {--d-1:#FF8A90;--d-2:#FF535C;--d-3:#EF3042;--d-edge:#BC2336}
+.direction-button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.05)}
+.direction-button:active:not(:disabled){
+  transform:translateY(3px) scale(.98);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.4),
+    inset 0 -2px 0 rgba(0,0,0,.10),
+    0 1px 3px rgba(20,50,80,.16);
+}
+/* DISABLED CANNOT BE "GREY" HERE. LEFT is neutral steel by design, so
+   draining colour would make an armed LEFT and a dead one look alike.
+   A disabled control loses its lift and its arrow instead: flat, sunk
+   into the groove, at about two-thirds strength. */
+.direction-button:disabled{
+  cursor:not-allowed;
+  filter:saturate(.55) opacity(.62);
+  box-shadow:inset 0 2px 5px rgba(34,75,110,.22);
+  transform:none;
+}
+.direction-button:disabled svg{opacity:.7;filter:none}
 
 /* ---- the counters ------------------------------------------------ */
 .move-counter{
-  width:50px;height:58px;
-  border-radius:15px;
+  width:51px;height:57px;
+  border-radius:13px;
   display:grid;place-items:center;
-  background:linear-gradient(180deg,#FFFDF4,#FFEFC7);
-  border:3px solid #E5C47A;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 4px 10px rgba(20,60,100,.12);
-  font-family:var(--font-num,var(--font));font-weight:900;font-size:29px;
+  background:linear-gradient(180deg,#FFFDF5 0%,#FFF3D4 100%);
+  border:2px solid var(--ui-count-rim);
+  box-shadow:inset 0 2px 0 #FFFFFF,0 2px 4px rgba(50,60,80,.12);
+  font-family:var(--font-num,var(--font));font-weight:800;font-size:24px;
   font-variant-numeric:tabular-nums;
-  color:#173B74;
+  color:var(--ui-count-ink);
   user-select:none;
 }
-/* the pop when the number changes, 200ms, no particles */
-.move-counter.bump{animation:countPop 200ms var(--ease-out)}
-@keyframes countPop{
-  0%  {transform:scale(1)}
-  45% {transform:scale(1.25)}
-  100%{transform:scale(1)}
+.move-counter.bump{animation:countPop 160ms var(--ease-out)}
+@keyframes countPop{0%{transform:scale(1)}45%{transform:scale(1.13)}100%{transform:scale(1)}}
+/* QUEUED: a bright outline on the readout, so the entered moves are
+   findable at a glance without lighting the whole button. */
+.control-group.is-queued .move-counter{
+  border-color:#F0B429;
+  box-shadow:inset 0 2px 0 #FFFFFF,0 0 0 3px rgba(240,180,41,.30),0 2px 4px rgba(50,60,80,.12);
 }
-.direction-control[data-armed="0"] .move-counter{filter:grayscale(.6) opacity(.5)}
-/* at zero there is nothing to take off, so the counter stops inviting a tap */
+.control-group[data-armed="0"] .move-counter{filter:saturate(.5) opacity(.6)}
 .move-counter[data-limit="1"]{cursor:default!important}
-
-.control-divider{
-  width:3px;height:56px;border-radius:2px;
-  background:linear-gradient(180deg,rgba(139,205,242,0),#8BCDF2 22%,#8BCDF2 78%,rgba(139,205,242,0));
-}
 
 /* ---- GO ---------------------------------------------------------- */
 .go-button{
   position:relative;
-  width:146px;height:90px;
-  border-radius:30px;
-  display:flex;align-items:center;justify-content:center;gap:10px;
+  /* flex:0 0 auto OR IT SHRINKS. The console has a fixed width and GO is
+     a flex item, so the default flex-shrink:1 let the groove squeeze it
+     from 133px down to 73 — the main action ending up narrower than a
+     direction button. */
+  flex:0 0 auto;
+  width:133px;height:80px;
+  border-radius:20px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
   cursor:pointer;
-  background:linear-gradient(180deg,#7DE74A 0%,#35C943 45%,#0BA637 100%);
-  border:4px solid #087D2A;
+  background:linear-gradient(180deg,var(--ui-go-hi) 0%,var(--ui-go-main) 52%,#48A859 100%);
+  border:2px solid rgba(255,255,255,.5);
   box-shadow:
-    0 5px 0 #087E28,
-    0 9px 16px rgba(12,90,40,.24),
-    inset 0 2px 0 rgba(255,255,255,.34);
-  transition:transform 120ms var(--ease-out),filter 120ms var(--ease-out),
-             box-shadow 120ms var(--ease-out);
+    inset 0 2px 0 rgba(255,255,255,.55),
+    inset 0 -4px 0 rgba(0,0,0,.10),
+    0 5px 0 var(--ui-go-rim),
+    0 9px 15px rgba(18,74,42,.22);
+  transition:transform 100ms var(--ease-out),filter 100ms var(--ease-out),
+             box-shadow 100ms var(--ease-out);
 }
+.go-glyph{width:16px;height:16px;fill:#FFFFFF;stroke:none;opacity:.92}
 .go-button span{
-  font-family:var(--font);font-weight:900;font-size:32px;
-  letter-spacing:.04em;color:#FFFFFF;
-  text-shadow:0 2px 0 rgba(6,74,26,.55);
+  font-family:var(--font);font-weight:900;font-size:25px;
+  letter-spacing:.03em;color:#FFFFFF;
+  text-shadow:0 2px 0 rgba(8,74,32,.45);
 }
-/* the "ready" accents: two short yellow strokes, deliberately small */
-/* THE "READY" ACCENTS, dialled back. At 5x26 hard against the word
-   they read as two pipe characters — "|GO|" — rather than as accents.
-   Shorter, thinner, softer and pushed out to the button's shoulders. */
-.go-spark{
-  width:3px;height:11px;border-radius:2px;
-  background:#FFE04D;opacity:.55;
-  box-shadow:0 0 6px rgba(255,224,77,.5);
-}
-.go-spark-l{margin-right:4px}
-.go-spark-r{margin-left:4px}
-.go-button{gap:6px}
-.go-button:hover:not(:disabled){transform:translateY(-2px)}
+.go-button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.05)}
 .go-button:active:not(:disabled){
-  transform:translateY(4px);
+  transform:translateY(3px) scale(.98);
   box-shadow:
-    0 1px 0 #087E28,
-    0 4px 7px rgba(12,90,40,.18),
-    inset 0 2px 0 rgba(255,255,255,.2);
+    inset 0 2px 0 rgba(255,255,255,.4),
+    0 1px 0 var(--ui-go-rim),
+    0 4px 8px rgba(18,74,42,.18);
 }
-.go-button:disabled{cursor:default;filter:grayscale(.7) opacity(.55)}
+/* DISABLED IS SAGE, NOT TRANSPARENT — about two-thirds strength, as the
+   brief asks, rather than a 20% ghost. */
+.go-button:disabled{
+  cursor:not-allowed;
+  background:linear-gradient(180deg,#C7DCC8 0%,var(--ui-go-off) 60%,#9DB89E 100%);
+  border-color:rgba(255,255,255,.4);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.4),0 3px 0 #8CA88D,0 5px 9px rgba(18,74,42,.12);
+}
+.go-button:disabled span{text-shadow:none;color:rgba(255,255,255,.9)}
+/* ONE activation pulse. ui.js adds this only on the transition into
+   enabled, so it fires once and never loops. */
+.go-armed-pop{animation:goArm 400ms var(--ease-out) 1}
+@keyframes goArm{
+  0%  {transform:scale(1)}
+  40% {transform:scale(1.055)}
+  100%{transform:scale(1)}
+}
 
-/* every control keeps a visible keyboard focus */
+/* one focus ring for every control here, and no browser default */
 .direction-button:focus-visible,.go-button:focus-visible{
-  outline:4px solid #FFF3C4;outline-offset:3px;
+  outline:none;
+  box-shadow:
+    0 0 0 4px rgba(255,255,255,.75),
+    0 0 0 7px rgba(76,150,195,.30),
+    0 4px 6px rgba(20,50,80,.18);
 }
 
 /* tutorial highlight */
