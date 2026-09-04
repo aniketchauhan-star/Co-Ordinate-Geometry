@@ -511,10 +511,28 @@ window.CG = window.CG || {};
 
   /* Small callout beside the aircraft: LOCATION / (3, 2) — never a
      popup that covers the grid (FLOW 09). */
+  /* DIRECTLY ABOVE THE AIRCRAFT, AND JOINED TO IT (deck page 11).
+     It used to be pushed 130px out to one side with nothing linking the
+     two, which is the review's "Location should come near the plane" —
+     at that distance it read as a label for whatever happened to be
+     under it. The tag is anchored at its own bottom centre and .coord-tag
+     draws a 30px leader down from there, so this offset and that height
+     are the same measurement.
+
+     The one thing that has to bend is the top edge: an aircraft high on
+     the chart would put the tag off the panel, so it flips underneath
+     and the leader flips with it. */
+  var CALLOUT_RISE = 64;          /* plane centre to the tag's bottom */
+
   function locationCallout(pt) {
-    var offX = pt.x >= 4 ? -1 : 1;
-    UI.coordTag(Grid.stageX(pt.x) + offX * 130, Grid.stageY(pt.y) - 78,
-                coordText(pt), 'LOCATION');
+    var x = Grid.stageX(pt.x);
+    var y = Grid.stageY(pt.y) - CALLOUT_RISE;
+    var panel = Grid.panelRect();
+    /* 108px is the tag plus its leader; below that ceiling it goes under
+       the aircraft instead, which is the only placement left. */
+    var below = (y - 108) < panel.y;
+    if (below) y = Grid.stageY(pt.y) + CALLOUT_RISE + 96;
+    UI.coordTag(x, y, coordText(pt), 'LOCATION', below);
   }
 
   async function showSuccess(sel) {

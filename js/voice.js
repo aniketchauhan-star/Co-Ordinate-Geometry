@@ -68,6 +68,7 @@ CG.Voice = (function () {
     pending = null;
     lastSaid = '';
     duck(false);              /* cancel does not always fire onend */
+    speaking(false);         /* ...and neither does the pulse stop itself */
     if (!supported) return;
     try { synth.cancel(); } catch (e) { /* nothing queued */ }
   }
@@ -108,6 +109,12 @@ CG.Voice = (function () {
        done  — called once the line has finished, been abandoned, or was
                never speakable at all. It always fires exactly once, so
                a caller can safely gate the next thing on it. */
+  /* one place that knows how the "is speaking" flag is published */
+  function speaking(on) {
+    var st = document.getElementById('stage');
+    if (st) st.classList.toggle('voice-speaking', !!on);
+  }
+
   function say(text, force, done) {
     var settled = false;
     function settle() {
@@ -139,9 +146,14 @@ CG.Voice = (function () {
         duck(false);
         if (mine === chainToken) settle();         /* a cancel owns it now */
       };
-      u.onstart = function () { duck(true); };
-      u.onend = finish;
-      u.onerror = finish;
+      /* SPEAKING STATE, for the question panel's border pulse. The
+         brief asks for "an extremely subtle soft pulse around the panel
+         border" while the voice-over plays, so the panel needs to know
+         when that is. Set on the stage, read by CSS — no dependency
+         from voice.js to ui.js in either direction. */
+      u.onstart = function () { duck(true); speaking(true); };
+      u.onend = function () { speaking(false); finish(); };
+      u.onerror = function () { speaking(false); finish(); };
       u.voice = voice;
       u.lang = (voice && voice.lang) || 'en-GB';
       /* ITEM 12: "slow, not too fast". Below the 0.88-0.95 band an

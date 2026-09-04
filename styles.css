@@ -736,13 +736,23 @@ button{font-family:inherit}
 /* gentle: opacity 0 -> 1, scale .85 -> 1, ~190ms (requirement 8) */
 /* the deck's chip: dark rounded plate, white numeral, popped on */
 .reveal-num-chip{animation:numPop 190ms var(--ease-out) both}
+/* A CREAM READOUT WITH DARK INK, not a dark chip with white ink.
+   It matches the counters on the console deliberately: those are the
+   numbers the child entered, these are the same numbers appearing on
+   the axis, and reading as one family is the whole point. Light-on-dark
+   also has the better of it here — the grid plate is deep blue, so a
+   pale face carries far more contrast than a charcoal one did. */
 .reveal-chip{
-  fill:#3C4A57;stroke:rgba(255,255,255,.55);
-  stroke-width:calc(2px / var(--k, 1));
+  fill:url(#chipFace);
+  stroke:#E4C579;
+  stroke-width:calc(2.5px / var(--k, 1));
 }
+.reveal-num-chip{filter:url(#chipLift)}
 .reveal-num-chip .reveal-num{
-  fill:#FFFFFF;stroke:none;
-  font-size:calc(26px / var(--k, 1));
+  /* near-black rather than pure #000: it sits in the same family as the
+     console's readout ink and does not go harsh against warm cream */
+  fill:#16233D;stroke:none;font-weight:900;
+  font-size:calc(27px / var(--k, 1));
   text-anchor:middle;dominant-baseline:central;
 }
 .num-hot{
@@ -1169,13 +1179,19 @@ button{font-family:inherit}
 /* ---- 2. THE CONTROL CONSOLE -------------------------------------- */
 .control-console{
   position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
-  display:flex;align-items:center;justify-content:center;gap:26px;
-  width:884px;                    /* the brief's 850-920 band */
+  display:flex;align-items:center;justify-content:center;gap:22px;
+  /* WIDTH COMES FROM THE CONTENT, NOT FROM A GUESS. It was pinned at
+     884px while the parts inside added up to 1010, so GO was pushed
+     clean outside the container's right edge — visible in the review
+     screenshot. Sizing to content and ASSERTING the result lands in the
+     brief's 850-920 band is the only way this stays true: the sum
+     changes whenever any button, counter or gap is retuned. */
+  width:max-content;
+  max-width:920px;
   box-sizing:border-box;
-  /* the height is CONTENT plus these two paddings, and the brief caps it
-     at 125: button 79 + row-gap 4 + label 13 = 96, groove 5+5, console
-     6+6 -> 118. Raising either padding pushes it over the cap. */
-  padding:6px 24px;
+  /* the height is CONTENT plus these two paddings, capped at 125:
+     button 79 + row-gap 4 + label 13 = 96, groove 5+5, console 6+6. */
+  padding:6px 10px;
   border-radius:26px;
   background:linear-gradient(180deg,rgba(252,255,255,.98) 0%,rgba(230,242,248,.98) 100%);
   border:2px solid rgba(100,170,200,.55);
@@ -1198,9 +1214,9 @@ button{font-family:inherit}
 }
 /* the recessed groove the four modules sit in */
 .controls{
-  display:flex;align-items:flex-start;justify-content:center;gap:23px;
-  flex:0 1 auto;
-  padding:5px 13px;border-radius:18px;
+  display:flex;align-items:flex-start;justify-content:center;gap:20px;
+  flex:0 0 auto;
+  padding:5px 8px;border-radius:18px;
   background:rgba(206,229,241,.34);
   box-shadow:inset 0 2px 4px rgba(34,75,110,.10),inset 0 -1px 0 rgba(255,255,255,.8);
 }
@@ -1211,7 +1227,7 @@ button{font-family:inherit}
   grid-template-columns:auto auto;
   grid-template-rows:auto auto;
   align-items:center;justify-items:center;
-  column-gap:11px;row-gap:4px;
+  column-gap:10px;row-gap:4px;
 }
 .control-group .direction-button{grid-column:1;grid-row:1}
 .control-group .move-counter    {grid-column:2;grid-row:1}
@@ -1224,7 +1240,7 @@ button{font-family:inherit}
 }
 
 .direction-button{
-  width:108px;height:79px;
+  width:104px;height:79px;
   border-radius:19px;
   display:grid;place-items:center;
   cursor:pointer;
@@ -1255,21 +1271,28 @@ button{font-family:inherit}
     inset 0 -2px 0 rgba(0,0,0,.10),
     0 1px 3px rgba(20,50,80,.16);
 }
-/* DISABLED CANNOT BE "GREY" HERE. LEFT is neutral steel by design, so
-   draining colour would make an armed LEFT and a dead one look alike.
-   A disabled control loses its lift and its arrow instead: flat, sunk
-   into the groove, at about two-thirds strength. */
+/* DISABLED IS GREY, and now it safely can be. LEFT is neutral steel,
+   so draining colour used to risk an armed LEFT looking like a dead
+   one — but LEFT and DOWN are only ever disabled in quadrant I, and
+   from quadrant II every direction is live, so the two states never
+   have to be told apart on the same screen.
+
+   Grey AND flat: the colour goes, and so does the lift, because a
+   raised grey button still invites a press. */
 .direction-button:disabled{
   cursor:not-allowed;
-  filter:saturate(.55) opacity(.62);
-  box-shadow:inset 0 2px 5px rgba(34,75,110,.22);
+  background:linear-gradient(180deg,#E3E9EE 0%,#CBD5DD 60%,#B4C0CA 100%);
+  border-color:rgba(255,255,255,.45);
+  box-shadow:inset 0 2px 5px rgba(34,75,110,.20);
   transform:none;
 }
-.direction-button:disabled svg{opacity:.7;filter:none}
+.direction-button:disabled svg{stroke:#8C9BA8;filter:none}
+/* the label and readout go with it, so the whole module reads as off */
+.control-group[data-armed="0"] .control-label{color:rgba(23,59,122,.42)}
 
 /* ---- the counters ------------------------------------------------ */
 .move-counter{
-  width:51px;height:57px;
+  width:48px;height:57px;
   border-radius:13px;
   display:grid;place-items:center;
   background:linear-gradient(180deg,#FFFDF5 0%,#FFF3D4 100%);
@@ -1299,7 +1322,7 @@ button{font-family:inherit}
      from 133px down to 73 — the main action ending up narrower than a
      direction button. */
   flex:0 0 auto;
-  width:133px;height:80px;
+  width:128px;height:80px;
   border-radius:20px;
   display:flex;align-items:center;justify-content:center;gap:7px;
   cursor:pointer;
@@ -1343,6 +1366,54 @@ button{font-family:inherit}
   0%  {transform:scale(1)}
   40% {transform:scale(1.055)}
   100%{transform:scale(1)}
+}
+
+/* ---- panel motion -----------------------------------------------
+   THE ENTRY, THE TEXT SWAP, AND THE VOICE PULSE. These went missing
+   when the panel was rewritten — ui.js was still adding .gq-in and
+   .enter to an element with no rules for either, so a new question
+   simply appeared with no motion at all.
+
+   The brief's shape, exactly: the panel arrives by moving DOWN 8-12px
+   while fading in, settles with one small ease-out overshoot, and takes
+   350-450ms. It does not loop, and it never shakes. */
+.mission.gq-in{animation:panelIn 420ms cubic-bezier(.22,.9,.28,1.12) both}
+@keyframes panelIn{
+  from{opacity:0;transform:translateY(-11px) scale(.985)}
+  to  {opacity:1;transform:none}
+}
+/* a CHANGED line animates the words, never the panel: a plaque that
+   lifts itself on every sentence is the continuous bounce to avoid */
+.mission.enter .mission-text{animation:messageIn 300ms var(--ease-out) both}
+@keyframes messageIn{
+  from{opacity:0;transform:translateY(4px)}
+  to  {opacity:1;transform:none}
+}
+
+/* THE VOICE-OVER PULSE, on the BORDER only. voice.js puts
+   .voice-speaking on the stage for exactly as long as an utterance is
+   playing — including clearing it on a cancel, which does not always
+   fire onend — so this can never outlive the line it belongs to. */
+.stage.voice-speaking .game-question-panel{
+  animation:panelSpeak 1600ms var(--ease-io) infinite;
+}
+@keyframes panelSpeak{
+  0%,100%{
+    border-color:rgba(80,160,205,.65);
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.95),
+      inset 0 -3px 5px rgba(43,92,138,.08),
+      0 0 0 3px rgba(226,244,252,.85),
+      0 6px 14px rgba(18,66,110,.18);
+  }
+  50%{
+    border-color:rgba(56,168,222,.9);
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.95),
+      inset 0 -3px 5px rgba(43,92,138,.08),
+      0 0 0 5px rgba(190,233,250,.95),
+      0 6px 14px rgba(18,66,110,.18);
+  }
 }
 
 /* one focus ring for every control here, and no browser default */
@@ -2030,7 +2101,8 @@ img:not([src]){visibility:hidden}
   .go.armed:not(:disabled)::before,.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,.play-btn::before,
   .axis-span-line,.axis-span-head,.axis-pip,#axisHot line.on,
-  .mission.gq-in,.move-counter.bump,
+  .mission.gq-in,.move-counter.bump,.go-armed-pop,
+  .stage.voice-speaking .game-question-panel,.mission.enter .mission-text,
   .mission.enter .mission-text,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
@@ -2235,6 +2307,60 @@ img:not([src]){visibility:hidden}
 }
 
 /* the two halves of a coordinate, called out one at a time */
+/* ===================================================================
+   THE ARRIVAL CALLOUT  (deck page 11)
+   -------------------------------------------------------------------
+   LOCATION over (3, 2), sitting just above the aircraft and joined to
+   it by a short leader — which is how page 11 draws it, and what the
+   review asked for: "Location should come near the plane." It used to
+   be flung 130px out to one side with nothing connecting it, so the
+   learner had to work out which object it described.
+
+   These rules were lost when the question panel was rewritten and the
+   callout rendered as unstyled inline text for a while. */
+.coord-tag{
+  position:absolute;
+  transform:translate(-50%,-100%) scale(.94);
+  transform-origin:50% 118%;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:7px 15px 8px;
+  border-radius:14px;
+  background:linear-gradient(180deg,#FFFFFF 0%,#FFFBEF 52%,#FDEFCB 100%);
+  border:2.5px solid #E4C579;
+  box-shadow:0 5px 12px rgba(11,42,71,.34),inset 0 2px 0 #FFFFFF;
+  opacity:0;pointer-events:none;white-space:nowrap;
+  transition:opacity 200ms var(--ease-out),transform 240ms var(--ease-out);
+  z-index:23;
+}
+.coord-tag.show{opacity:1;transform:translate(-50%,-100%) scale(1)}
+/* THE LEADER, and the reason the tag is anchored at its own bottom
+   centre: the line hangs from there straight down to the aircraft, so
+   the two are unmistakably one statement. Its length matches the
+   offset locationCallout() uses. */
+.coord-tag::after{
+  content:"";position:absolute;left:50%;top:100%;
+  width:2.5px;height:30px;margin-left:-1.25px;
+  background:linear-gradient(180deg,#E4C579,rgba(228,197,121,.25));
+  border-radius:2px;
+}
+/* flipped: the tag hangs below the aircraft and the leader runs up */
+.coord-tag.tag-below{transform:translate(-50%,0) scale(.94);transform-origin:50% -18%}
+.coord-tag.tag-below.show{transform:translate(-50%,0) scale(1)}
+.coord-tag.tag-below::after{
+  top:auto;bottom:100%;
+  background:linear-gradient(0deg,#E4C579,rgba(228,197,121,.25));
+}
+
+.coord-kicker{
+  font-family:var(--font);font-weight:800;font-size:12px;
+  letter-spacing:.12em;color:rgba(22,35,61,.62);
+  line-height:1;
+}
+.coord-val{
+  font-family:var(--font-num,var(--font));font-weight:900;font-size:27px;
+  line-height:1;color:#16233D;
+  font-variant-numeric:tabular-nums;
+}
 .coord-val .cx,.coord-val .cy{transition:color 220ms,background 220ms;border-radius:5px;padding:0 .1em}
 .coord-val .cx.on{color:var(--green-dk);background:rgba(72,190,55,.22)}
 .coord-val .cy.on{color:#1B6FA8;background:rgba(60,150,220,.20)}

@@ -148,7 +148,21 @@ CG.STAGES = {
    `visible` stays all four throughout, so the dock never changes width
    and a direction that is coming is visible as a thing that is coming
    — see the NOT YET state in styles.css. */
-/* THE WORDS ARE NOT HERE. Every line the learner sees or hears is
+/* WHICH BUTTONS ARE LIVE, AND A DELIBERATE DEPARTURE FROM PAGE 14.
+   The deck names exactly two buttons per quadrant — Left and Up for
+   quadrant II, Left and Down for III, Right and Down for IV. That is
+   right for quadrant I, where only right and up lead anywhere on a
+   chart that has nothing to the left or below. It stops being right the
+   moment the plane opens out: from quadrant II on, every direction is a
+   legal move, and greying two of them teaches a restriction the
+   mathematics does not have.
+
+   So quadrant I arms right and up, and everything after it arms all
+   four. Asked for directly: "in 1st quadrant left and down button
+   desable gray and when we reach 2nd quadrant then enable all the
+   buttons."
+
+   THE WORDS ARE NOT HERE. Every line the learner sees or hears is
    in js/script.js, copied from the PDF; these rows carry only the
    geometry and which two buttons the PDF names for each quadrant
    (p2 and p14). That is what keeps the script auditable. */
@@ -168,31 +182,31 @@ CG.LEVELS = [
   /* ---------- SECOND QUADRANT : left + up ---------- */
   {
     quadrant: 2, target: { x: -2, y: 4 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'up'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
   },
   {
     quadrant: 2, target: { x: -5, y: 2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'up'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
   },
 
   /* ---------- THIRD QUADRANT : left + down ---------- */
   {
     quadrant: 3, target: { x: -4, y: -2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
   },
   {
     quadrant: 3, target: { x: -5, y: -3 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
   },
 
   /* ---------- FOURTH QUADRANT : right + down ---------- */
   {
     quadrant: 4, target: { x: 4, y: -5 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
   },
   {
     quadrant: 4, target: { x: 3, y: -3 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'down'],
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
   },
 
   /* ---- CFU 3 (PDF p58) ------------------------------------------------

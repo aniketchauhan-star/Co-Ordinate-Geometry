@@ -17,17 +17,28 @@ CG.Grid = (function () {
 
   /* canonical space: 1 cell = 100px, origin at (0,0) */
   var CELL = 100;
-  /* WIDEST DRAWABLE. y went from -6..6 to -8..8 when stage 3 became a
-     wide rectangle: the graticule, the axis lines and the axis-hot
-     overlay are all drawn to MAX, so an -8..8 chart on a -6..6 MAX shows
-     two blank rows top and bottom and axis lines that stop short of
-     their own arrowheads. x came in from 14 to 11 to match the stage,
-     so nothing is drawn only to be clipped away. */
-  /* Widest drawable, and it is page 60's plane: the graticule, the axis
-     lines and the axis-hot overlay are all drawn to MAX, so it has to
-     reach the largest stage any of them appears on. The lesson's -5..5
-     square is clipped out of this. */
-  var MAX = { xMin: -7, xMax: 7, yMin: -5, yMax: 5 };     /* widest drawable */
+  /* WIDEST DRAWABLE, DERIVED FROM CG.STAGES RATHER THAN TYPED OUT.
+     The graticule, the axis lines and the axis-hot overlay are all
+     drawn to MAX once at build time, so it has to cover the union of
+     every stage's extent. It used to be a literal, and it drifted: set
+     to the deck's y -5..5 for the lesson plane, it stopped covering
+     stages 1 and 2, which run y 0..6 — so the stage-1 grid was drawn
+     with six columns and only FIVE rows, and the panel carried a whole
+     empty row of plate above the topmost line.
+
+     Computing it from the table means adding or retuning a stage can
+     never leave the graticule short again. */
+  var MAX = (function () {
+    var m = { xMin: 0, xMax: 0, yMin: 0, yMax: 0 }, k, e;
+    for (k in CG.STAGES) {
+      if (!Object.prototype.hasOwnProperty.call(CG.STAGES, k)) continue;
+      e = CG.STAGES[k].extent;
+      if (!e) continue;
+      m.xMin = Math.min(m.xMin, e.xMin); m.xMax = Math.max(m.xMax, e.xMax);
+      m.yMin = Math.min(m.yMin, e.yMin); m.yMax = Math.max(m.yMax, e.yMax);
+    }
+    return m;
+  })();
   /* THE NUMBERED RANGE, and it must not exceed the charted one. It was
      x -10..10, left over from the stage-3 chart that ran to x=14: eight
      labels and eight ticks were being drawn on every boot and then
@@ -710,7 +721,7 @@ CG.Grid = (function () {
      So they go just INSIDE the axis, and they carry the deck's own
      treatment to stay legible over the grid: a dark rounded chip with a
      white numeral, exactly as pages 5 to 10 draw them. */
-  var CHIP_W = 46, CHIP_H = 40;      /* canonical; scaled with the chart */
+  var CHIP_W = 44, CHIP_H = 40;      /* canonical; scaled with the chart */
 
   function markNumber(axis, value) {
     if (value === 0) return;
@@ -740,7 +751,7 @@ CG.Grid = (function () {
     var pop = mk('g', null, 'reveal-num-chip');
     pop.appendChild(mk('rect', {
       x: -CHIP_W / 2, y: -CHIP_H / 2, width: CHIP_W, height: CHIP_H,
-      rx: 9, ry: 9
+      rx: 11, ry: 11
     }, 'reveal-chip'));
     var t = mk('text', { x: 0, y: 0 }, 'reveal-num');
     t.textContent = String(value);

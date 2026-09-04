@@ -492,7 +492,7 @@ CG.UI = (function () {
      put up. */
   var coordTagHide = null;
 
-  function coordTag(stageX, stageY, text, kicker) {
+  function coordTag(stageX, stageY, text, kicker, below) {
     if (coordTagHide) { window.clearTimeout(coordTagHide); coordTagHide = null; }
     el.coordTag.hidden = false;
     el.coordTag.innerHTML = '';
@@ -508,6 +508,9 @@ CG.UI = (function () {
     el.coordTag.appendChild(v);
     el.coordTag.style.left = stageX + 'px';
     el.coordTag.style.top = stageY + 'px';
+    /* when the tag has flipped under the aircraft its leader has to
+       point the other way, or it hangs off into empty water */
+    el.coordTag.classList.toggle('tag-below', !!below);
     void el.coordTag.offsetWidth;
     el.coordTag.classList.add('show');
   }

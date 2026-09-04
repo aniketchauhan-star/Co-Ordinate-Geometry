@@ -106,6 +106,22 @@
              cleanly at the panel's rounded corners. -->
         <clipPath id="panelClip"><rect x="586" y="160" width="748" height="748" rx="28" ry="28"></rect></clipPath>
         <clipPath id="chartedClip"><rect id="chartedRect" x="0" y="0" width="0" height="0"></rect></clipPath>
+
+        <!-- THE FLIGHT-NUMBER READOUT. The chips the aircraft leaves
+             along its path are the same kind of object as the counters
+             on the console — the number the child dialled in and the
+             number appearing on the axis are the same quantity — so
+             they share its warm cream face and dark ink. A paint server
+             is needed because SVG `fill` cannot take a CSS gradient. -->
+        <linearGradient id="chipFace" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0"    stop-color="#FFFFFF"></stop>
+          <stop offset="0.52" stop-color="#FFFBEF"></stop>
+          <stop offset="1"    stop-color="#FDEFCB"></stop>
+        </linearGradient>
+        <filter id="chipLift" x="-40%" y="-40%" width="180%" height="200%">
+          <feDropShadow dx="0" dy="2" stdDeviation="2.4"
+                        flood-color="#0B2A47" flood-opacity="0.34"></feDropShadow>
+        </filter>
         <filter id="beaconGlow" x="-120%" y="-120%" width="340%" height="340%">
           <feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur>
           <feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
