@@ -597,9 +597,16 @@ button{font-family:inherit}
 /* Gold here too, and for the same reason: this measures ground the
    aircraft actually covered. White read as "a line has been drawn on
    the chart"; gold reads as "this is the bit you just flew". */
+/* GOLD AT THE FRONT ONLY.
+   The span the aircraft covered used to be gold along its whole length,
+   arrowhead and pips included, which spent the chart's one warm colour
+   on the part that has already happened. The line and the pips are the
+   TRAIL — behind the aircraft — so they take the chart's own light
+   blue; the arrowhead is the FRONT, the direction of travel, and it
+   keeps the gold. One warm mark, at the end that means something. */
 .axis-span-line{
-  fill:none;stroke:var(--cross-gold);stroke-width:6;stroke-linecap:round;
-  filter:drop-shadow(0 0 6px var(--cross-glow)) drop-shadow(0 0 18px rgba(255,170,20,.45));
+  fill:none;stroke:var(--grid-axis-line);stroke-width:6;stroke-linecap:round;
+  filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 16px rgba(155,233,255,.55));
   animation:spanDraw 520ms var(--ease-out) both;
 }
 @keyframes spanDraw{from{opacity:0}to{opacity:1}}
@@ -609,8 +616,9 @@ button{font-family:inherit}
   animation:spanDraw 520ms var(--ease-out) 200ms both;
 }
 .axis-pip{
-  fill:var(--cross-gold-hi);stroke:rgba(14,39,64,.62);stroke-width:2.5;
-  filter:drop-shadow(0 0 7px var(--cross-glow));
+  /* trail, not front: light like the line it sits on */
+  fill:#F2FCFF;stroke:rgba(14,39,64,.62);stroke-width:2.5;
+  filter:drop-shadow(0 0 6px var(--grid-glow));
   transform-box:fill-box;transform-origin:center;
   animation:pipIn 300ms var(--ease-out) both;
 }
