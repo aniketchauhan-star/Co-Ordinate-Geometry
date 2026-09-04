@@ -1054,28 +1054,37 @@ button{font-family:inherit}
    of register with the drawing because there are no shapes.
 
    ---- THE ARTWORK'S OWN GEOMETRY, MEASURED FROM ITS PIXELS ---------
-   The file is 2098x749 with transparent padding. Measured off the
-   alpha and the rim colour:
+   The file is 2100x749 with transparent padding. Measured off the
+   alpha and the rim luminance:
 
-       opaque art        x   15..2077   y   73..633
-       plaque outer      x  300..1794   y  222..631
-       writable plate    x  331..1757   y  264..605
-       badge (the crest) x  868..1216   y   73..~400
+       opaque art        x   28..2070   y  155..569
+       writable plate    x  294..1806   y  203..521
 
-   Every inset below is one of those numbers over 2098 or 749, so the
+   Every inset below is one of those numbers over 2100 or 749, so the
    text box is locked to the painted plate and stays locked at any
-   banner width. The top inset is the BADGE's bottom, not the plate's
-   top, so a long line can never be written across the crest.
+   banner width. There is no crest on this artwork, so the plate is
+   writable top to bottom and the text is centred in the whole of it —
+   the previous plaque had a badge overhanging the middle of its top
+   edge, which is why that version's top inset was the badge's bottom.
 
-   ---- THE VERTICAL BUDGET, AND WHY THE CHART MOVED DOWN ------------
-   The artwork's opaque region is 2063x561 — an aspect of 3.68:1 — so
+   ---- THE PLATE IS PALE, SO THE TYPE IS NAVY -----------------------
+   Measured plate colour runs #78E4FA to #BAE0F3. The previous artwork
+   was deep blue and carried white text; the same white here would be
+   invisible. Navy on the pale plate measures 8.6:1, and the shadow is
+   a white under-highlight rather than a dark drop, which is what the
+   glossy plate asks for.
+
+   ---- THE VERTICAL BUDGET, AND WHAT THE CHART GOT BACK -------------
+   The artwork's opaque region is 2043x415 — an aspect of 4.923:1 — so
    its height follows from its width and cannot be traded against it.
-   At 760px wide the art is 207px tall, where the CSS reconstruction
-   fitted into 136. The chart plate therefore starts at y=212 instead
-   of y=148 (CG.CHART.rect in levels.js, PLAY in grid.js, and the three
-   rows of CG.STAGES are all derived from it), which is what keeps the
-   banner clear of the coordinate plane instead of sitting on top of
-   it. Stage cells went 112 -> 103 and 59 -> 53 to pay for it.
+   At 760px wide the art is 150px tall, against 207 for the plaque it
+   replaced. That 57px went straight back to the coordinate plane: the
+   chart plate starts at y=160 (CG.CHART.rect in levels.js, PLAY in
+   grid.js, and the rows of CG.STAGES are all derived from it), and the
+   stage cells returned from 103 to 112 and from 53 to 58 — stage 1 and
+   2 are back to exactly the cell they had before any banner artwork
+   was fitted at all. The banner still clears the panel by 6.2px at
+   every stage.
 
    ---- WHY THERE IS NO clamp() OR vw ---------------------------------
    The game is a fixed 1920x1080 canvas scaled to fit by one transform
@@ -1094,10 +1103,10 @@ button{font-family:inherit}
   --qb-w:760px;
 
   position:absolute;left:50%;
-  /* The art starts 73/749 of the way down its own file, so the element
+  /* The art starts 155/749 of the way down its own file, so the element
      is lifted by exactly that much to put the painted top edge at y=4.
-     -22px = 4 - 73/749 * 760 * (749/2098). */
-  top:-22px;transform:translateX(-50%);
+     -52px = 4 - 155/2100 * 760. */
+  top:-52px;transform:translateX(-50%);
   width:var(--qb-w);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
@@ -1106,21 +1115,15 @@ button{font-family:inherit}
 
 /* ---- the writable plate --------------------------------------------
    Insets are the measured plate, in percent, so they hold at any
-   --qb-w. Top is the badge's bottom edge (400/749) rather than the
-   plate's own top (264/749): the crest overhangs the plate in the
-   middle, and text set from the plate's top would run under it. */
+   --qb-w. With no crest in the way these are simply the plate's four
+   painted edges, which puts a single line dead centre in the plate
+   and gives 115px of height for two or three. */
 .banner-plate{
   position:absolute;
-  left:15.777%;              /*  331 / 2098 */
-  right:16.253%;             /* (2098-1757) / 2098 */
-  /* Top is the badge's bottom edge, so the crest is never written
-     across. Bottom is NOT the plate's own edge (19.2%) — that box
-     centres a single line at y=160, sitting it on the lower rivets
-     with a hole under the badge. Raising the floor to 26.5% moves the
-     centre to y=150, which reads as centred in the blue field with the
-     rivets left alone. */
-  top:53.405%;               /*  400 / 749  — the badge's bottom */
-  bottom:26.5%;              /*  clear of the two lower rivets   */
+  left:14.000%;              /*  294 / 2100 */
+  right:14.000%;             /* (2100-1806) / 2100 */
+  top:27.103%;               /*  203 / 749  */
+  bottom:30.441%;            /* (749-521) / 749 */
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:2px;
   text-align:center;
@@ -1131,16 +1134,22 @@ button{font-family:inherit}
 }
 .mission-text{
   margin:0;
-  /* set by fitPlate(); this is the largest size, used by short lines */
-  font-size:var(--qb-fs,21px);line-height:1.16;font-weight:900;
-  color:#FFFFFF;letter-spacing:.2px;
-  text-shadow:0 2px 1px rgba(0,45,100,.65);
+  /* Set by fitPlate(); this is the largest size, used by short lines.
+     30px is nearly half again the 21px the old plaque could hold — the
+     new plate is 547x115 where that one gave 516x54 — and the floor is
+     20px rather than 15, because this is read at a distance by a class
+     and a line that will not fit at 20px is a content problem. */
+  font-size:var(--qb-fs,30px);line-height:1.16;font-weight:900;
+  color:var(--navy);letter-spacing:.2px;
+  /* a white UNDER-highlight, not a dark drop: the plate is pale and
+     glossy, and a dark shadow under dark type just reads as mud */
+  text-shadow:0 1px 0 rgba(255,255,255,.75);
   text-wrap:balance;
 }
 .mission-sub{
   margin:0;
-  font-size:calc(var(--qb-fs,21px) * .74);line-height:1.2;font-weight:700;
-  color:rgba(215,240,255,.86);
+  font-size:calc(var(--qb-fs,30px) * .72);line-height:1.2;font-weight:800;
+  color:rgba(22,55,91,.72);
 }
 .mission-sub:empty,.mission-text:empty{display:none}
 .mission-actions{display:flex;gap:14px;justify-content:center;margin-top:4px}

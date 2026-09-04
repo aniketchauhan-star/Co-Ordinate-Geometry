@@ -280,11 +280,16 @@ CG.UI = (function () {
      It measures with the WHOLE sentence in place, before the word-by-word
      animation starts, because the words arrive one at a time and a
      partial line always fits. The size is written to a custom property
-     so .mission-sub can follow it, and 15px is the floor: below that the
-     text is no longer worth reading at the distance this is played at,
-     and a line that cannot fit at 15px is a content bug rather than a
-     layout one. */
-  var FS_MAX = 21, FS_MIN = 15;
+     so .mission-sub can follow it.
+
+     30 and 20 rather than 21 and 15: the replacement artwork has no
+     crest, so the plate is writable top to bottom and the box went
+     from 516x54 to 547x115. At 30px the longest line in the game wraps
+     to three lines and still fits with 11px to spare, and 20px is a
+     real readability floor for a class reading this off a projector —
+     a line that cannot fit at 20px is a content problem, not a layout
+     one. */
+  var FS_MAX = 30, FS_MIN = 20;
 
   function fitPlate(html) {
     var plate = el.mission && el.mission.querySelector('.banner-plate');
