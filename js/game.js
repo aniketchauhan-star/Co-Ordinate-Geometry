@@ -446,7 +446,7 @@ window.CG = window.CG || {};
     Grid.clearReveal();
     Grid.clearHint();
     UI.hideCoordTag();
-    UI.mission({ text: 'Aircraft is en route…', animate: false, voice: false });
+    /* nothing is said while it flies: the PDF's pages 5-10 are silent */
 
     var ok = await animateAircraft(sel.x, sel.y);
     gameState.animationState = 'idle';
@@ -476,10 +476,8 @@ window.CG = window.CG || {};
   function coordText(p) { return '(' + p.x + ', ' + p.y + ')'; }
   function spoken(p) { return CG.Voice.numWord(p.x) + ', ' + CG.Voice.numWord(p.y); }
 
-  function dirWord(axis, v) {
-    if (axis === 'x') return (v > 0 ? 'RIGHT' : 'LEFT');
-    return (v > 0 ? 'UP' : 'DOWN');
-  }
+  /* dirWord() went with the recap it served: page 12 names the axis by
+     orientation, so no direction word is needed anywhere now. */
 
   /* Small callout beside the aircraft: LOCATION / (3, 2) — never a
      popup that covers the grid (FLOW 09). */
@@ -559,9 +557,12 @@ window.CG = window.CG || {};
     Grid.clearRoutePoints();
     Grid.markLeg('x', sel.x);          /* the spaces it counted, in place */
     UI.mission({
-      text: 'First, you moved <em>' + Math.abs(sel.x) + '</em> spaces ' + dirWord('x', sel.x) + '.',
-      voice: 'First, you moved ' + CG.Voice.numWord(Math.abs(sel.x)) + ' spaces ' +
-             dirWord('x', sel.x).toLowerCase() + '.',
+      /* p12 word for word. It is "we", not "you", and the axis is named
+         by its ORIENTATION — horizontally / vertically — not by the
+         direction flown. The build had "you moved 3 spaces right", which
+         is a different sentence and a different teaching point. */
+      text: 'First, we moved <em>' + Math.abs(sel.x) + '</em> spaces horizontally.',
+      voice: 'First, we moved ' + CG.Voice.numWord(Math.abs(sel.x)) + ' spaces horizontally.',
       animate: 'words'
     });
     await wait(CFG.beatMed); if (tk !== seqToken) return;
@@ -570,9 +571,8 @@ window.CG = window.CG || {};
     Grid.glowAxisSpan('y', sel.y, sel.x);
     Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
-      text: 'Then, you moved <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
-      voice: 'Then, you moved ' + CG.Voice.numWord(Math.abs(sel.y)) + ' spaces ' +
-             dirWord('y', sel.y).toLowerCase() + '.',
+      text: 'Then, we moved <em>' + Math.abs(sel.y) + '</em> spaces vertically.',
+      voice: 'Then, we moved ' + CG.Voice.numWord(Math.abs(sel.y)) + ' spaces vertically.',
       animate: 'words'
     });
     await wait(CFG.beatLong); if (tk !== seqToken) return;
@@ -590,38 +590,17 @@ window.CG = window.CG || {};
          reached, pulsing, with the axis lit underneath it — the number,
          the line it describes and the place it describes are one object
          in one glance. The voice-over is unchanged. */
-      Grid.nameValue('x', sel.x);
-      Grid.highlightAxis('x');
-      UI.mission({
-        text: 'That is <em>' + Math.abs(sel.x) + '</em> spaces across.',
-        voice: 'The first number tells us the horizontal position. X is ' +
-               CG.Voice.numWord(sel.x) + '.',
-        animate: 'words'
-      });
-      await wait(CFG.beatLong); if (tk !== seqToken) return;
-
-      Grid.glowAxisSpan('y', sel.y, sel.x);
-      Grid.markLeg('y', sel.y, sel.x);
-      Grid.nameValue('y', sel.y);
-      Grid.highlightAxis('y');
-      UI.mission({
-        text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
-        voice: 'The second number tells us the vertical position. Y is ' +
-               CG.Voice.numWord(sel.y) + '.',
-        animate: 'words'
-      });
-      await wait(CFG.beatLong); if (tk !== seqToken) return;
-
-      Grid.clearPulseLines();      /* takes the named-value plate with it */
+      /* THE "X = 3 / Y = 2 / TOGETHER" TRIO IS GONE. Three sentences
+         of my own sat here naming the numbers. The PDF names them once,
+         much later and far more carefully, across pages 38 to 42 — and
+         doing it here pre-empted that whole stretch with wording the
+         deck never wrote. Page 11 shows the Location callout, page 12
+         replays the route, and that is the entire arrival. */
+      Grid.clearPulseLines();
       Grid.highlightAxis(null);
       Grid.clearRoutePoints();
-      UI.mission({
-        text: 'Together: <span class="coord">' + coordText(sel) + '</span>',
-        voice: 'Together, that is ' + spoken(sel) + '.',
-        animate: 'words'
-      });
-      await wait(CFG.beatMed); if (tk !== seqToken) return;
     }
+
 
     Grid.clearPulseLines();
     Grid.clearRoutePoints();
@@ -668,18 +647,12 @@ window.CG = window.CG || {};
     if (gameState.attemptNumber >= 2) {
       if (!gameState.horizontalCorrect) {
         Grid.showHint('x', t.x);
-        var wordX = t.x < 0 ? 'left' : 'right';
-        UI.mission({
-          text: 'Count the spaces to the ' + wordX + '.',
-          voice: 'Count the spaces to the ' + wordX + '.'
-        });
+        /* p13 specifies a DISPLAY for both misses — arrows, then arrows
+           with the unit counts above them — and gives no words at all.
+           showHint draws exactly that, so nothing is said over it. */
       } else {
         Grid.showHint('y', t.y);
-        var wordY = t.y < 0 ? 'down' : 'up';
-        UI.mission({
-          text: 'Right is correct. Now count the spaces ' + wordY + '.',
-          voice: 'Now count the spaces ' + wordY + '.'
-        });
+
       }
     } else {
       UI.mission({ text: level().mission, voice: false });
@@ -887,8 +860,10 @@ window.CG = window.CG || {};
      ============================================================ */
   /* `null` means "this step shows the level's own mission line", which
      is how step 3 stays in step with levels.js instead of restating it. */
+  /* p1's line is one sentence, not two: the build had clipped it to
+     "You are the air traffic controller." and dropped the half that
+     tells the learner what to do. */
   var BRIEF = [
-    { text: 'You are the air traffic controller.' },
     { text: null }
   ];
   var BRIEF_GAP = 550;        /* ms of air between one line and the next */
