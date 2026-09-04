@@ -667,10 +667,7 @@ window.CG = window.CG || {};
     Grid.clearRoutePoints();
     Audio.engineStop();
     Audio.duck('flight', false);
-    /* The opening brief is spoken ACROSS this handover — it starts at
-       START and the first mission loads underneath it — so the one
-       voice line a new level must not cancel is that one. */
-    if (!brief.active) CG.Voice.cancel();
+    CG.Voice.cancel();
     gameState.levelIndex = clamp(index, 0, LEVELS.length - 1);
     var lv = level();
 
@@ -716,13 +713,16 @@ window.CG = window.CG || {};
     UI.showDock(true);
     UI.showMission(true);
 
-    /* The opening brief owns the voice on the first mission: the panel
-       is written here, but its line is not spoken until lines 1 and 2
-       have finished. */
+    /* THE OPENING BRIEF OWNS THE PANEL on the first mission, so the
+       panel opens on the brief's OWN first line rather than on the
+       mission line — otherwise the mission line is written, the console
+       animation plays for it, and it is replaced a frame later by "You
+       are the air traffic controller." The brief's step 0 therefore has
+       nothing to write: the words are already here. */
     var briefTakesOver = lv.tutorial && gameState.tutorialStep < 0;
     UI.mission({
-      text: lv.mission,
-      sub: lv.unlockNote || '',
+      text: briefTakesOver ? briefText(0) : lv.mission,
+      sub: briefTakesOver ? '' : (lv.unlockNote || ''),
       voice: briefTakesOver ? false
         : lv.unlockVoice ? lv.unlockVoice + ' ' + lv.mission
         : lv.mission
@@ -787,109 +787,110 @@ window.CG = window.CG || {};
   /* ============================================================
      THE OPENING BRIEF
 
-     Three lines, spoken in order, and then the learner is on their own.
+     Three lines, spoken in order, each one WRITTEN INTO THE QUESTION
+     PANEL as it is said, and then the learner is on their own.
 
-       1  "You are the air traffic controller."   \ over the arrival
-       2  "Guide each aircraft to its target."    / cinematic
-       3  "Guide the aircraft to the target."       the first mission
+       1  "You are the air traffic controller."
+       2  "Guide each aircraft to its target."
+       3  the mission's own line — "Guide the aircraft to the target."
 
-     THERE IS NO BUTTON WALKTHROUGH, and that is the point of this
-     rewrite. What stood here marched the learner through RIGHT, then
-     UP, then GO, holding each control hostage until it had been used in
-     the prescribed order — four prompts to explain a dock that says
-     RIGHT, UP and GO on its own face. The learner is told who they are
-     and what the job is, and the controls are simply handed over.
+     ALL OF IT AFTER THE LANDING, AND NONE OF IT DURING THE FLIGHT.
+     Lines 1 and 2 used to play across the arrival cinematic, on the
+     reasoning that nine seconds of picture was free airtime. It is not:
+     the aircraft is flying, the learner is watching it, and a voice
+     explaining their job arrives over the top of the one moment that
+     needs no explaining. Worse, there is nowhere to PUT the words while
+     it plays — the question panel is not on screen yet — so the lines
+     were audio with nothing to read, which loses anyone who has the
+     sound off or misses a sentence.
 
-     WHY 1 AND 2 START AT `START` AND NOT HERE
-     They play across the landing, which is nine seconds of picture with
-     nothing being asked of anyone. Held back to the mission they would
-     be five seconds of a chart the learner is not allowed to touch.
+     So the brief now starts when the aircraft has landed and the chart
+     is up. Every line is heard and read at once, and the cinematic is
+     silent, which is what a cinematic should be.
+
+     THERE IS NO BUTTON WALKTHROUGH. What stood here marched the learner
+     through RIGHT, then UP, then GO, holding each control hostage until
+     it had been used in the prescribed order — four prompts to explain
+     a dock that says RIGHT, UP and GO on its own face. The learner is
+     told who they are and what the job is, and the controls are handed
+     over.
 
      WHY THE LINES ARE CHAINED AND NOT TIMED
      CG.Voice.say() cancels whatever is mid-sentence, so two calls in a
      row lose the first line, and a guessed delay between them is a
-     guess about a voice, a rate and a device we do not control. The
-     chain waits on the synthesiser's own `end` event instead — see
-     CG.Voice.sequence(). Line 3 waits on lines 1 and 2 for exactly the
-     same reason, even though the cinematic is normally far longer than
-     they are: it can be skipped with a tap.
+     guess about a voice, a rate and a device we do not control. Each
+     line waits on the synthesiser's own `end` event for the one before
+     it, and the panel text changes on that same event — so the words on
+     screen and the words being spoken cannot drift apart.
      ============================================================ */
-  var BRIEF_INTRO = [
-    'You are the air traffic controller.',
-    'Guide each aircraft to its target.'
+  /* `null` means "this step shows the level's own mission line", which
+     is how step 3 stays in step with levels.js instead of restating it. */
+  var BRIEF = [
+    { text: 'You are the air traffic controller.' },
+    { text: 'Guide each aircraft to its target.' },
+    { text: null }
   ];
-  var BRIEF_MISSION_VOICE = 'Guide the aircraft to the target.';
+  var BRIEF_GAP = 320;        /* ms of air between one line and the next */
+  var BRIEF_MAX = 9000;       /* per-line deadline — see THE BACKSTOP    */
   /* NO HINT UNDER THE QUESTION. "That glowing waypoint is its
      destination." stood here and was answering a question nobody had:
      the waypoint is the only thing on the chart that glows, and the
      line above it already says to fly to the target. The question
      template asks; it does not also lean over and explain. */
 
-  /* brief.pending is the continuation the mission line is waiting on —
-     it is held rather than polled, so nothing is checking a clock. */
-  var brief = { active: false, pending: null };
-  var briefToken = 0;
+  var briefToken = 0;         /* bumped to abandon a brief in flight */
+  var briefAt = -1;           /* the step currently being spoken     */
 
-  /* Spoken over the arrival cinematic, from the first real gesture. */
-  function beginOpeningBrief() {
-    var token = ++briefToken;
-    brief.active = true;
-    brief.pending = null;
-    CG.Voice.sequence(BRIEF_INTRO, function () {
-      if (token !== briefToken) return;
-      brief.active = false;
-      var next = brief.pending;
-      brief.pending = null;
-      if (next) next();
-    });
+  function briefText(i) {
+    var b = BRIEF[i];
+    return b && b.text !== null ? b.text : level().mission;
   }
 
-  function afterOpeningBrief(fn) {
-    if (!brief.active) { fn(); return; }
-    brief.pending = fn;
-  }
+  function cancelBrief() { briefToken++; briefAt = -1; clearAuto(); }
 
-  function abandonOpeningBrief() {
-    briefToken++;
-    brief.active = false;
-    brief.pending = null;
-  }
-
-  /* The first mission's own line. The controls are locked from the
-     moment the chart appears until it has been said — the learner is
-     not left tapping at a dock underneath a sentence about what they
-     are supposed to be doing with it. */
   function startTutorial() {
-    var token = briefToken;
     gameState.screen = 'tutorial';
     gameState.tutorialStep = 0;
     UI.highlight('target');
     refreshTargetGlow(true);
-    lockInput(true);
+    lockInput(true);        /* the controls wait until the brief is done */
     clearIdleHint();
+    runBriefStep(0, ++briefToken);
+  }
 
-    afterOpeningBrief(function () {
-      if (token !== briefToken || gameState.tutorialStep < 0) return;
-      CG.Voice.say(BRIEF_MISSION_VOICE, true, function () {
-        if (token !== briefToken || gameState.tutorialStep < 0) return;
-        finishTutorial();
-      });
-    });
+  function runBriefStep(i, token) {
+    if (token !== briefToken || gameState.tutorialStep < 0) return;
+    if (i >= BRIEF.length) { finishTutorial(); return; }
+    briefAt = i;
 
-    /* THE BACKSTOP. Every path through CG.Voice settles its callback,
-       bar one: a browser that reports speech support and then never
-       populates its voice list leaves the line queued for a
-       `voiceschanged` that is not coming. The controls are behind this,
-       so it gets a hard deadline rather than a promise. */
+    /* Step 0's words are already on the panel: loadLevel() wrote them
+       there along with the console's arrival animation, and rewriting
+       them here would replay it. */
+    if (i > 0) {
+      UI.mission({ text: briefText(i), sub: '', voice: false, animate: 'words' });
+    }
+
+    /* advance exactly once, whichever of the two paths below gets here */
+    function next() {
+      if (token !== briefToken || briefAt !== i) return;
+      briefAt = -1;
+      clearAuto();
+      window.setTimeout(function () { runBriefStep(i + 1, token); }, BRIEF_GAP);
+    }
+
+    /* THE BACKSTOP, PER LINE. Every path through CG.Voice settles its
+       callback bar one: a browser that reports speech support and then
+       never populates its voice list leaves the line queued for a
+       `voiceschanged` that is not coming. The controls are behind this
+       brief, so each line gets a hard deadline as well as a promise. */
     clearAuto();
-    autoTimer = window.setTimeout(function () {
-      if (token === briefToken && gameState.tutorialStep >= 0) finishTutorial();
-    }, 12000);
+    autoTimer = window.setTimeout(next, BRIEF_MAX);
+    CG.Voice.say(briefText(i), true, next);
   }
 
   function finishTutorial() {
     clearAuto(); clearIdleHint();
-    abandonOpeningBrief();
+    cancelBrief();
     gameState.tutorialStep = -1;
     UI.highlight(null);
     refreshTargetGlow();
@@ -1211,9 +1212,10 @@ window.CG = window.CG || {};
     Audio.surfStart();                     /* and the shore break behind it   */
     dom.btnPlay.disabled = true;
 
-    /* The first two lines of the opening brief, spoken over the landing.
-       See BRIEF_INTRO. */
-    beginOpeningBrief();
+    /* NOTHING IS SPOKEN HERE. The opening brief used to start on this
+       click and play across the landing; it now waits for the aircraft
+       to be down and the chart to be up, so the words can be read as
+       well as heard. See THE OPENING BRIEF. */
 
     /* TWO CINEMATICS, AT THE TWO MOMENTS THEY BELONG TO.
        js/intro.js already played at boot: the aircraft climbing into
@@ -1278,7 +1280,7 @@ window.CG = window.CG || {};
 
   function playAgain() {
     CG.Voice.cancel();
-    abandonOpeningBrief();      /* the framing lines are not replayed */
+    cancelBrief();
     if (CG.Lesson) CG.Lesson.cancel();
     dom.stage.classList.remove('intro-land');
     hideOriginTap();

@@ -259,24 +259,22 @@ CG.Grid = (function () {
     el.letters.x.setAttribute('y', toY(0) - 44);
     el.letters.y.setAttribute('x', toX(0) + 40);
     el.letters.y.setAttribute('y', toY(c.yMax) + 54);
-    /* EACH ARROWHEAD APPEARS WITH THE AIRSPACE IT POINTS INTO.
+    /* THE ARROWHEADS WAIT FOR THE FULL PLANE. An arrow means "this axis
+       carries on", and on a part-drawn plane it points at edges the
+       chart does not have yet. All four appear together, at the moment
+       the last quadrant unfolds and the promise becomes true. Until
+       then the axes are lines with an origin, which is exactly what
+       they are.
 
-       All four used to wait for the last quadrant, on the reasoning
-       that an arrow promises "this axis carries on" and quadrant I
-       cannot keep that promise leftwards or downwards. Half of that is
-       right and half of it is not: RIGHT and UP carry on from the very
-       first mission — they are the only two directions there ARE at
-       that point — so their arrows were held back for nothing, and the
-       chart spent eight missions with no arrowheads on it at all.
-
-       So the promise is now made per direction. Right and up are
-       arrowed from the start; left and down get theirs at the unfold
-       that opens them. Nothing points anywhere the learner cannot
-       fly. */
-    el.arrows.xp.style.opacity = 1;
-    el.arrows.yp.style.opacity = 1;
-    el.arrows.xn.style.opacity = c.xMin <= -2 ? 1 : 0;
-    el.arrows.yn.style.opacity = c.yMin <= -2 ? 1 : 0;
+       (This was briefly made per-direction, so right and up were
+       arrowed from the first mission. It was reverted: two arrowheads
+       on a quadrant-I chart read as an unfinished pair rather than as
+       two true statements, and the axes are quieter without them.) */
+    var whole = c.xMin <= -2 && c.yMin <= -2;
+    el.arrows.xp.style.opacity = whole ? 1 : 0;
+    el.arrows.yp.style.opacity = whole ? 1 : 0;
+    el.arrows.xn.style.opacity = whole ? 1 : 0;
+    el.arrows.yn.style.opacity = whole ? 1 : 0;
 
     /* The aircraft lives outside this SVG, so it does not inherit the
        chart transform. Without this it keeps the pixel position it had

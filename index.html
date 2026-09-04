@@ -242,11 +242,42 @@
            slot so the chips never overlap the chart. -->
       <div class="tray" id="dragTray" hidden></div>
 
-      <div class="dock" id="dock">
+      <!-- ============ THE CONTROL CONSOLE ==========================
+           THE GAME-OWNED HOOKS ARE UNCHANGED: #dock (carrying
+           .dock-enter / .dock-away / [data-locked]), #controls (which
+           buildControls() fills and empties) and #btnGo. ui.js was not
+           touched to build this — everything added here is chrome that
+           is aria-hidden and holds no state.
+
+           GO LEFT THE ROW. It used to be the last flex item inside
+           .dock-inner; it is now absolutely positioned over the
+           console's right end, echoing the roundel on the question bar
+           at the other end of the screen. That is not only a look: with
+           GO out of the flow the console's height is set by the control
+           row alone, which is what bought the clearance to make every
+           control taller — see THE HEIGHT IS LOAD-BEARING in the CSS. -->
+      <div class="dock game-control-console" id="dock">
+
+        <div class="console-wings console-wings-left" aria-hidden="true">
+          <i class="console-wing cw1"></i>
+          <i class="console-wing cw2"></i>
+          <i class="console-wing cw3"></i>
+        </div>
+        <div class="console-wings console-wings-right" aria-hidden="true">
+          <i class="console-wing cw1"></i>
+          <i class="console-wing cw2"></i>
+          <i class="console-wing cw3"></i>
+        </div>
+
+        <!-- the four small gold trim marks, one pair per end -->
+        <i class="console-trim console-trim-l" aria-hidden="true"></i>
+        <i class="console-trim console-trim-r" aria-hidden="true"></i>
+
         <div class="dock-inner">
           <div class="controls" id="controls"></div>
-          <button class="go" id="btnGo" type="button">GO</button>
         </div>
+
+        <button class="go" id="btnGo" type="button">GO</button>
       </div>
 
       <!-- idle nudge -->

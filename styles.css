@@ -176,7 +176,11 @@
      --c-main / --c-bottom / --c-edge, which each .ctrl[data-dir] sets. */
   --ctl-cream:      #FFF5D8;
   --ctl-cream-hi:   #FFFBEA;
-  --ctl-cream-lo:   #E2CFA1;   /* the panel's bottom edge and its hem  */
+  /* Nothing reads this any more — the console's scalloped hem went
+     with the navy-and-gold edge that replaced it. Kept because it is
+     the panel's bottom-edge cream and the value is worth not
+     re-deriving if that edge is ever wanted back. */
+  --ctl-cream-lo:   #E2CFA1;
   --ctl-cream-rim:  #E5D3A9;
   --ctl-well:       #FFE7B3;   /* inside the number capsule            */
   --ctl-well-rim:   #C8AF7C;
@@ -637,11 +641,10 @@ button{font-family:inherit}
    answer to anything. Gold now means "the aircraft crossed this" and
    nothing else — see --cross-gold.
 
-   What they keep from that revision is being DRAWN at all: they are
-   larger than they were, they carry a navy rim so their shape holds
-   against the pale axis line running underneath them, and each one
-   appears with the airspace it points into rather than all four waiting
-   for the last quadrant. Visible, and quiet. */
+   What they keep from that revision is being larger, and a navy rim so
+   their shape holds against the pale axis line running underneath them.
+   When they do arrive — all four together, with the fourth quadrant —
+   they are visible, and quiet. */
 #axisEnds path{
   fill:var(--grid-axis);
   stroke:rgba(16,48,80,.55);stroke-width:2.5;stroke-linejoin:round;
@@ -1188,68 +1191,134 @@ button{font-family:inherit}
 .coord-tag.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 
 /* ===================================================================
-   THE CONTROL DOCK
+   THE CONTROL CONSOLE  (.dock / .game-control-console)
    -------------------------------------------------------------------
-   A long warm cream strip carrying four direction plates, each paired
-   with a cream number capsule, and a round turquoise GO.
+   A long cream aircraft panel — navy outside, gold trim inside, wing
+   fins off both ends — carrying four coloured direction plates, each
+   paired with a cream number capsule, with a round GO overlapping its
+   right end.
 
-   FOUR THINGS WORTH KNOWING BEFORE EDITING
+   FIVE THINGS WORTH KNOWING BEFORE EDITING
 
-   1. THE MARKUP IS UNCHANGED. Every hook the game and the test suites
-      use is still here: .ctrl[data-dir][data-armed], .ctrl-label,
-      .ctrl-val (+.bump), .stepper, .step-btn[data-limit], #btnGo.go
-      (+.armed), and the dock's own .dock-enter / .dock-away /
-      [data-locked]. This is a pure restyle — no JS was touched, so no
-      gameplay could be.
+   1. THE MARKUP IS THE GAME'S, NOT THIS FILE'S. Every hook ui.js and
+      the tests use is untouched: .ctrl[data-dir][data-armed],
+      .ctrl-label, .ctrl-val (+.bump), .stepper, .step-btn[data-limit],
+      #btnGo.go (+.armed), and the console's own .dock-enter /
+      .dock-away / [data-locked]. buildControls() and
+      buildAxisControls() emit the same DOM they always did, and the
+      direct-entry steppers inherit this whole look for free because
+      they are that same DOM.
 
-   2. SIZES ARE IN PIXELS, NOT clamp()/vw, AND THAT IS DELIBERATE. The
-      whole game lives on a fixed 1920x1080 canvas that is scaled to fit
-      with one transform, so a px here is ALREADY responsive: everything
-      shrinks together and the 16:9 composition holds. Viewport units
-      inside that canvas would fight the scale — the dock would change
-      proportion relative to the grid as the window resized, which is
-      the one thing the composition cannot survive. Readability at
-      1366x768 comes from the scale factor (0.711), not from a query.
+   2. THE HEIGHT IS LOAD-BEARING, and it is the number that decides
+      every other number here. Stage 3's chart panel reaches y=924 and
+      the console sits 20px off the bottom of a 1080 stage, so the whole
+      thing has 130px to live in and it uses 118: an 84px control row,
+      24px of padding and 10px of border, putting its top edge at y=942
+      with 18px of clearance. THAT is why the controls are 84px and not
+      the 105px the brief asks for, and why GO is 100px and not 130 —
+      at the brief's sizes the console is ~180px tall and the last row
+      of the grid is underneath it. The only way to have those numbers
+      is to shorten the chart, which is a different decision.
 
-   3. THE DOCK'S HEIGHT IS LOAD-BEARING. GO's 88px diameter plus 12px
-      of padding and the border makes 117px; with the 20px bottom margin
-      that puts the top edge at y=943. Stage 3's chart panel reaches
-      y=924, so there are 19px of clearance and no more. GO's diameter
-      and the vertical padding are picked against that number, not by
-      eye — anything taller here collides with the grid.
+      Moving GO out of the flex row is what paid for the 84: the row's
+      height used to be set by GO's diameter, so every px of GO was a px
+      the plates could not have.
+
+   3. SIZES ARE IN PIXELS, NOT clamp()/vw, AND THAT IS DELIBERATE. The
+      game lives on a fixed 1920x1080 canvas scaled to fit by one
+      transform, so a px here is ALREADY responsive: the console, the
+      chart and the aircraft shrink together and the composition holds.
+      A vw inside that canvas is measured against the window and then
+      scaled again — the console would change proportion against the
+      grid as the window resized, and the clearance in note 2 would
+      stop being true at some window sizes and not others.
 
    4. THE COLOURED PLATE IS A LABEL, NOT A BUTTON, and it deliberately
-      has no press state. In this game the direction is the NAME of a
-      spinner; the thing you press is the capsule's arrows. Giving a
-      chunky plate hover-lift and travel would promise a tap that does
-      nothing — the worst kind of affordance for a child. Instead the
-      plate and its capsule lift together as one unit on hover, which
-      is true: hovering the pair does lead you to a live control.
+      has no press state. The direction is the NAME of a spinner; the
+      thing you press is the capsule's arrows. Giving a chunky plate
+      hover-lift and travel would promise a tap that does nothing. The
+      plate and its capsule lift together on hover, which is true —
+      hovering the pair does lead to a live control.
+
+   5. NAVY OUTLINES EVERYWHERE, ONE HUE PER JOB. Every edge on the
+      console is the same navy, so the colour that survives is the
+      direction hue and the gold trim. The plates used to be outlined
+      in their own darker hue, which gave four different edge colours
+      competing along one row.
    =================================================================== */
 .dock{
+  --console-navy:#123F6B;
+  --console-navy-dark:#0A3156;
+  --console-gold:#F2B82C;
+  --console-gold-light:#FFD75B;
+  --console-cyan:#69D5F4;
+
   position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
-  padding:12px 22px;
-  /* not perfectly geometric: the corners are deliberately unequal */
-  border-radius:26px 30px 26px 30px;
-  background:linear-gradient(180deg,var(--ctl-cream-hi) 0%,var(--ctl-cream) 58%,#F6E7C0 100%);
-  border:2.5px solid var(--ctl-cream-rim);
-  /* a solid 2D game edge, not a blurry drop shadow */
+  padding:12px 104px 12px 26px;      /* right clears the overlapping GO */
+  border-radius:38px;
+  background:linear-gradient(180deg,#FFFBEA 0%,#FFF5D7 60%,#FBE9B8 100%);
+  border:5px solid var(--console-navy);
+  /* THE THREE-RING EDGE, the same construction as the question bar:
+     one border and two inset shadows. Inset shadows do not affect
+     layout, so the gold trim costs no boxes and cannot fall out of
+     register with the corner radius. */
   box-shadow:
-    0 6px 0 rgba(126,99,57,.20),
-    0 10px 18px rgba(13,69,99,.16),
-    inset 0 2px 0 rgba(255,255,255,.75);
+    inset 0 0 0 5px var(--console-gold),
+    inset 0 0 0 8px rgba(255,255,255,.62),
+    inset 0 4px 0 rgba(255,255,255,.55),
+    0 8px 0 rgba(10,49,86,.16),
+    0 12px 18px rgba(9,52,87,.20);
   font-family:var(--font-ctl);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
-/* A soft scalloped hem peeking out from under the bottom edge — one
-   repeating radial, understated, and it reads as cut paper rather than
-   as a CSS trick. Sits behind nothing: it simply extends below. */
-.dock::after{
-  content:"";position:absolute;left:26px;right:26px;bottom:-8px;height:16px;
-  background:radial-gradient(circle at 50% 0,
-    var(--ctl-cream-lo) 0 7.5px,rgba(0,0,0,0) 8px) 0 0/30px 16px repeat-x;
+/* THE SCALLOPED HEM IS GONE. It was a soft cut-paper edge peeking out
+   from under a soft cream panel, and it read well against that. Under a
+   5px navy stroke and a gold trim it read as a second, competing edge
+   treatment on the same object — so the panel now has one edge. */
+
+/* ---- wing fins ------------------------------------------------------
+   Three a side, shortening downward, tucked under the console so only
+   their outboard ends show. Behind everything (z-index 0 against the
+   control row's 2), pointer-events:none, and carrying nothing — they
+   cannot get between a child and a button. */
+.console-wings{
+  position:absolute;z-index:0;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
+}
+.console-wings-left {left:-86px;align-items:flex-end}
+.console-wings-right{right:-86px;align-items:flex-start}
+.console-wing{
+  display:block;height:15px;
+  border:3px solid #174A78;
+  background:linear-gradient(180deg,#F6FDFF 0%,#B9E9FC 100%);
+  box-shadow:0 2px 4px rgba(9,52,87,.18);
+}
+.console-wings-left  .console-wing{border-radius:22px 10px 10px 22px}
+.console-wings-right .console-wing{border-radius:10px 22px 22px 10px}
+.cw1{width:96px}
+.cw2{width:80px}
+.cw3{width:64px}
+
+/* ---- the four gold trim marks --------------------------------------
+   Read as instrument-panel dashes, not as decoration for its own sake.
+   One element per end, its two marks drawn as ::before / ::after, so
+   four marks cost two elements. */
+.console-trim{
+  position:absolute;z-index:1;top:14px;bottom:14px;width:34px;
   pointer-events:none;
 }
+.console-trim-l{left:20px}
+.console-trim-r{right:20px}
+.console-trim::before,
+.console-trim::after{
+  content:"";position:absolute;left:0;width:34px;height:5px;border-radius:3px;
+  background:repeating-linear-gradient(90deg,
+    var(--console-gold-light) 0 5px,rgba(0,0,0,0) 5px 9px);
+  opacity:.75;
+}
+.console-trim::before{top:0}
+.console-trim::after {bottom:0}
+
 .dock.dock-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(18px)}
 /* played once when the gameplay screen opens — never per mission */
 .dock.dock-enter{animation:dockIn 360ms var(--ease-out) both}
@@ -1259,9 +1328,9 @@ button{font-family:inherit}
 }
 
 /* ONE ROW, always. Wrapping is what once pushed GO onto a second line
-   and made the dock tall enough to reach into the grid. It never needs
-   to wrap: four pairs plus GO measure 1318px inside a 1920px stage. */
-.dock-inner{display:flex;align-items:center;gap:22px;flex-wrap:nowrap;justify-content:center}
+   and made the console tall enough to reach into the grid. It never
+   needs to wrap: four pairs measure 1262px inside a 1920px stage. */
+.dock-inner{position:relative;z-index:2;display:flex;align-items:center;justify-content:center}
 .controls{display:flex;align-items:center;gap:18px;flex-wrap:nowrap;justify-content:center}
 .controls[hidden]{display:none}
 
@@ -1276,7 +1345,7 @@ button{font-family:inherit}
      border-radius exists to create. The one gap that IS wanted — plate
      to capsule — is a margin on .ctrl-val. */
   display:flex;align-items:center;gap:0;
-  height:74px;
+  height:84px;
   animation:ctrlIn 300ms var(--ease-out) both;
 }
 @keyframes ctrlIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
@@ -1295,19 +1364,25 @@ button{font-family:inherit}
 .ctrl-label{
   position:relative;
   display:flex;align-items:center;justify-content:center;gap:10px;
-  height:74px;min-width:158px;padding:0 18px;
+  height:84px;min-width:168px;padding:0 20px;
   /* bottom corners a touch rounder than the top: the pillow silhouette */
-  border-radius:24px 24px 27px 27px;
+  border-radius:26px 26px 29px 29px;
   background:linear-gradient(180deg,var(--c-top) 0%,var(--c-main) 48%,var(--c-bottom) 100%);
-  border:2.5px solid var(--c-edge);
+  /* NAVY, not --c-edge. Four plates outlined in four different darker
+     hues gave the row four edge colours; one navy outline lets the four
+     BODY colours be the only thing that differs, which is the fact the
+     colour coding is trying to carry. --c-edge still draws the solid
+     lower lip, where being the plate's own darker hue is what makes it
+     read as the same object seen from slightly above. */
+  border:4px solid var(--console-navy);
   box-shadow:
-    0 5px 0 var(--c-edge),                  /* the solid lower edge   */
-    0 7px 10px rgba(13,69,99,.18),
-    inset 0 2px 0 rgba(255,255,255,.42),    /* the convex top         */
-    inset 0 -7px 0 rgba(0,0,0,.10);         /* the darker lower lip   */
+    0 6px 0 var(--c-edge),                  /* the solid lower edge   */
+    0 8px 11px rgba(13,69,99,.18),
+    inset 0 3px 0 rgba(255,255,255,.34),    /* the convex top         */
+    inset 0 -9px 0 rgba(0,0,0,.10);         /* the darker lower lip   */
   color:var(--ctl-ink);
-  font-size:var(--fs-sm);font-weight:900;letter-spacing:.3px;
-  text-shadow:0 2px 0 rgba(37,66,89,.20);
+  font-size:24px;font-weight:900;letter-spacing:.3px;
+  text-shadow:0 2px 0 rgba(37,66,89,.22);
 }
 /* NO GLOSS OVERLAY ON THE UPPER SIDE. There was one here, and its own
    border-radius (21px on top, 40% on the bottom) gave it a silhouette
@@ -1318,7 +1393,7 @@ button{font-family:inherit}
 /* the supplied glyphs are already directional triangles, so they are
    the arrow — 1.35x the label, per the brief, and left of the word */
 .ctrl-label svg{
-  width:28px;height:28px;fill:#fff;flex:none;
+  width:30px;height:30px;fill:#fff;flex:none;
   filter:drop-shadow(0 2px 0 rgba(37,66,89,.22));
 }
 
@@ -1328,14 +1403,17 @@ button{font-family:inherit}
    hairline. That is what avoids adding a wrapper element — and adding
    one would have meant editing buildControls(). */
 .ctrl-val{
-  margin-left:8px;                     /* the only gap inside a .ctrl */
-  min-width:74px;height:74px;
-  border-radius:18px 0 0 18px;
-  background:linear-gradient(180deg,var(--ctl-cream-hi),var(--ctl-well));
-  border:3px solid var(--ctl-well-rim);border-right:none;
-  box-shadow:inset 0 3px 0 rgba(255,255,255,.70),inset 0 -4px 0 rgba(200,160,80,.16);
+  margin-left:10px;                    /* the only gap inside a .ctrl */
+  min-width:82px;height:84px;
+  border-radius:20px 0 0 20px;
+  background:linear-gradient(180deg,#FFFBEA 0%,#FFF2CC 100%);
+  border:4px solid var(--console-navy);border-right:none;
+  box-shadow:
+    inset 0 0 0 2px rgba(238,190,78,.55),   /* the gold interior edge */
+    inset 0 3px 0 rgba(255,255,255,.65),
+    inset 0 -4px 0 rgba(200,160,80,.14);
   display:grid;place-items:center;
-  font:900 32px/1 var(--font-ctl);color:var(--ctl-navy);
+  font:900 36px/1 var(--font-ctl);color:#153F69;
   font-variant-numeric:tabular-nums;
 }
 /* only the NUMBER animates, never the bar around it */
@@ -1344,11 +1422,14 @@ button{font-family:inherit}
 
 .stepper{
   display:flex;flex-direction:column;
-  height:74px;width:40px;
-  border-radius:0 18px 18px 0;
-  background:linear-gradient(180deg,var(--ctl-cream-hi),var(--ctl-well));
-  border:3px solid var(--ctl-well-rim);border-left:none;
-  box-shadow:inset 0 3px 0 rgba(255,255,255,.70),inset 0 -4px 0 rgba(200,160,80,.16);
+  height:84px;width:46px;
+  border-radius:0 20px 20px 0;
+  background:linear-gradient(180deg,#FFFBEA 0%,#FFF2CC 100%);
+  border:4px solid var(--console-navy);border-left:none;
+  box-shadow:
+    inset 0 0 0 2px rgba(238,190,78,.55),
+    inset 0 3px 0 rgba(255,255,255,.65),
+    inset 0 -4px 0 rgba(200,160,80,.14);
   overflow:hidden;
 }
 .step-btn{
@@ -1360,22 +1441,22 @@ button{font-family:inherit}
 /* the hairline between the two keys */
 .step-btn:first-child{box-shadow:inset 0 -1.5px 0 rgba(200,160,80,.42)}
 /* THE 44px TARGET, WITHOUT A 44px KEY.
-   The capsule is 74px tall, so two stacked keys are 34px each — under
+   The capsule is 84px tall, so two stacked keys are 38px each — under
    the 44px this game holds itself to. Each target is therefore extended
-   10px OUTWARD ONLY, away from the hairline they share: 46x44 apiece,
+   8px OUTWARD ONLY, away from the hairline they share: 52x46 apiece,
    and they cannot overlap, so the boundary between increase and
    decrease stays unambiguous. Extending both inward would have made a
    tap near the middle land on either one. */
 .step-btn::after{content:"";position:absolute}
-.step-btn:first-child::after{inset:-10px -6px 0 -6px}
-.step-btn:last-child::after {inset:0 -6px -10px -6px}
-.step-btn svg{width:19px;height:19px;fill:var(--ctl-navy);transition:fill 140ms}
+.step-btn:first-child::after{inset:-8px -6px 0 -6px}
+.step-btn:last-child::after {inset:0 -6px -8px -6px}
+.step-btn svg{width:21px;height:21px;fill:#17466F;transition:fill 140ms}
 @media (hover:hover){
-  .step-btn:hover:not(:disabled){background:rgba(180,140,60,.16)}
+  .step-btn:hover:not(:disabled){background:rgba(255,208,72,.22)}
 }
 .step-btn:active:not(:disabled){transform:translateY(2px)}
 /* the brief's focus ring, scoped here so the game-wide one is untouched */
-.dock :where(button):focus-visible{outline:3px solid #FFF4A8;outline-offset:3px}
+.dock :where(button):focus-visible{outline:4px solid rgba(90,210,245,.65);outline-offset:4px}
 
 /* ---- NOT YET -----------------------------------------------------
    On screen, but this direction's airspace has not unfolded. Distinct
@@ -1384,16 +1465,19 @@ button{font-family:inherit}
    can see the direction exists and that it is coming. */
 .ctrl[data-armed="0"] .ctrl-label{
   background:linear-gradient(180deg,#D9CDB2,#C4B694);
-  border-color:#B3A483;
+  /* the navy outline stays — the plate is not gone, it is not open yet,
+     and keeping its edge is what says so */
+  border-color:rgba(18,63,107,.42);
   color:#6E6449;
   text-shadow:none;
-  box-shadow:0 5px 0 #B3A483,inset 0 2px 0 rgba(255,255,255,.34);
+  box-shadow:0 6px 0 #B3A483,inset 0 3px 0 rgba(255,255,255,.34);
 }
 .ctrl[data-armed="0"] .ctrl-label svg{fill:rgba(110,100,73,.62);filter:none}
 .ctrl[data-armed="0"] .ctrl-val,
 .ctrl[data-armed="0"] .stepper{
   background:linear-gradient(180deg,#F0E7D2,#E2D6B8);
-  border-color:#C4B694;
+  border-color:rgba(18,63,107,.42);
+  box-shadow:inset 0 0 0 2px rgba(196,182,148,.55);
 }
 .ctrl[data-armed="0"] .ctrl-val{color:rgba(18,58,99,.36)}
 .ctrl[data-armed="0"] .step-btn{cursor:default}
@@ -1417,24 +1501,41 @@ button{font-family:inherit}
 .dock[data-locked="1"] .ctrl-label{filter:saturate(.55) brightness(.96)}
 
 /* ---- GO -----------------------------------------------------------
-   Round, turquoise, and ringed in cream so it reads as a separate
-   object sitting ON the strip rather than as another plate in the row.
-   88px because the dock's height budget is 116 (see note 3). */
+   Round, ringed, and sitting OVER the console's right end rather than
+   in the row — the same move as the roundel on the question bar at the
+   other end of the screen, so the two ends of the interface are one
+   family. It is the only round thing down here, which is most of why
+   it is findable without being loud.
+
+   THE RINGS ARE ONE BORDER AND TWO INSET SHADOWS: navy outside, gold,
+   then cream, then the face. Same construction as the console edge and
+   the question bar's roundel, for the same reason — inset shadows cost
+   no layout and cannot fall out of register with a 50% radius.
+
+   96px, not the 130 the brief asks for, and the number is arithmetic
+   rather than taste: the console's border box is 118px (84 + 24 padding
+   + 10 border), GO's is 96 + 10 of border = 106, which centres with 6px
+   to spare — exactly the 6px its solid lower edge needs. One px larger
+   and that edge prints through the console's bottom border. See THE
+   HEIGHT IS LOAD-BEARING in note 2 for where the 118 comes from. */
 .go{
-  position:relative;
-  width:88px;height:88px;padding:0;
+  position:absolute;z-index:3;
+  right:-18px;top:50%;transform:translateY(-50%);
+  width:96px;height:96px;padding:0;
   border-radius:50%;cursor:pointer;
   font-family:var(--font-ctl);
-  font-size:30px;font-weight:900;letter-spacing:.04em;
-  color:var(--ctl-ink);
+  font-size:32px;font-weight:900;letter-spacing:.04em;
+  color:#FFFFFF;
   text-shadow:0 2px 0 rgba(6,70,88,.30);
   background:linear-gradient(180deg,var(--go-top) 0%,var(--go-main) 48%,var(--go-bottom) 100%);
-  border:4px solid var(--go-edge);
+  border:5px solid var(--console-navy);
   box-shadow:
-    0 0 0 6px var(--ctl-cream-hi),        /* the cream ring          */
-    0 5px 0 #086F8A,
-    0 8px 14px rgba(11,75,110,.22),
-    inset 0 3px 0 rgba(255,255,255,.35);
+    inset 0 0 0 5px var(--console-gold-light),
+    inset 0 0 0 9px #FFF2C9,
+    inset 0 5px 8px rgba(255,255,255,.22),
+    inset 0 -8px 10px rgba(0,0,0,.12),
+    0 6px 0 rgba(10,49,86,.20),
+    0 10px 16px rgba(9,46,72,.24);
   transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press),
              filter var(--t-hover);
 }
@@ -1443,26 +1544,30 @@ button{font-family:inherit}
    armed     a movement is set: saturated, with a 4px breathing ring
    pressed   travels down onto the strip
    locked    the aircraft is flying: hatched, like the rest of the dock */
+/* Every state has to re-state translateY(-50%): it is not a hover
+   flourish here, it is what centres the button on the console's edge,
+   and a transform that omits it drops GO half its own height. */
 @media (hover:hover){
-  .go:hover:not(:disabled){transform:translateY(-2px) scale(1.015)}
+  .go:hover:not(:disabled){transform:translateY(-50%) scale(1.035)}
 }
 .go:active:not(:disabled){
-  transform:translateY(3px) scale(.985);
+  transform:translateY(-50%) scale(.97);
   box-shadow:
-    0 0 0 6px var(--ctl-cream-hi),
-    0 2px 0 #086F8A,
-    0 4px 8px rgba(11,75,110,.20),
-    inset 0 3px 0 rgba(255,255,255,.35);
+    inset 0 0 0 5px var(--console-gold-light),
+    inset 0 0 0 9px #FFF2C9,
+    inset 0 2px 6px rgba(0,0,0,.14),
+    0 2px 0 rgba(10,49,86,.18),
+    0 4px 8px rgba(9,46,72,.20);
 }
+/* DISABLED IS DESATURATED, NOT FADED. Dropping the opacity of a ringed
+   circle takes the rings with it and the button stops being a shape;
+   draining the colour leaves it perfectly legible and obviously not
+   ready, which is the actual message. */
 .go:disabled{
   cursor:not-allowed;
-  filter:saturate(.28) brightness(.94);
-  color:rgba(255,253,242,.62);
+  filter:saturate(.55) brightness(.95);
+  color:rgba(255,255,255,.65);
   text-shadow:none;
-  box-shadow:
-    0 0 0 6px #EFE3C4,
-    0 5px 0 #9DA9AC,
-    inset 0 3px 0 rgba(255,255,255,.20);
 }
 /* ARMED. A 4px ring expansion over 2s — the one loop in the dock, and
    it only ever runs once a route is set, which is the moment the child
@@ -1470,19 +1575,23 @@ button{font-family:inherit}
 .go.armed:not(:disabled){animation:goReady 2000ms var(--ease-io) infinite}
 @keyframes goReady{
   0%,100%{box-shadow:
-    0 0 0 6px var(--ctl-cream-hi),0 0 0 6px rgba(50,214,215,0),
-    0 5px 0 #086F8A,0 8px 14px rgba(11,75,110,.22),
-    inset 0 3px 0 rgba(255,255,255,.35)}
+    inset 0 0 0 5px var(--console-gold-light),inset 0 0 0 9px #FFF2C9,
+    inset 0 5px 8px rgba(255,255,255,.22),inset 0 -8px 10px rgba(0,0,0,.12),
+    0 0 0 0 rgba(105,213,244,0),
+    0 6px 0 rgba(10,49,86,.20),0 10px 16px rgba(9,46,72,.24)}
   50%{box-shadow:
-    0 0 0 6px var(--ctl-cream-hi),0 0 0 10px rgba(50,214,215,.42),
-    0 5px 0 #086F8A,0 8px 14px rgba(11,75,110,.22),
-    inset 0 3px 0 rgba(255,255,255,.35)}
+    inset 0 0 0 5px var(--console-gold-light),inset 0 0 0 9px #FFF2C9,
+    inset 0 5px 8px rgba(255,255,255,.22),inset 0 -8px 10px rgba(0,0,0,.12),
+    0 0 0 9px rgba(105,213,244,.40),
+    0 6px 0 rgba(10,49,86,.20),0 10px 16px rgba(9,46,72,.24)}
 }
 .dock[data-locked="1"] .go{
   background:repeating-linear-gradient(135deg,#8FB6BE 0 6px,#7FA8B1 6px 12px);
   color:rgba(255,253,242,.62);
   animation:none;
-  box-shadow:0 0 0 6px #EFE3C4,0 5px 0 #6E939B,inset 0 3px 0 rgba(255,255,255,.20);
+  box-shadow:
+    inset 0 0 0 5px #E7CE8E,inset 0 0 0 9px #F3E6C4,
+    0 6px 0 rgba(10,49,86,.16);
 }
 
 /* ---- THE ACTIVE DIRECTION -----------------------------------------
@@ -1493,7 +1602,8 @@ button{font-family:inherit}
    quieter would read as disabled, and they are not. */
 /* GO keeps the dashed tutorial ring, but round — a 26px-radius rect
    around an 88px circle reads as a mistake. */
-.go.tut-hi::after{inset:-16px;border-radius:50%}
+.go.tut-hi{z-index:5}
+.go.tut-hi::after{inset:-14px;border-radius:50%}
 .ctrl.tut-hi{position:relative;z-index:4}
 .ctrl.tut-hi::after{content:none}
 .ctrl.tut-hi .ctrl-label{
@@ -1502,8 +1612,8 @@ button{font-family:inherit}
     0 6px 0 var(--c-edge),
     0 0 0 3px rgba(255,244,181,.90),
     0 0 14px rgba(255,167,40,.28),
-    inset 0 2px 0 rgba(255,255,255,.42),
-    inset 0 -7px 0 rgba(0,0,0,.10);
+    inset 0 3px 0 rgba(255,255,255,.34),
+    inset 0 -9px 0 rgba(0,0,0,.10);
   animation:ctrlBreathe 2000ms var(--ease-io) infinite;
 }
 @keyframes ctrlBreathe{
