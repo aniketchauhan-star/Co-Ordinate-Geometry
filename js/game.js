@@ -656,7 +656,10 @@ window.CG = window.CG || {};
     Grid.clearRoutePoints();
     Audio.engineStop();
     Audio.duck('flight', false);
-    CG.Voice.cancel();
+    /* The opening brief is spoken ACROSS this handover — it starts at
+       START and the first mission loads underneath it — so the one
+       voice line a new level must not cancel is that one. */
+    if (!brief.active) CG.Voice.cancel();
     gameState.levelIndex = clamp(index, 0, LEVELS.length - 1);
     var lv = level();
 
@@ -702,19 +705,20 @@ window.CG = window.CG || {};
     UI.showDock(true);
     UI.showMission(true);
 
-    /* If the tutorial is about to take over it owns the voice line, so
-       the level's own line is not spoken and then cut off. */
-    var tutorialTakesOver = lv.tutorial && gameState.tutorialStep < 0;
+    /* The opening brief owns both the voice and the sub-line on the
+       first mission: the panel is written here, but the sentence under
+       it is not spoken until lines 1 and 2 have finished. */
+    var briefTakesOver = lv.tutorial && gameState.tutorialStep < 0;
     UI.mission({
       text: lv.mission,
-      sub: lv.unlockNote || '',
-      voice: tutorialTakesOver ? false
+      sub: briefTakesOver ? BRIEF_SUB : (lv.unlockNote || ''),
+      voice: briefTakesOver ? false
         : lv.unlockVoice ? lv.unlockVoice + ' ' + lv.mission
         : lv.mission
     });
     lockInput(false);
 
-    if (lv.tutorial && gameState.tutorialStep < 0) startTutorial();
+    if (briefTakesOver) startTutorial();
   }
 
   /* Reset: cancels flight safely, never restarts progression. */
@@ -740,7 +744,9 @@ window.CG = window.CG || {};
     lockInput(false);
     var lv = level();
     UI.mission({ text: lv.mission, sub: '' });
-    if (gameState.tutorialStep >= 0) applyTutorialStep(gameState.tutorialStep);
+    /* RESET is itself an interaction, so the brief has served its
+       purpose — it ends here rather than replaying over the top. */
+    if (gameState.tutorialStep >= 0) finishTutorial();
   }
 
   function advanceLevel() {
@@ -768,97 +774,119 @@ window.CG = window.CG || {};
   }
 
   /* ============================================================
-     TUTORIAL (short, progressive, never repeated)
-     ============================================================ */
-  var TUTORIAL = [
-    /* FLOW 01's framing line lives HERE, folded into the tutorial's own
-       opening line and spoken as one sentence. It cannot be spoken over
-       the takeoff — that transition has no voice at all — and it cannot
-       be spoken at the handoff either, because loadLevel() cancels the
-       voice before this very step, so a line begun any earlier is cut
-       off part-way through its own sentence. */
-    { text: 'Guide the aircraft to the target.',
-      sub: 'That glowing waypoint is its destination.',
-      voice: 'You are the air traffic controller. Guide the aircraft to the target.',
-      highlight: 'target', auto: 3800 },
-    { text: 'Choose how many spaces to move RIGHT.',
-      voice: 'Choose how many spaces to move right.',
-      highlight: 'right', waitFor: 'right' },
-    { text: 'Now choose how many spaces to move UP.',
-      voice: 'Choose how many spaces to move up.',
-      highlight: 'up', waitFor: 'up' },
-    { text: 'Ready? Send the aircraft.',
-      voice: 'Ready? Send the aircraft.',
-      highlight: 'go', waitFor: 'go' }
-  ];
+     THE OPENING BRIEF
 
+     Three lines, spoken in order, and then the learner is on their own.
+
+       1  "You are the air traffic controller."   \ over the arrival
+       2  "Guide each aircraft to its target."    / cinematic
+       3  "Guide the aircraft to the target."       the first mission
+
+     THERE IS NO BUTTON WALKTHROUGH, and that is the point of this
+     rewrite. What stood here marched the learner through RIGHT, then
+     UP, then GO, holding each control hostage until it had been used in
+     the prescribed order — four prompts to explain a dock that says
+     RIGHT, UP and GO on its own face. The learner is told who they are
+     and what the job is, and the controls are simply handed over.
+
+     WHY 1 AND 2 START AT `START` AND NOT HERE
+     They play across the landing, which is nine seconds of picture with
+     nothing being asked of anyone. Held back to the mission they would
+     be five seconds of a chart the learner is not allowed to touch.
+
+     WHY THE LINES ARE CHAINED AND NOT TIMED
+     CG.Voice.say() cancels whatever is mid-sentence, so two calls in a
+     row lose the first line, and a guessed delay between them is a
+     guess about a voice, a rate and a device we do not control. The
+     chain waits on the synthesiser's own `end` event instead — see
+     CG.Voice.sequence(). Line 3 waits on lines 1 and 2 for exactly the
+     same reason, even though the cinematic is normally far longer than
+     they are: it can be skipped with a tap.
+     ============================================================ */
+  var BRIEF_INTRO = [
+    'You are the air traffic controller.',
+    'Guide each aircraft to its target.'
+  ];
+  var BRIEF_MISSION_VOICE = 'Guide the aircraft to the target.';
+  var BRIEF_SUB = 'That glowing waypoint is its destination.';
+
+  /* brief.pending is the continuation the mission line is waiting on —
+     it is held rather than polled, so nothing is checking a clock. */
+  var brief = { active: false, pending: null };
+  var briefToken = 0;
+
+  /* Spoken over the arrival cinematic, from the first real gesture. */
+  function beginOpeningBrief() {
+    var token = ++briefToken;
+    brief.active = true;
+    brief.pending = null;
+    CG.Voice.sequence(BRIEF_INTRO, function () {
+      if (token !== briefToken) return;
+      brief.active = false;
+      var next = brief.pending;
+      brief.pending = null;
+      if (next) next();
+    });
+  }
+
+  function afterOpeningBrief(fn) {
+    if (!brief.active) { fn(); return; }
+    brief.pending = fn;
+  }
+
+  function abandonOpeningBrief() {
+    briefToken++;
+    brief.active = false;
+    brief.pending = null;
+  }
+
+  /* The first mission's own line. The controls are locked from the
+     moment the chart appears until it has been said — the learner is
+     not left tapping at a dock underneath a sentence about what they
+     are supposed to be doing with it. */
   function startTutorial() {
+    var token = briefToken;
     gameState.screen = 'tutorial';
     gameState.tutorialStep = 0;
-    applyTutorialStep(0);
-  }
-
-  function applyTutorialStep(i) {
-    var step = TUTORIAL[i];
-    if (!step) return;
-
-    /* The learner often gets ahead of the narration — they may have set
-       RIGHT while step 1 was still on screen. Never ask for something
-       that is already done, or the tutorial stalls on a satisfied step. */
-    if (step.waitFor && step.waitFor !== 'go' && gameState.controls[step.waitFor] > 0) {
-      gameState.tutorialStep = i;
-      nextTutorialStep();
-      return;
-    }
-
-    gameState.tutorialStep = i;
-    UI.highlight(step.highlight);
-    refreshTargetGlow(step.highlight === 'target' ? true : undefined);
-    UI.mission({
-      text: step.text,
-      sub: step.sub || '',
-      voice: step.voice
-    });
+    UI.highlight('target');
+    refreshTargetGlow(true);
+    lockInput(true);
     clearIdleHint();
-    if (step.auto) {
-      clearAuto();
-      autoTimer = window.setTimeout(function () {
-        if (gameState.tutorialStep === i) nextTutorialStep();
-      }, step.auto);
-    } else if (step.waitFor) {
-      armIdleHint(step.waitFor === 'go' ? 'go' : step.waitFor);
-    }
-  }
 
-  function nextTutorialStep() {
+    afterOpeningBrief(function () {
+      if (token !== briefToken || gameState.tutorialStep < 0) return;
+      CG.Voice.say(BRIEF_MISSION_VOICE, true, function () {
+        if (token !== briefToken || gameState.tutorialStep < 0) return;
+        finishTutorial();
+      });
+    });
+
+    /* THE BACKSTOP. Every path through CG.Voice settles its callback,
+       bar one: a browser that reports speech support and then never
+       populates its voice list leaves the line queued for a
+       `voiceschanged` that is not coming. The controls are behind this,
+       so it gets a hard deadline rather than a promise. */
     clearAuto();
-    var i = gameState.tutorialStep + 1;
-    if (i >= TUTORIAL.length) { finishTutorial(); return; }
-    applyTutorialStep(i);
+    autoTimer = window.setTimeout(function () {
+      if (token === briefToken && gameState.tutorialStep >= 0) finishTutorial();
+    }, 12000);
   }
 
   function finishTutorial() {
     clearAuto(); clearIdleHint();
-    CG.Voice.cancel();
+    abandonOpeningBrief();
     gameState.tutorialStep = -1;
     UI.highlight(null);
     refreshTargetGlow();
+    if (gameState.screen === 'tutorial') gameState.screen = 'playing';
+    lockInput(false);
   }
 
-  /* the learner did something — advance guidance, drop the nudge */
-  function onLearnerInteraction(what) {
+  /* the learner did something — drop the nudge */
+  function onLearnerInteraction() {
     clearIdleHint();
-    var step = TUTORIAL[gameState.tutorialStep];
-    if (!step || !step.waitFor) return;
-    if (step.waitFor === what) nextTutorialStep();
-    else armIdleHint(step.waitFor);
   }
 
-  function armIdleHint(what) {
-    clearIdleHint();
-    if (!what) return;
-    idleTimer = window.setTimeout(function () { UI.handAt(what); }, CFG.idleHintDelay);
-  }
   function clearIdleHint() {
     if (idleTimer) window.clearTimeout(idleTimer);
     idleTimer = null;
@@ -1168,6 +1196,10 @@ window.CG = window.CG || {};
     Audio.surfStart();                     /* and the shore break behind it   */
     dom.btnPlay.disabled = true;
 
+    /* The first two lines of the opening brief, spoken over the landing.
+       See BRIEF_INTRO. */
+    beginOpeningBrief();
+
     /* TWO CINEMATICS, AT THE TWO MOMENTS THEY BELONG TO.
        js/intro.js already played at boot: the aircraft climbing into
        frame while the world materialised around it (FLOW §E). START now
@@ -1175,16 +1207,27 @@ window.CG = window.CG || {};
        runway, the landing — and hands over to the first mission. */
     var slot = dom.btnPlay.parentNode;
     if (slot) slot.classList.remove('rings-live');
-    /* The state goes on FIRST, then the fade. Both land in the same
-       task, so nothing is painted in between either way — but ordering
-       it this way means no future refactor that puts a paint between
-       them can flash the bare game under the dissolving start screen. */
-    beginFlightDeck();
-    dom.screenStart.classList.add('leaving');
+
+    /* THE PRESS IS HELD FOR ONE BEAT.
+       Everything the browser's autoplay and speech policies need from a
+       gesture has already happened above, inside the handler. What is
+       left is picture, and it waits 130ms so the button can be SEEN to
+       go down — pressed and released inside a single frame is a button
+       that never moved. See .play-btn.pressed. */
+    dom.btnPlay.classList.add('pressed');
     window.setTimeout(function () {
-      dom.screenStart.hidden = true;
-      dom.btnPlay.disabled = false;
-    }, 600);
+      dom.btnPlay.classList.remove('pressed');
+      /* The state goes on FIRST, then the fade. Both land in the same
+         task, so nothing is painted in between either way — but ordering
+         it this way means no future refactor that puts a paint between
+         them can flash the bare game under the dissolving start screen. */
+      beginFlightDeck();
+      dom.screenStart.classList.add('leaving');
+      window.setTimeout(function () {
+        dom.screenStart.hidden = true;
+        dom.btnPlay.disabled = false;
+      }, 600);
+    }, 130);
   }
 
   /* The opening state is set up BEFORE the takeoff plays, so the chart
@@ -1220,6 +1263,7 @@ window.CG = window.CG || {};
 
   function playAgain() {
     CG.Voice.cancel();
+    abandonOpeningBrief();      /* the framing lines are not replayed */
     if (CG.Lesson) CG.Lesson.cancel();
     dom.stage.classList.remove('intro-land');
     hideOriginTap();
@@ -1355,6 +1399,11 @@ window.CG = window.CG || {};
         CG.Audio.setEnabled(on);       /* SFX  */
         CG.Voice.setEnabled(on);       /* + voice-over — one control */
         if (on) Audio.play('uiClick');
+        /* Muting mid-brief kills the line the controls are waiting on.
+           Silence is the learner's choice, but it must not cost them
+           the dock — so the brief ends here rather than on its
+           backstop. */
+        if (!on && gameState.tutorialStep >= 0) finishTutorial();
       }
     };
     UI.init(handlers);
@@ -1364,6 +1413,18 @@ window.CG = window.CG || {};
     setHeading(0);
     UI.setLevelPill(1, LEVELS.length);
 
+    /* The pointer drives the press directly, so the button is already
+       down while the finger is still on it; startGame() then holds that
+       same state through the click. Keyboard START gets it from the
+       click handler alone, which is the whole of its gesture. */
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+      dom.btnPlay.addEventListener(ev, function () {
+        dom.btnPlay.classList.remove('pressed');
+      });
+    });
+    dom.btnPlay.addEventListener('pointerdown', function () {
+      if (!dom.btnPlay.disabled) dom.btnPlay.classList.add('pressed');
+    });
     dom.btnPlay.addEventListener('click', startGame);
     dom.btnPlayAgain.addEventListener('click', playAgain);
     window.addEventListener('resize', fitStage);
@@ -1386,11 +1447,12 @@ window.CG = window.CG || {};
 
     var gauge = document.getElementById('loadGauge');
     var fill  = document.getElementById('loadGaugeFill');
-    var pctEl = document.getElementById('loadGaugePct');
+    /* The gauge shows the progress and says nothing. The number is still
+       reported, but only to aria-valuenow — it is for assistive tech,
+       not for the screen. */
     var show = function (pct) {
       var v = Math.max(0, Math.min(100, pct));
       if (fill) fill.style.width = v.toFixed(1) + '%';
-      if (pctEl) pctEl.textContent = String(Math.round(v));
       if (gauge) gauge.setAttribute('aria-valuenow', String(Math.round(v)));
     };
 

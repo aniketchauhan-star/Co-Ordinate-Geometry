@@ -1257,12 +1257,13 @@ button{font-family:inherit}
    turquoise is the ground and the gauge is the only thing on it */
 .stage[data-screen="loading"] .screen-start{background:#2BC4E4}
 .load-gauge{
-  /* narrower than the slot: it sits over the aircraft in the title art,
-     so it covers as little of it as it can and still be legible */
+  /* narrower than the slot, and now only as tall as the bar it holds —
+     the caption and the percentage are gone, so the padding that was
+     spacing three stacked things is down to a rim around one. */
   width:300px;
-  display:grid;justify-items:center;gap:12px;
-  padding:20px 26px;
-  border-radius:22px;
+  display:grid;justify-items:center;
+  padding:12px 14px;
+  border-radius:999px;
   background:linear-gradient(180deg,rgba(255,251,234,.94),rgba(255,245,216,.90));
   border:2.5px solid var(--ctl-cream-rim);
   box-shadow:0 5px 0 rgba(126,99,57,.18),0 10px 20px rgba(13,69,99,.20);
@@ -1271,10 +1272,6 @@ button{font-family:inherit}
 }
 .load-gauge[hidden]{display:none}
 @keyframes gaugeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.load-gauge-label{
-  margin:0;font-size:15px;font-weight:900;letter-spacing:.18em;
-  color:var(--ctl-navy);text-transform:uppercase;
-}
 .load-gauge-track{
   width:100%;height:16px;border-radius:999px;overflow:hidden;
   background:linear-gradient(180deg,#E4D7B6,#F0E7D2);
@@ -1289,10 +1286,6 @@ button{font-family:inherit}
   /* the bar is driven from real byte counts, so this only smooths the
      step between two reports — it must never outrun the data */
   transition:width 140ms linear;
-}
-.load-gauge-pct{
-  margin:0;font-size:20px;font-weight:900;color:var(--ctl-navy);
-  font-variant-numeric:tabular-nums;
 }
 /* ===================================================================
    THE START BUTTON  (ITEM 15)
@@ -1372,7 +1365,34 @@ button{font-family:inherit}
 @keyframes playIdle{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
 .play-btn:disabled{cursor:default}
 .play-btn:hover:not(:disabled){transform:scale(1.05)}
-.play-btn:active:not(:disabled){transform:scale(.94);transition-duration:var(--t-press)}
+
+/* THE PRESS — a physical button being pushed IN.
+
+   Three things move together, which is what separates a press from a
+   shrink: the button goes down AND slightly back (translateY), its
+   drop-shadow shortens because it is closer to the surface it sits on,
+   and the idle breath stops dead — a button cannot be pulsing gently
+   while it is under a finger.
+
+   `:active` is here for the pointer, but it cannot carry this alone:
+   the click starts the cinematic and fades the whole start screen in
+   the same frame, so the state is gone before the eye has it. The
+   `.pressed` class is the same look, put on at the click and held for
+   one readable beat by startGame() — so the button is still down as
+   the screen leaves, the way a real one would be. */
+.play-btn:active:not(:disabled),
+.play-btn.pressed{
+  transform:scale(.93) translateY(4px);
+  transition-duration:var(--t-press);
+}
+.play-btn:active:not(:disabled) img,
+.play-btn.pressed img{
+  animation:none;
+  transform:scale(.98);
+  filter:drop-shadow(0 3px 6px rgba(8,45,70,.55));
+  transition:transform var(--t-press) var(--ease-out),
+             filter    var(--t-press) var(--ease-out);
+}
 
 /* temporary fallback if the supplied start artwork is missing.
    Clearly separated so the PNG can simply be dropped back in. */

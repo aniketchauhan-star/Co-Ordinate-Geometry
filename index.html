@@ -200,11 +200,14 @@
       <!-- The bar sits exactly where the button will, so the reveal is a
            swap in place rather than a layout shift. hidden until 100%. -->
       <div class="play-slot">
+        <!-- A BAR AND NOTHING ELSE. No caption, no percentage: the
+             player is waiting, not reading, and a filling bar already
+             says everything either line said. The wording lives on
+             aria-label, so a screen reader still hears what is going
+             on and the screen stays wordless. -->
         <div class="load-gauge" id="loadGauge" role="progressbar"
              aria-label="Loading the airspace" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <p class="load-gauge-label">PREPARING AIRSPACE</p>
           <div class="load-gauge-track"><i id="loadGaugeFill"></i></div>
-          <p class="load-gauge-pct"><span id="loadGaugePct">0</span>%</p>
         </div>
         <button class="play-btn" id="btnPlay" type="button" aria-label="Play" disabled hidden>
           <!-- ITEM 15: no "PLAY" label. The supplied artwork already
