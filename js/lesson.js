@@ -175,7 +175,28 @@
 
     Grid.highlightAxis(null);
     Grid.clearRecapMarkers();
-    Grid.showPermanentNumbers(true);
+
+    /* --- 24. THE NUMBERS ARRIVE, ONE TICK AT A TIME ------------------
+       They used to be switched on as a group, which said "here is some
+       graph paper". Counted outwards from the origin they say something
+       else: the numbers came from the moving. The question is asked
+       first, and the answer is the numbers appearing — so the learner
+       watches the measuring system being built out of what they just
+       did, rather than being handed it. */
+    if (!await say(tk, {
+      text: 'To know exactly how much we moved…',
+      voice: 'To know exactly how much we moved.',
+      beat: CFG.beatShort
+    })) return false;
+
+    Grid.countNumbersOn();
+    Audio.play('reveal');
+    if (!await say(tk, {
+      text: '…we use two special number lines.',
+      voice: 'We use two special number lines.',
+      beat: CFG.beatMed
+    })) return false;
+
     if (!await say(tk, { text: 'Now these two lines have special names.', beat: CFG.beatMed })) return false;
 
     /* --- 25/26. x-axis, then y-axis ---------------------------------- */
@@ -289,8 +310,15 @@
     tagAt(P, '(2, 3)', 'x');
     Grid.pulseLine('x', P.x);
     if (!await say(tk, { text: 'The first number gives the <em>x-co-ordinate</em>.', beat: CFG.beatMed })) return false;
+    /* NOT "the distance from the y-axis", WHICH IS ABOUT TO BE FALSE.
+       Two quadrants later the learner meets x = -3, and a distance of
+       negative three is not a thing. "How far, and in which direction"
+       is true of every co-ordinate they will ever see, so it is what
+       they are taught the first time — retrofitting direction onto a
+       definition they already believe is much harder than including it. */
     if (!await say(tk, {
-      text: 'The x-co-ordinate is the distance of the point from the <em>y-axis</em>.',
+      text: 'The x-co-ordinate tells us how far, and in which horizontal direction, ' +
+            'the point is from the <em>y-axis</em>.',
       beat: CFG.beatLong
     })) return false;
 
@@ -298,7 +326,8 @@
     Grid.pulseLine('y', P.y);
     if (!await say(tk, { text: 'The second number gives the <em>y-co-ordinate</em>.', beat: CFG.beatMed })) return false;
     if (!await say(tk, {
-      text: 'The y-co-ordinate is the distance of the point from the <em>x-axis</em>.',
+      text: 'The y-co-ordinate tells us how far, and in which vertical direction, ' +
+            'the point is from the <em>x-axis</em>.',
       beat: CFG.beatLong
     })) return false;
 

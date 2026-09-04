@@ -18,7 +18,13 @@ CG.Grid = (function () {
   /* canonical space: 1 cell = 100px, origin at (0,0) */
   var CELL = 100;
   var MAX = { xMin: -14, xMax: 14, yMin: -6, yMax: 6 };   /* widest drawable */
-  var LAB = { xMin: -10, xMax: 10, yMin: -6, yMax: 6 };   /* numbered range  */
+  /* THE NUMBERED RANGE, and it must not exceed the charted one. It was
+     x -10..10, left over from the stage-3 chart that ran to x=14: eight
+     labels and eight ticks were being drawn on every boot and then
+     clipped away unseen. Worse for countNumbersOn(), which staggers by
+     |value| — the invisible ones were still holding delays, so the
+     count appeared to stall after 6. */
+  var LAB = { xMin: -6, xMax: 6, yMin: -6, yMax: 6 };     /* numbered range  */
 
   var el = {};
   var view = { k: 1, px: 960, py: 532 };   /* chart transform, stage px */
@@ -653,8 +659,33 @@ CG.Grid = (function () {
 
   function showPermanentNumbers(on) {
     permanentNums = !!on;
+    el.nums.classList.remove('counting');
     el.nums.classList.toggle('shown', permanentNums);
     if (permanentNums) clearReveal();
+  }
+
+  /* countNumbersOn() — the same numbers, COUNTED on from the origin.
+     1 and -1 first, then 2 and -2, and so on outwards, so the axes are
+     watched being built rather than found already built. Used once, at
+     the top of the lesson arc; showPermanentNumbers() is still the
+     instant version everything else wants.
+
+     The stagger is a per-node custom property rather than a JS timer:
+     one class, one reflow, and the browser owns the timing. --d is read
+     by #axisNums.counting text in styles.css. */
+  var COUNT_STEP = 170;                  /* ms between one tick and the next */
+
+  function countNumbersOn() {
+    permanentNums = true;
+    clearReveal();
+    var n = el.nums.querySelectorAll('text'), i, v;
+    for (i = 0; i < n.length; i++) {
+      v = Math.abs(parseFloat(n[i].getAttribute('data-v')) || 0);
+      n[i].style.setProperty('--d', ((v - 1) * COUNT_STEP) + 'ms');
+    }
+    el.nums.classList.remove('counting');
+    void el.nums.getBoundingClientRect();     /* restart, if it ran before */
+    el.nums.classList.add('shown', 'counting');
   }
 
   function setLetter(axis, on) {
@@ -1075,6 +1106,7 @@ CG.Grid = (function () {
     highlightRevealed: highlightRevealed,
     clearReveal: clearReveal,
     showPermanentNumbers: showPermanentNumbers,
+    countNumbersOn: countNumbersOn,
     setLetter: setLetter,
     highlightAxis: highlightAxis,
     nameValue: nameValue, clearNamedValue: clearNamedValue,

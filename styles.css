@@ -689,6 +689,24 @@ button{font-family:inherit}
   filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow));
 }
 #axisNums.shown{opacity:1}
+/* COUNTED ON, one tick at a time — see countNumbersOn() in grid.js. The
+   group is shown outright and each number fades itself in on a delay
+   set from its own value, so 1 and -1 arrive together, then 2 and -2,
+   and the count reads outwards from the origin in both directions at
+   once. transform-box is what makes the scale grow each numeral about
+   its own centre rather than about the chart's origin. */
+#axisNums.counting{opacity:1;transition:none}
+#axisNums.counting text{
+  opacity:0;
+  transform-box:fill-box;transform-origin:center;
+  animation:numTick 380ms var(--ease-out) forwards;
+  animation-delay:var(--d,0ms);
+}
+@keyframes numTick{
+  0%  {opacity:0;transform:scale(.62)}
+  70% {opacity:1;transform:scale(1.16)}
+  100%{opacity:1;transform:scale(1)}
+}
 /* gentle: opacity 0 -> 1, scale .85 -> 1, ~190ms (requirement 8) */
 .reveal-num{animation:numPop 190ms var(--ease-out) both}
 .num-hot{
@@ -979,6 +997,41 @@ button{font-family:inherit}
 @keyframes lost{
   0%,100%{transform:translate(-50%,-50%) rotate(-7deg)}
   50%{transform:translate(-50%,-50%) rotate(7deg)}
+}
+
+/* THE WRONG LANDING FLASHES RED, TWICE, AND THEN STOPS.
+
+   The wobble alone (#plane.lost, above) reads as "confused" but not as
+   "wrong" — it is the same motion whether the aircraft is lost or just
+   idling oddly. Two red pulses under it say wrong, in the one place the
+   learner is already looking.
+
+   It is a radial gradient on a pseudo-element with its OPACITY animated,
+   not a filter on the aircraft. A filter on the <img> would re-blur the
+   artwork every frame while .plane-holder is also translating it home,
+   and this fires at exactly the moment the aircraft is moving. Opacity
+   is free; a red glow that costs frames during the one animation the
+   learner is watching is not.
+
+   Sized to sit under the aircraft, and pointer-events:none so it can
+   never take a tap meant for the chart. */
+.plane-holder::after{
+  content:"";position:absolute;
+  left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,
+    rgba(255,72,72,.60) 0 28%,
+    rgba(255,72,72,.26) 50%,
+    rgba(255,72,72,0)   68%);
+  opacity:0;
+}
+.plane-holder.hit::after{animation:planeHit 880ms var(--ease-io) both}
+@keyframes planeHit{
+  0%  {opacity:0}
+  16% {opacity:1}
+  40% {opacity:0}
+  60% {opacity:.85}
+  100%{opacity:0}
 }
 
 /* ---------------- LAYERS 7-10 : UI ---------------- */
@@ -2404,7 +2457,7 @@ img:not([src]){visibility:hidden}
    anyone reading the file, and by anything checking it. */
 @media (prefers-reduced-motion:reduce){
   .caustic,.swell,.glint,.cloud,.surf-band,.rp-halo,.pulse-thin,.pulse-thick,.go,.wp-pulse,.wp-ping,.play-btn img,
-  .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff,
+  .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.plane-holder.hit::after,.puff,
   .go.armed:not(:disabled)::before,.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,.play-btn::before,
   .axis-span-line,.axis-span-head,.axis-pip,#axisHot line.on,
@@ -2415,6 +2468,8 @@ img:not([src]){visibility:hidden}
   /* the chip keeps its entrance — the breath is the part that loops */
   .named-val{animation-name:namedIn!important}
   #axisHot line.on{opacity:1}
+  /* the numbers still have to arrive — only the counting-on goes */
+  #axisNums.counting text{animation:none!important;opacity:1!important}
   .rw-puff,.cine-puff{display:none}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still

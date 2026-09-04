@@ -118,6 +118,18 @@ window.CG = window.CG || {};
     dom.plane.classList.add(mood);
   }
 
+  /* two red pulses on a wrong landing — the wobble says "confused", this
+     is what says "wrong". Removed on the way out so it can fire again on
+     the next attempt. See .plane-holder.hit in styles.css. */
+  function flashPlaneHit() {
+    dom.planeHolder.classList.remove('hit');
+    void dom.planeHolder.offsetWidth;
+    dom.planeHolder.classList.add('hit');
+    window.setTimeout(function () {
+      dom.planeHolder.classList.remove('hit');
+    }, 900);
+  }
+
   /* park the aircraft on a heading with the eased CSS transition */
   function setHeading(deg) {
     dom.planeSpin.classList.remove('free');
@@ -628,7 +640,13 @@ window.CG = window.CG || {};
     gameState.screen = 'feedback';
     Grid.errorFx(sel);
     Audio.play('incorrect');
-    setPlaneMood('lost');          /* a slow search sweep, not a telling-off */
+    setPlaneMood('lost');     /* a slow search sweep, not a telling-off */
+    /* THE RED FLASH IS NEW, AND IT DOES SOFTEN THAT. The wobble on its
+       own was chosen to avoid scolding, and it is still the same gentle
+       wobble — but it is the same motion whether the aircraft is lost or
+       just idling oddly, so on its own it never actually said "wrong".
+       Two red pulses, under the aircraft, over in under a second. */
+    flashPlaneHit();
     locationCallout(sel);
 
     /* FLOW 12 — first miss: no answer, no hint, just try again */
@@ -1217,6 +1235,7 @@ window.CG = window.CG || {};
     var t = gameState.target;
     Audio.play('incorrect');
     setPlaneMood('lost');
+    flashPlaneHit();
     Grid.errorFx(sel);                       /* marks where they actually went */
     UI.mission({
       text: gameState.attemptNumber === 1
