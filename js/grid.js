@@ -330,9 +330,18 @@ CG.Grid = (function () {
      Highlights the distance from the origin to the target along one axis,
      with a pip on every interval — the learner still has to count. */
   /* "Count the spaces up." — and then it counts them, one at a time.
-     Each space gets its own grid line lit and its own pip, staggered so
+     Each space gets its own lit segment and its own pip, staggered so
      the learner's eye is walked along the route in step with the voice
-     instead of being shown the whole distance at once. */
+     instead of being shown the whole distance at once.
+
+     NOTHING IS LIT ACROSS THE CHART. Each crossed grid line used to be
+     drawn full-height as well. It made the count unmissable and it made
+     everything else unreadable: three or four full-height gold lines cut
+     the plate into stripes, buried the graticule the spaces are measured
+     against, and competed with the aircraft's own route — which is the
+     mark that actually answers the question. The count is carried by the
+     segments and their pips, drawn along the route, where the learner is
+     already looking. */
   var HINT_STEP = 520;                   /* ms between one space and the next */
 
   function showHint(axis, value) {
@@ -344,34 +353,24 @@ CG.Grid = (function () {
 
     for (i = 1; i <= n; i++) {
       var at = i * sgn;
-      var span, line, pip;
+      var span, pip;
       if (axis === 'x') {
         /* the segment just crossed */
         span = mk('line', Object.assign({ x1: toX(at - sgn), y1: toY(0),
                                           x2: toX(at), y2: toY(0) }, nss), 'hint-span');
-        /* and the grid line reached, lit across the chart */
-        line = mk('line', Object.assign({ x1: toX(at), y1: toY(MAX.yMax),
-                                          x2: toX(at), y2: toY(MAX.yMin) }, nss), 'hint-line');
         pip = mk('circle', { cx: toX(at), cy: toY(0), r: 10 }, 'hint-pip');
       } else {
         span = mk('line', Object.assign({ x1: toX(0), y1: toY(at - sgn),
                                           x2: toX(0), y2: toY(at) }, nss), 'hint-span');
-        line = mk('line', Object.assign({ x1: toX(MAX.xMin), y1: toY(at),
-                                          x2: toX(MAX.xMax), y2: toY(at) }, nss), 'hint-line');
         pip = mk('circle', { cx: toX(0), cy: toY(at), r: 10 }, 'hint-pip');
       }
-      /* The beat is handed over as a custom property, not as
-         animationDelay. The crossed line runs TWO animations — its
-         entrance and then its held pulse — and they need different
-         delays; an inline animationDelay is one value and would set
-         both to the same beat, starting every pulse before its own
-         line had appeared. --d is the beat, and the stylesheet derives
-         the second delay from it. See .hint-line. */
+      /* The beat is handed over as a custom property rather than as an
+         inline animationDelay, so the stylesheet can derive further
+         delays from it without grid.js having to know how many
+         animations a mark ends up running. */
       var delay = ((i - 1) * HINT_STEP) + 'ms';
-      line.style.setProperty('--d', delay);
       span.style.setProperty('--d', delay);
       pip.style.setProperty('--d', delay);
-      g.appendChild(line);
       g.appendChild(span);
       g.appendChild(pip);
     }

@@ -521,13 +521,15 @@ window.CG = window.CG || {};
        a pip per space and an arrowhead pointing the way it went. Not
        the whole axis, and not a column through the endpoint. */
     Grid.glowAxisSpan('x', sel.x);
-    /* AND THE LINES IT CROSSED TO GET THERE. The span says how far;
-       these say what "three spaces" IS — three grid lines, lit one at a
-       time in the order they were crossed, right across the chart, and
-       then held pulsing while the sentence names the number. The span
-       alone was a measurement drawn along the axis; a learner counting
-       spaces is counting THESE. */
-    Grid.showHint('x', sel.x);
+    /* THE CROSSING IS SHOWN ALONG THE ROUTE, NEVER ACROSS THE CHART.
+       Each crossed grid line was briefly lit full-height as well, on the
+       reasoning that "three spaces" IS "three lines". It is — but three
+       full-height lines up the plate buried the graticule, cut the chart
+       into stripes and drowned the one mark that actually answers the
+       question: the aircraft's own route along the bottom. The span
+       already carries the count, a pip per line crossed, in the order
+       they were crossed. That is the whole statement, drawn where the
+       learner is looking. */
     Grid.clearRoutePoints();
     Grid.markLeg('x', sel.x);          /* the spaces it counted, in place */
     UI.mission({
@@ -540,7 +542,6 @@ window.CG = window.CG || {};
 
     for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
     Grid.glowAxisSpan('y', sel.y, sel.x);
-    Grid.showHint('y', sel.y);         /* the horizontal lines it crossed */
     Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
       text: 'Then, you moved <em>' + Math.abs(sel.y) + '</em> spaces ' + dirWord('y', sel.y) + '.',
@@ -553,7 +554,6 @@ window.CG = window.CG || {};
     /* first success only: the movement is named as X and Y */
     if (level().coordinateReveal) {
       Grid.glowAxisSpan('x', sel.x);
-      Grid.showHint('x', sel.x);
       Grid.clearRoutePoints();
       Grid.markLeg('x', sel.x);
       UI.mission({
@@ -566,7 +566,6 @@ window.CG = window.CG || {};
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
       Grid.glowAxisSpan('y', sel.y, sel.x);
-      Grid.showHint('y', sel.y);
       Grid.markLeg('y', sel.y, sel.x);
       UI.mission({
         text: 'And <em>' + Math.abs(sel.y) + '</em> spaces up.',
@@ -578,7 +577,6 @@ window.CG = window.CG || {};
       await wait(CFG.beatLong); if (tk !== seqToken) return;
 
       Grid.clearPulseLines();
-      Grid.clearHint();            /* the crossed lines have made their point */
       Grid.clearRoutePoints();
       UI.mission({
         text: 'Together: <span class="coord">' + coordText(sel) + '</span>',

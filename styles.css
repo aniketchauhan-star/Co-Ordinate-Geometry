@@ -735,26 +735,25 @@ button{font-family:inherit}
 
    This is the lesson's first move made visible: "three spaces right"
    IS "three lines crossed", and until the learner can see the three
-   lines the sentence is just a number. So each crossed grid line is
-   lit right across the chart, in gold, one at a time in the order the
-   aircraft crossed them, and then left PULSING for as long as the
-   instruction is on screen.
+   crossings the sentence is just a number. Each one is marked in gold —
+   the segment flown into it, and a pip on the line itself — one at a
+   time, in the order the aircraft crossed them.
 
-   WHY IT PULSES AND DOES NOT JUST SIT THERE. A line lit once and held
-   is read once and then stops being seen — it joins the graticule
-   within a second or two. These lines have to survive being looked
-   away from and back at, because the learner is counting them against
-   a spoken sentence and a control they are also being asked to set.
-   The pulse is what keeps them a live part of the instruction rather
-   than a mark left on the chart.
+   ALONG THE ROUTE, NEVER ACROSS THE CHART. Each crossed grid line was
+   briefly lit full-height as well. It made the count unmissable and
+   everything else unreadable: three or four full-height gold lines cut
+   the plate into stripes, buried the graticule the spaces are measured
+   against, and competed with the aircraft's own route — the one mark
+   that answers the question. Gold now appears only where the aircraft
+   went.
 
    THE STAGGER IS THE WHOLE POINT and it is fragile, so read this
-   before adding an animation here: the entrance is delayed per line
-   (grid.js sets --d), and a second animation that also touches opacity
-   would win the cascade from frame zero and light every line at once —
-   which is precisely the "here are three lines" the count is meant to
-   replace. The pulse therefore starts AFTER that line's own entrance
-   has finished: `animation-delay:var(--d), calc(var(--d) + 520ms)`.
+   before adding an animation here: each mark's entrance is delayed by
+   its own beat (grid.js sets --d), and a second animation that also
+   touches opacity would win the cascade from frame zero and light every
+   mark at once — which is precisely the "here they all are" the count
+   exists to replace. Anything added has to start AFTER that mark's own
+   entrance: `animation-delay:var(--d), calc(var(--d) + 420ms)`.
    =================================================================== */
 .hint-run{animation:fadeIn 260ms both}
 /* the space just crossed, laid along the axis */
@@ -785,27 +784,7 @@ button{font-family:inherit}
   100%{opacity:1;transform:scale(1)}
 }
 
-/* the grid line reached by each step, lit right across the chart so the
-   space just counted is unmistakable — then held, breathing */
-.hint-line{
-  stroke:var(--cross-gold);stroke-width:4.2;stroke-linecap:round;opacity:0;
-  animation:hintLineIn 520ms var(--ease-out) forwards,
-            hintLinePulse 1500ms var(--ease-io) infinite;
-  animation-delay:var(--d,0ms), calc(var(--d,0ms) + 520ms);
-}
-@keyframes hintLineIn{
-  0%  {opacity:0;filter:drop-shadow(0 0 8px var(--cross-glow))}
-  40% {opacity:1;filter:drop-shadow(0 0 14px var(--cross-gold-hi))
-                        drop-shadow(0 0 28px var(--cross-glow))}
-  100%{opacity:.78;filter:drop-shadow(0 0 9px var(--cross-glow))}
-}
-@keyframes hintLinePulse{
-  0%,100%{opacity:.55;stroke-width:3.4;
-          filter:drop-shadow(0 0 7px var(--cross-glow))}
-  50%    {opacity:1;stroke-width:5.6;
-          filter:drop-shadow(0 0 15px var(--cross-gold-hi))
-                 drop-shadow(0 0 30px var(--cross-glow))}
-}
+
 
 /* quadrant labels + sign patterns (concept reveal only) */
 .quad{animation:numPop 320ms var(--ease-out) both}
@@ -2164,13 +2143,6 @@ img:not([src]){visibility:hidden}
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
-  /* THE CROSSED LINES KEEP THEIR ENTRANCE. Dropping every animation
-     here would leave them at opacity 0 — they start invisible and the
-     entrance is what reveals them — so only the second animation, the
-     endless pulse, is removed. Naming one animation truncates every
-     other list in the shorthand to match, so the duration, easing,
-     fill and delay all fall back to the entrance's own values. */
-  .hint-line{animation-name:hintLineIn!important}
   .rw-puff,.cine-puff{display:none}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still
