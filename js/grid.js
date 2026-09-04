@@ -23,14 +23,23 @@ CG.Grid = (function () {
      two blank rows top and bottom and axis lines that stop short of
      their own arrowheads. x came in from 14 to 11 to match the stage,
      so nothing is drawn only to be clipped away. */
-  var MAX = { xMin: -11, xMax: 11, yMin: -8, yMax: 8 };   /* widest drawable */
+  /* Widest drawable, and it is page 60's plane: the graticule, the axis
+     lines and the axis-hot overlay are all drawn to MAX, so it has to
+     reach the largest stage any of them appears on. The lesson's -5..5
+     square is clipped out of this. */
+  var MAX = { xMin: -7, xMax: 7, yMin: -5, yMax: 5 };     /* widest drawable */
   /* THE NUMBERED RANGE, and it must not exceed the charted one. It was
      x -10..10, left over from the stage-3 chart that ran to x=14: eight
      labels and eight ticks were being drawn on every boot and then
      clipped away unseen. Worse for countNumbersOn(), which staggers by
      |value| — the invisible ones were still holding delays, so the
      count appeared to stall after 6. */
-  var LAB = { xMin: -11, xMax: 11, yMin: -8, yMax: 8 };   /* numbered range  */
+  /* THE DECK'S LABELS. Pages 22-57 number -4..4 on both axes; page 60
+     numbers -7..7 on x and keeps -4..4 on y. Labelling x to 7 always is
+     correct for both, because the lesson's charted area stops at 5 and
+     the clip removes the rest unseen. y is never labelled at 5 — the
+     deck leaves its outermost row unnumbered, and so do we. */
+  var LAB = { xMin: -7, xMax: 7, yMin: -4, yMax: 4 };     /* numbered range  */
 
   var el = {};
   var view = { k: 1, px: 960, py: 532 };   /* chart transform, stage px */
@@ -224,6 +233,20 @@ CG.Grid = (function () {
      (the axes, 3.4 screen px) at the smallest stage scale, rounded up */
   var STROKE_PAD = 6;
 
+  function showLabelsFor(st) {
+    var box = (st && st.labels) || (st && st.extent) || LAB;
+    var n = el.nums.querySelectorAll('text'), i, t, v, ax;
+    for (i = 0; i < n.length; i++) {
+      t = n[i];
+      ax = t.getAttribute('data-axis');
+      v = +t.getAttribute('data-v');
+      if (ax === 'xy') { t.style.display = ''; continue; }   /* the origin's 0 */
+      var lo = ax === 'x' ? box.xMin : box.yMin;
+      var hi = ax === 'x' ? box.xMax : box.yMax;
+      t.style.display = (v >= lo && v <= hi) ? '' : 'none';
+    }
+  }
+
   function panelRect(c, v) {
     var l = v.px + toX(c.xMin) * v.k;
     var r = v.px + toX(c.xMax) * v.k;
@@ -278,6 +301,14 @@ CG.Grid = (function () {
        is wider than that, so every other x label would overlap its
        neighbour. Thin them rather than shrink them. */
     el.nums.classList.toggle('thin-x', (v.k * CELL) < 58);
+    /* ONLY THE NUMERALS THIS STAGE IS SUPPOSED TO SHOW. LAB draws every
+       label the game will ever need, so x runs to 7 for page 60's plane
+       — but the lesson's plane is only numbered -4..4, and without this
+       the 6 and 7 labels rendered outside the panel, over open water.
+       The stage's own `labels` box decides, because the numbered range
+       is not the same thing as the charted range: the lesson charts
+       -5..5 and numbers -4..4. */
+    showLabelsFor(CG.STAGES[stageKey]);
     applyPanel(c, v);
 
     /* The clip is what makes the plane unfold: nothing outside the

@@ -52,7 +52,9 @@ CG.STAGES = {
        stage 2   cell 116  ->  1392 x 696    72 cells — the SAME cell,
                                              so it is a pure sideways
                                              unfold with no zoom at all
-       stage 3   cell  45  ->   990 x 720   352 cells  -- RECTANGLE
+       stage 3   cell  73  ->   730 x 730   100 cells  -- SQUARE
+       stage 5   cell  73  ->  1022 x 730   140 cells  -- RECTANGLE
+                                             (page 60's final activity)
 
      NONE OF THOSE NUMBERS IS CHOSEN; THEY ARE ALL DERIVED. The play box
      is 1792 x 756 because the question-template banner occupies y 4..154
@@ -62,8 +64,8 @@ CG.STAGES = {
        stages 1 and 2 are 6 cells tall below an origin at y=870, so
          6c <= 870 - 118 - 38  ->  c = 116  (here the DOCK is binding,
                                     not the banner: 119 would fit)
-       stage 3 is 16 cells tall inside the whole box, so
-         16c <= 798 - 2*38     ->  c = 45
+       stage 3 is 10 cells tall inside the whole box, so
+         10c <= 798 - 2*34     ->  c = 73
 
      and stage 1's origin x is 960 - 3c, which is what keeps its square
      panel centred. If the banner's width ever changes, re-deriving
@@ -74,46 +76,42 @@ CG.STAGES = {
      whole cell step (56 instead of 58), and 30 still clears the origin
      beacon's ring, which is what the margin exists for.
 
-     THE THIRD STAGE IS A SQUARE, AND IT COSTS WIDTH TO BE ONE.
+     THE SHAPES COME FROM THE DECK, NOT FROM TASTE.
 
-     It used to run x from -14 to 14 and fill the width on the argument
-     that a four-quadrant square is bounded by the play box's height and
-     would therefore be narrower than stage 2, so the chart would
-     visibly shrink at the exact moment the airspace doubles. That
-     shrink is real and it is what you now see: the panel goes from
-     1420px wide at stage 2 to 756px at stage 3.
+     Air Traffic Control-4.pdf draws the discovery section — pages 17
+     through 57 — on a 10 x 10 plane labelled -4..4 on both axes. Every
+     one of those forty slides uses that same square. Page 60, the final
+     activity, is the one and only rectangle: x labelled -7..7 against y
+     labelled -4..4.
 
-     It is the right trade anyway, because the old shape made the two
-     axes different lengths — 1624px of x against 696px of y — and this
-     is the screen where the lesson finally names them as a matched pair
-     of perpendicular lines. A plane whose axes are visibly unequal
-     argues against the thing being taught. Equal axes win; the width
-     was decoration.
+     So stage 3/4 is the square and stage 5 is the rectangle, and the
+     brief to "expand sideways, making it rectangular" is satisfied by
+     the deck's own design rather than by widening the lesson.
 
-     Reverting is the same one-line change it always was: set stage 3
-     and 4 extent back to xMin -14, xMax 14.
-
-     In stage 1 the origin sits ON the grid's bottom-left corner, so the
-     aircraft starts in the corner of its own airspace the way the PDF
-     shows it. That is what fixes stage 1's cell size: the aircraft at
-     (0,0) hangs half its body below the origin, and it has to clear the
-     control dock at y=940. 116 is the largest cell that does, while
-     still leaving 26px for the panel edge on every side.
-
-     When quadrant II unfolds the origin slides to the bottom CENTRE —
-     the new airspace is all to the left — and only when the plane opens
-     downwards does it move up to the middle.
-
-     So 1 -> 2 is motion without scale, and 2 -> 3 is the one zoom in the
-     whole game. The origin stays put from 1 to 2 (804) and only moves
-     when the airspace opens below it (787 -> 532).
+     This also fixed a review comment. An earlier pass had stage 3 at
+     x -11..11 by y -8..8 — 22 x 16 cells — which forced the cell down
+     to 45px. The axis numerals live inside the chart's scale, so at
+     that size they rendered around 11 screen px and the reviewer wrote
+     "numbers are very small in size" twice. The deck's 10 x 10 puts the
+     cell back to 73.
      --------------------------------------------------------------------- */
   1: { cell: 116, origin: { x: 612, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
   2: { cell: 116, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
-  3: { cell: 45,  origin: { x: 960, y: 517 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } },
+  3: { cell: 73,  origin: { x: 960, y: 517 }, extent: { xMin: -5,  xMax: 5,  yMin: -5, yMax: 5 },
+       /* the deck numbers only -4..4 here, leaving the outer row bare */
+       labels: { xMin: -4, xMax: 4, yMin: -4, yMax: 4 } },
   /* quadrant IV opens no new airspace beyond stage 3, so it shares the
      geometry and nothing lurches. */
-  4: { cell: 45,  origin: { x: 960, y: 517 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } }
+  4: { cell: 73,  origin: { x: 960, y: 517 }, extent: { xMin: -5,  xMax: 5,  yMin: -5, yMax: 5 },
+       labels: { xMin: -4, xMax: 4, yMin: -4, yMax: 4 } },
+  /* STAGE 5 IS PAGE 60's PLANE, and it is the only rectangle in the
+     deck: x runs -7..7 while y stays -5..5, which is why the final
+     activity's chart is visibly wider than the lesson's. It shares the
+     lesson's cell and origin, so switching to it is a pure sideways
+     unfold with no zoom — the same trick as stage 1 -> 2. */
+  5: { cell: 73,  origin: { x: 960, y: 517 }, extent: { xMin: -7,  xMax: 7,  yMin: -5, yMax: 5 },
+       /* page 60 numbers x all the way to 7, y still only to 4 */
+       labels: { xMin: -7, xMax: 7, yMin: -4, yMax: 4 } }
 };
 
 /* ============================================================

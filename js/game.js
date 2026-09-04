@@ -1185,7 +1185,8 @@ window.CG = window.CG || {};
     Grid.showPermanentNumbers(true);
     Grid.setLetter('x', true);
     Grid.setLetter('y', true);
-    Grid.setStage(4, true);
+    /* page 60's plane, not the lesson's: x reaches 7 here */
+    Grid.setStage(5, true);
     loadDirectTarget();
     UI.mission({
       /* p59, and only p59. The sub-line that used to sit here
