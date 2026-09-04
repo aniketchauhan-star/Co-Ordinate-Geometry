@@ -156,7 +156,6 @@ CG.Intro = (function () {
     if (raf) { window.cancelAnimationFrame(raf); raf = null; }
     clearTimers();
     window.removeEventListener('keydown', onKey, true);
-    if (el.stage) el.stage.removeEventListener('pointerdown', onPoint, true);
 
     /* every layer handed back to the stylesheet, so the screen states
        own visibility again from here on */
@@ -174,7 +173,6 @@ CG.Intro = (function () {
     ev.preventDefault();
     finish(true);
   }
-  function onPoint() { finish(true); }
 
   /* reduced motion: the same story, arrived at rather than travelled */
   function runStill() {
@@ -194,8 +192,8 @@ CG.Intro = (function () {
     reduced = !!(window.matchMedia &&
                  window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
+    /* a key skips this one too; a tap does not — see arrival.js */
     window.addEventListener('keydown', onKey, true);
-    if (el.stage) el.stage.addEventListener('pointerdown', onPoint, true);
 
     return new Promise(function (resolve) {
       settle = resolve;

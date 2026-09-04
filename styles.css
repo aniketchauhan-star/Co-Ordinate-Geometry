@@ -1044,226 +1044,166 @@ button{font-family:inherit}
    live on the keyboard — see onKeyDown() in game.js. */
 
 /* ===================================================================
-   THE QUESTION BAR  (.game-question-*)
+   THE INSTRUCTION BANNER  (.aircraft-instruction-banner)
+   -------------------------------------------------------------------
+   ONE IMAGE, AS PAINTED. This used to be a CSS reconstruction of the
+   plaque — wings built from three divs each, rivets from four spans, a
+   badge with a hand-drawn SVG aircraft, gradients mixed by eye. The
+   supplied artwork replaced all of it, so what is left here is
+   placement and the text box, and the shapes can no longer drift out
+   of register with the drawing because there are no shapes.
 
-   An aviation instruction panel rather than a notification strip: wing
-   fins behind, a cream panel inside a navy stroke and a gold trim, and
-   a roundel overlapping its left end with a top-down aircraft in it.
+   ---- THE ARTWORK'S OWN GEOMETRY, MEASURED FROM ITS PIXELS ---------
+   The file is 2098x749 with transparent padding. Measured off the
+   alpha and the rim colour:
 
-   SELF-CONTAINED. Every rule below is under .game-question-bar or one
-   of its own classes, and every colour it uses is one of the six
-   --question-* tokens. Nothing here reaches out into the dock, the
-   chart or the buttons, and nothing outside reaches in — the bar can
-   be lifted into another screen by copying this block and the markup.
-   The three game-owned ids (#missionText, #missionSub,
-   #missionActions) keep their existing .mission-* rules, so ui.js is
-   untouched by any of it.
+       opaque art        x   15..2077   y   73..633
+       plaque outer      x  300..1794   y  222..631
+       writable plate    x  331..1757   y  264..605
+       badge (the crest) x  868..1216   y   73..~400
 
-   WHY THERE IS NO clamp() OR vw HERE, and this is the one deviation
-   from the brief worth knowing about: the whole game is a fixed
-   1920x1080 canvas scaled by a single transform on .stage. A vw unit
-   inside it is measured against the WINDOW and then scaled again by
-   that transform, so a clamp()ed bar would shrink twice on a small
-   screen and drift out of proportion with the chart it sits over. Px
-   here are design px, and they are already responsive: the stage
-   carries them. This is the same reason .play-slot is positioned in
-   px — see the note there.
+   Every inset below is one of those numbers over 2098 or 749, so the
+   text box is locked to the painted plate and stays locked at any
+   banner width. The top inset is the BADGE's bottom, not the plate's
+   top, so a long line can never be written across the crest.
+
+   ---- THE VERTICAL BUDGET, AND WHY THE CHART MOVED DOWN ------------
+   The artwork's opaque region is 2063x561 — an aspect of 3.68:1 — so
+   its height follows from its width and cannot be traded against it.
+   At 760px wide the art is 207px tall, where the CSS reconstruction
+   fitted into 136. The chart plate therefore starts at y=212 instead
+   of y=148 (CG.CHART.rect in levels.js, PLAY in grid.js, and the three
+   rows of CG.STAGES are all derived from it), which is what keeps the
+   banner clear of the coordinate plane instead of sitting on top of
+   it. Stage cells went 112 -> 103 and 59 -> 53 to pay for it.
+
+   ---- WHY THERE IS NO clamp() OR vw ---------------------------------
+   The game is a fixed 1920x1080 canvas scaled to fit by one transform
+   on .stage. A vw inside it is measured against the WINDOW and then
+   scaled again, so a scaled banner shrinks twice on a small screen and
+   drifts out of proportion with the chart it sits over — and the
+   clearance above the chart stops being true at some window sizes and
+   not others. Px here are design px; the stage makes them responsive.
+   Same reason .dock and .play-slot are in px.
    =================================================================== */
-.game-question-bar{
-  --question-navy:#153F6B;
-  --question-navy-dark:#0E3157;
-  --question-gold:#F4BC30;
-  --question-gold-light:#FFD65A;
-  --question-cream:#FFF5D8;
-  --question-cyan:#52CBEA;
+.aircraft-instruction-banner{
+  /* THE ONE KNOB. Everything else is a ratio of the artwork, so this
+     is the only number to change — but changing it changes the art's
+     height by the same factor, and CG.CHART.rect.y has to move with
+     it or the banner lands on the chart. */
+  --qb-w:760px;
 
-  --gq-h:88px;            /* the panel's resting height          */
-  --gq-medallion:112px;   /* roundel diameter                    */
-  --gq-stroke:5px;        /* navy outer                          */
-
-  position:absolute;left:50%;top:14px;transform:translateX(-50%);
-  /* 1280, not 1180: the panel shows ONE line at a time now (see
-     mission() in ui.js), so the only thing that can still put it onto
-     two is a single sentence too long to fit. The longest one in
-     levels.js measures ~1160px at --fs-lg, and this leaves it room. */
-  min-width:760px;max-width:1280px;
+  position:absolute;left:50%;
+  /* The art starts 73/749 of the way down its own file, so the element
+     is lifted by exactly that much to put the painted top edge at y=4.
+     -22px = 4 - 73/749 * 760 * (749/2098). */
+  top:-22px;transform:translateX(-50%);
+  width:var(--qb-w);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
+.banner-art{display:block;width:100%;height:auto;pointer-events:none;user-select:none}
 .mission.mission-away{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(-16px)}
 
-/* ---- the cream panel ------------------------------------------------
-   THE THREE-RING EDGE is one border and two inset shadows, not three
-   nested elements. Inset shadows do not affect layout, so the gold trim
-   and the highlight inside it cost nothing in boxes and cannot fall out
-   of alignment with the corner radius the way a nested div does. */
-.game-question-panel{
-  position:relative;z-index:2;
-  min-height:var(--gq-h);
-  padding:15px 62px 17px 124px;   /* left clears the roundel */
+/* ---- the writable plate --------------------------------------------
+   Insets are the measured plate, in percent, so they hold at any
+   --qb-w. Top is the badge's bottom edge (400/749) rather than the
+   plate's own top (264/749): the crest overhangs the plate in the
+   middle, and text set from the plate's top would run under it. */
+.banner-plate{
+  position:absolute;
+  left:15.777%;              /*  331 / 2098 */
+  right:16.253%;             /* (2098-1757) / 2098 */
+  /* Top is the badge's bottom edge, so the crest is never written
+     across. Bottom is NOT the plate's own edge (19.2%) — that box
+     centres a single line at y=160, sitting it on the lower rivets
+     with a hole under the badge. Raising the floor to 26.5% moves the
+     centre to y=150, which reads as centred in the blue field with the
+     rivets left alone. */
+  top:53.405%;               /*  400 / 749  — the badge's bottom */
+  bottom:26.5%;              /*  clear of the two lower rivets   */
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  border-radius:34px 44px 44px 34px;
-  background:linear-gradient(180deg,#FFFAEA 0%,var(--question-cream) 65%,#FBECC5 100%);
-  border:var(--gq-stroke) solid var(--question-navy);
-  box-shadow:
-    inset 0 0 0 5px var(--question-gold),
-    inset 0 0 0 7px rgba(255,255,255,.62),
-    inset 0 2px 0 rgba(255,255,255,.55),
-    0 5px 9px rgba(9,54,88,.22);
+  gap:2px;
   text-align:center;
+  /* the plate is painted, not laid out, so nothing here may ever grow
+     the element — a long line shrinks its type instead (fitPlate() in
+     ui.js) and this is the backstop if that is ever bypassed */
+  overflow:hidden;
 }
-/* THE BREATH ON THE GOLD, and it is meant to be missed. A 3s ramp to
-   16% of a lighter gold laid over the trim that is already there —
-   enough that the bar is not quite dead on screen, not enough to pull
-   the eye off the sentence, which is the only thing here anyone is
-   asked to read. */
-.game-question-panel::after{
-  /* inset:0 puts this exactly on the padding box, which is where an
-     inset shadow is measured from — so this 5px ring lands ON the gold
-     trim rather than half over the navy stroke outside it. */
-  content:"";position:absolute;inset:0;
-  border-radius:30px 40px 40px 30px;pointer-events:none;
-  box-shadow:inset 0 0 0 5px var(--question-gold-light);
-  opacity:0;animation:gqBreath 3000ms var(--ease-io) infinite;
-}
-@keyframes gqBreath{0%,100%{opacity:0}50%{opacity:.16}}
-
-/* ---- the roundel ----------------------------------------------------
-   Same trick as the panel edge: one border, two inset rings. It sits
-   ABOVE the panel and hangs off its left end, which is what stops the
-   bar reading as a rectangle with a picture in it. */
-.game-question-medallion{
-  position:absolute;z-index:3;
-  left:-46px;top:50%;transform:translateY(-50%);
-  width:var(--gq-medallion);height:var(--gq-medallion);
-  border-radius:50%;
-  background:radial-gradient(120% 120% at 50% 18%,#2A67A0 0%,#1B4C82 52%,var(--question-navy-dark) 100%);
-  border:4px solid var(--question-navy);
-  box-shadow:
-    inset 0 0 0 4px var(--question-gold-light),
-    inset 0 0 0 7px #FFF3CF,
-    inset 0 -8px 14px rgba(6,28,54,.45),
-    0 4px 7px rgba(14,49,87,.28);
-  display:grid;place-items:center;
-}
-.game-question-plane{
-  width:56px;height:56px;display:block;
-  filter:drop-shadow(0 2px 3px rgba(6,28,54,.45));
-}
-/* the four compass ticks — a heading rose, not decoration for its own
-   sake: they say the roundel is an instrument */
-.gq-tick{
-  position:absolute;background:var(--question-cyan);
-  border-radius:2px;opacity:.72;
-}
-.gq-tick-t,.gq-tick-b{width:3px;height:9px;left:50%;margin-left:-1.5px}
-.gq-tick-l,.gq-tick-r{height:3px;width:9px;top:50%;margin-top:-1.5px}
-.gq-tick-t{top:11px} .gq-tick-b{bottom:11px}
-.gq-tick-l{left:11px} .gq-tick-r{right:11px}
-
-/* ---- the wing fins --------------------------------------------------
-   Three tapered strips a side, stacked and shortening downward, tucked
-   under the panel so only their outboard ends show. They are BEHIND
-   the panel (z-index 1 against its 2) and carry no text, so they can
-   never crowd the sentence however long it runs. */
-.game-question-wings{
-  position:absolute;z-index:1;top:50%;transform:translateY(-50%);
-  display:flex;flex-direction:column;gap:7px;pointer-events:none;
-}
-.gq-wings-left {left:-108px;align-items:flex-end}
-.gq-wings-right{right:-108px;align-items:flex-start}
-.game-question-wing{
-  display:block;height:13px;
-  border:3px solid #245783;
-  background:linear-gradient(180deg,#FFFFFF 0%,#BDEAFF 100%);
-  box-shadow:0 2px 4px rgba(9,54,88,.18);
-}
-.gq-wings-left  .game-question-wing{border-radius:999px 8px 8px 999px}
-.gq-wings-right .game-question-wing{border-radius:8px 999px 999px 8px}
-.gq-w1{width:118px}
-.gq-w2{width:96px}
-.gq-w3{width:74px}
-
-/* ---- the cyan marks at the right end -------------------------------- */
-.game-question-accent{
-  position:absolute;right:26px;top:50%;transform:translateY(-50%);
-  width:12px;height:12px;border-radius:50%;
-  background:var(--question-cyan);opacity:.5;
-}
-.game-question-accent::before,
-.game-question-accent::after{
-  content:"";position:absolute;left:1px;
-  width:10px;height:3px;border-radius:999px;
-  background:#7ADAF2;opacity:.85;
-}
-.game-question-accent::before{top:-15px}
-.game-question-accent::after {bottom:-15px}
-
-/* ---- the text -------------------------------------------------------
-   The sentence is the strongest thing in the component and everything
-   above is arranged around that. It keeps the game's own display face
-   and --fs-lg, so a question reads at exactly the weight it did before
-   the bar was rebuilt. */
 .mission-text{
-  margin:0;font-size:var(--fs-lg);line-height:1.2;font-weight:800;
-  color:#123C69;letter-spacing:.1px;text-wrap:balance;
+  margin:0;
+  /* set by fitPlate(); this is the largest size, used by short lines */
+  font-size:var(--qb-fs,21px);line-height:1.16;font-weight:900;
+  color:#FFFFFF;letter-spacing:.2px;
+  text-shadow:0 2px 1px rgba(0,45,100,.65);
+  text-wrap:balance;
 }
-.mission-sub{margin:7px 0 0;font-size:var(--fs-md);line-height:1.24;font-weight:600;color:rgba(22,55,91,.66)}
+.mission-sub{
+  margin:0;
+  font-size:calc(var(--qb-fs,21px) * .74);line-height:1.2;font-weight:700;
+  color:rgba(215,240,255,.86);
+}
 .mission-sub:empty,.mission-text:empty{display:none}
-.mission-actions{display:flex;gap:14px;justify-content:center;margin-top:12px}
+.mission-actions{display:flex;gap:14px;justify-content:center;margin-top:4px}
 .mission-actions:empty{display:none}
 
 /* ---- motion ---------------------------------------------------------
    TWO ANIMATIONS, AND THEY ARE NOT THE SAME EVENT.
 
-   .gq-in is the ARRIVAL: the bar coming onto a screen that did not have
-   one. It is the long, eased one the brief asks for, and it plays once
-   per session, alongside the dock's own entry.
+   .gq-in is the ARRIVAL: the banner coming onto a screen that did not
+   have one. Once per session, alongside the dock's own entry.
 
-   .enter is a TEXT CHANGE: the same panel, a new sentence. ui.js fires
-   it on every mission line, so it has to stay short — running a 560ms
-   arrival every time the question changed is exactly the constant
-   bouncing the brief rules out. It is a 280ms lift, unchanged from
-   before this rebuild. */
-.game-question-bar.gq-in{animation:gqArrive 560ms cubic-bezier(.22,.8,.3,1) both}
-@keyframes gqArrive{
-  from{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.98)}
+   .enter is a TEXT CHANGE: the same banner, a new instruction. ui.js
+   fires it on every line, so it must NOT move the banner — a plaque
+   that lifts itself every time the sentence changes is the continuous
+   bouncing to avoid. It animates the MESSAGE and gives the badge one
+   pulse; the plaque itself does not move at all.
+
+   The new text fades in; the old text is not faded out first. Doing
+   both would mean holding the old sentence for ~200ms after the voice
+   has already started the new one, and in this game the words on screen
+   are supposed to be the words being spoken. A swap that reads as a
+   swap, in step with the audio, beats a prettier one that lags it. */
+.aircraft-instruction-banner.gq-in{
+  animation:bannerIn 500ms cubic-bezier(.2,.9,.3,1.12) both;
+}
+@keyframes bannerIn{
+  from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(.97)}
   to  {opacity:1;transform:translateX(-50%)}
 }
-.mission.enter{animation:panelIn 280ms var(--ease-out) both}
-@keyframes panelIn{from{opacity:0;transform:translateX(-50%) translateY(-12px) scale(.98)}to{opacity:1;transform:translateX(-50%)}}
+.mission.enter .mission-text{animation:messageIn 300ms var(--ease-out) both}
+@keyframes messageIn{
+  from{opacity:0;transform:translateY(4px)}
+  to  {opacity:1;transform:none}
+}
+/* The badge pulse went with the reconstruction. The crest is painted
+   into the artwork, so it cannot be animated apart from the plaque, and
+   animating the plaque is the movement this banner must not make. */
+  55% {transform:translateX(-50%) scale(1.06)}
+  100%{transform:translateX(-50%) scale(1)}
+}
 
-/* ---- THERE IS NO BREAKPOINT HERE, ON PURPOSE ------------------------
-   The brief asks for a sub-900px rule that shrinks the fins, the icon
-   and the padding. On a normal page that is right; on this one it
-   would break the thing it is meant to fix.
-
-   .stage is a fixed 1920x1080 canvas scaled by ONE transform, and this
-   bar is inside it. When the window narrows, the transform already
-   shrinks the bar, the chart, the dock and the aircraft together, in
-   step — that IS the responsive behaviour, and it is why the aircraft
-   never drifts off the origin at any window size. A @media
-   (max-width:900px) rule fires on the WINDOW while the bar's own px
-   are design px, so it would shrink the bar a second time: a bar
-   getting smaller against a chart that is not. The roundel would pull
-   away from a panel edge that had not moved.
-
-   The one thing that genuinely varies is sentence length, and that is
-   handled above without a query — min-width 760 keeps a short question
-   from collapsing into a badge with a word next to it, max-width 1180
-   makes a long one wrap, and the panel's min-height lets it grow. */
 /* the emphasised number inside a sentence is the thing to look at: it
    gets the numeral face, tabular figures and a warm ground, so it reads
    as a value rather than as bold text */
+/* RE-LIT FOR A BLUE PANEL. These were navy text on a warm orange wash,
+   which was right on a cream plaque and unreadable on this one — navy
+   ink on a dark blue ground. Same job, inverted: a pale cyan wash with
+   white figures, so an emphasised number still reads as a VALUE rather
+   than as bold text, and still reads at all. */
 .mission em{
   font:900 1.06em/1 var(--font-num);font-style:normal;
   font-variant-numeric:tabular-nums;
-  color:var(--navy);background:rgba(245,138,34,.20);
+  color:#FFFFFF;background:rgba(157,231,255,.26);
+  box-shadow:inset 0 0 0 1.5px rgba(189,239,255,.40);
   padding:.06em .3em;border-radius:6px;
+  text-shadow:0 2px 1px rgba(0,45,100,.55);
 }
 .mission .coord{
   font:900 1.04em/1 var(--font-num);font-variant-numeric:tabular-nums;
-  color:var(--navy);background:rgba(22,55,91,.09);
+  color:#EAF8FF;background:rgba(3,40,107,.42);
+  box-shadow:inset 0 0 0 1.5px rgba(117,217,255,.38);
   padding:.06em .34em;border-radius:7px;letter-spacing:.01em;
+  text-shadow:0 2px 1px rgba(0,45,100,.55);
 }
 .fadeword{display:inline-block;opacity:0;transform:translateY(7px);animation:wordIn 620ms var(--ease-out) forwards}
 @keyframes wordIn{to{opacity:1;transform:none}}
@@ -2444,7 +2384,6 @@ img:not([src]){visibility:hidden}
 .stage.perf-lite .cloud,
 .stage.perf-lite .layer-runway{will-change:auto}
 /* decorative breathing, none of which says anything */
-.stage.perf-lite .game-question-panel::after,
 .stage.perf-lite .named-val,
 .stage.perf-lite .play-btn::before{animation:none}
 /* the glint is a moving highlight over the whole ocean — the single
@@ -2461,7 +2400,8 @@ img:not([src]){visibility:hidden}
   .go.armed:not(:disabled)::before,.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,.play-btn::before,
   .axis-span-line,.axis-span-head,.axis-pip,#axisHot line.on,
-  .game-question-panel::after,.game-question-bar.gq-in,
+  .aircraft-instruction-banner.gq-in,
+  .mission.enter .mission-text,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}

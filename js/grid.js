@@ -196,7 +196,7 @@ CG.Grid = (function () {
      rectangle once quadrant II unfolds, square again with all four. Both
      the visible tint and the clip that stops the grid at the rounded
      corner are driven from the same rect, so they can never disagree. */
-  var PLAY = { x: 64, y: 148, w: 1792, h: 768 };
+  var PLAY = { x: 64, y: 212, w: 1792, h: 704 };   /* == CG.CHART.rect */
   /* The origin beacon sits ON the grid's corner in stage 1, and its ring
      is r25 in canonical units. For that ring to stay inside a rounded
      panel the margin has to exceed the ring plus the corner arc's own

@@ -101,8 +101,16 @@ CG.Arrival = (function () {
      slow: 220px over four seconds is 55px/s, against the game's own
      cruise of 175px/s. The aircraft is almost stationary in frame on
      purpose; the cloud streaming UP past it is what carries the speed,
-     which is how a tracking shot works. */
-  var SEA = { y0: 250, y1: 470, w0: 132, w1: 168 };
+     which is how a tracking shot works.
+
+     It is the biggest the aircraft ever is — bigger, deliberately, than
+     the 196px it parks at on the runway. This is a close tracking shot
+     on the aircraft alone; the runway scene is a wide shot of a whole
+     strip. The cut between them happens at zero opacity, so the two
+     sizes are never on screen together and nothing has to reconcile
+     them. 224px of span is 261px of height, which still leaves 90px of
+     air under the nose at the lowest point of the drift. */
+  var SEA = { y0: 250, y1: 470, w0: 176, w1: 224 };
 
   /* SCENE 2 — the runway, end to end, at full screen and 1:1. The
      aircraft enters at the START of the strip and travels its whole
@@ -134,7 +142,7 @@ CG.Arrival = (function () {
      wingspan syncPlaneScale() asks for. Read from the same config the
      game reads, so the two cannot drift apart. */
   function station() {
-    var s = (CG.STAGES && CG.STAGES[1]) || { cell: 112, origin: { x: 624, y: 870 } };
+    var s = (CG.STAGES && CG.STAGES[1]) || { cell: 103, origin: { x: 651, y: 870 } };
     return {
       x: s.origin.x,
       y: s.origin.y,
@@ -412,7 +420,6 @@ CG.Arrival = (function () {
     if (raf) { window.cancelAnimationFrame(raf); raf = null; }
     clearTimers();
     window.removeEventListener('keydown', onKey, true);
-    if (el.stage) el.stage.removeEventListener('pointerdown', onPoint, true);
 
     /* A skip must not leave the headlands still flying in over the top
        of the first mission, so the class comes off and they are simply
@@ -471,7 +478,6 @@ CG.Arrival = (function () {
     ev.preventDefault();
     finish(true);
   }
-  function onPoint() { finish(true); }
 
   /* ---- the reduced-motion cut --------------------------------------
      The same story with nothing moving: the aircraft down on the
@@ -509,9 +515,12 @@ CG.Arrival = (function () {
     if (el.back)  el.back.hidden = false;
     if (el.flash) el.flash.classList.remove('mid', 'go');
 
-    /* any key, any tap: straight to the game */
+    /* A KEY SKIPS; A TAP DOES NOT. The pointer listener was skipping
+       the landing on any stray tap or accidental touch, which is not a
+       decision the player was trying to make — the cinematic plays once
+       per session and is under ten seconds. A keypress is deliberate
+       enough to honour, so that one stays. */
     window.addEventListener('keydown', onKey, true);
-    if (el.stage) el.stage.addEventListener('pointerdown', onPoint, true);
 
     return new Promise(function (resolve) {
       settle = resolve;

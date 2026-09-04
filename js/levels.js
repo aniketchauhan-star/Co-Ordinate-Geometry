@@ -12,7 +12,7 @@ window.CG = window.CG || {};
    mission strip and the control dock:
 
      left / right ....  64px  ( 3.3% )
-     top ............. 148px  (13.7% )
+     top ............. 212px  (19.6% )  the question banner ends at 207
      bottom .......... 916px  (dock top 944 - 28px gap)
 
    The coordinate plane UNFOLDS across four stages (one per
@@ -24,7 +24,11 @@ window.CG = window.CG || {};
    Within a stage nothing moves: cell size and origin are fixed
    for the whole mission.
    ============================================================ */
-CG.CHART = { rect: { x: 64, y: 148, w: 1792, h: 768 } };
+/* y=212 rather than 148: the supplied question-template artwork is a
+   3.68:1 banner, so at a readable width it stands 207px tall where the
+   CSS plaque it replaced fitted into 136. The chart starts below it,
+   which is the whole reason the numbers under CG.STAGES moved. */
+CG.CHART = { rect: { x: 64, y: 212, w: 1792, h: 704 } };
 
 CG.STAGES = {
   /* ---------------------------------------------------------------------
@@ -41,25 +45,40 @@ CG.STAGES = {
 
      Cells are always square (one `cell` value for both axes), and each
      stage takes the largest cell its shape allows inside the play box
-     (1792 x 768):
+     (1792 x 704):
 
-       stage 1   cell 112  ->   672 x 672    36 cells
-       stage 2   cell 112  ->  1344 x 672    72 cells — the SAME cell,
+       stage 1   cell 103  ->   618 x 618    36 cells
+       stage 2   cell 103  ->  1236 x 618    72 cells — the SAME cell,
                                              so it is a pure sideways
                                              unfold with no zoom at all
-       stage 3   cell  59  ->   708 x 708   144 cells  -- SQUARE
+       stage 3   cell  53  ->   636 x 636   144 cells  -- SQUARE
+
+     NONE OF THOSE NUMBERS IS CHOSEN; THEY ARE ALL DERIVED. The play box
+     is 1792 x 704 because the question-template banner occupies y 4..207
+     and the dock's clearance fixes the bottom at 916. Each cell is then
+     the largest that fits its own shape with the panel's margin intact:
+
+       stages 1 and 2 are 6 cells tall below an origin at y=870, so
+         6c <= 870 - 212 - 38  ->  c = 103
+       stage 3 is 12 cells tall inside the whole box, so
+         12c <= 704 - 2*34     ->  c = 53
+
+     and stage 1's origin x is 960 - 3c, which is what keeps its square
+     panel centred. If the banner's width ever changes, re-deriving
+     these four lines is the whole job — and the tests assert the
+     results, not the arithmetic.
 
      THE THIRD STAGE IS A SQUARE, AND IT COSTS WIDTH TO BE ONE.
 
-     It used to run x from -14 to 14 and fill the width — 1652 x 708,
-     336 cells — on the argument that a four-quadrant square is bounded
-     by the play box's 768px height and would therefore be narrower than
-     stage 2, so the chart would visibly shrink at the exact moment the
-     airspace doubles. That shrink is real and it is what you now see:
-     the panel goes from 1420px wide at stage 2 to 768px at stage 3.
+     It used to run x from -14 to 14 and fill the width on the argument
+     that a four-quadrant square is bounded by the play box's height and
+     would therefore be narrower than stage 2, so the chart would
+     visibly shrink at the exact moment the airspace doubles. That
+     shrink is real and it is what you now see: the panel goes from
+     1312px wide at stage 2 to 704px at stage 3.
 
      It is the right trade anyway, because the old shape made the two
-     axes different lengths — 1652px of x against 708px of y — and this
+     axes different lengths — 1484px of x against 636px of y — and this
      is the screen where the lesson finally names them as a matched pair
      of perpendicular lines. A plane whose axes are visibly unequal
      argues against the thing being taught. Equal axes win; the width
@@ -83,12 +102,12 @@ CG.STAGES = {
      whole game. The origin stays put from 1 to 2 (804) and only moves
      when the airspace opens below it (787 -> 532).
      --------------------------------------------------------------------- */
-  1: { cell: 112, origin: { x: 624, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
-  2: { cell: 112, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
-  3: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } },
+  1: { cell: 103, origin: { x: 651, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
+  2: { cell: 103, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
+  3: { cell: 53,  origin: { x: 960, y: 564 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } },
   /* quadrant IV opens no new airspace beyond stage 3, so it shares the
      geometry and nothing lurches. */
-  4: { cell: 59,  origin: { x: 960, y: 532 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } }
+  4: { cell: 53,  origin: { x: 960, y: 564 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } }
 };
 
 /* ============================================================

@@ -271,6 +271,44 @@ CG.UI = (function () {
   var SUB_HOLD  = 2800;    /* how long the first line holds before the second */
   var subTimer  = null;
 
+  /* ---- fitting a line to the painted plate --------------------------
+     The banner is one image at a fixed size, so a long instruction
+     cannot be allowed to push the text box open — it would spill over
+     the rivets and, once the box grew past the artwork, onto the chart
+     below. Instead the type steps down until the block fits.
+
+     It measures with the WHOLE sentence in place, before the word-by-word
+     animation starts, because the words arrive one at a time and a
+     partial line always fits. The size is written to a custom property
+     so .mission-sub can follow it, and 15px is the floor: below that the
+     text is no longer worth reading at the distance this is played at,
+     and a line that cannot fit at 15px is a content bug rather than a
+     layout one. */
+  var FS_MAX = 21, FS_MIN = 15;
+
+  function fitPlate(html) {
+    var plate = el.mission && el.mission.querySelector('.banner-plate');
+    if (!plate || !el.missionText) return;
+    var probe = el.missionText.cloneNode(false);
+    probe.id = '';
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    probe.style.width = plate.clientWidth + 'px';
+    probe.innerHTML = html;
+    plate.appendChild(probe);
+    var fs = FS_MAX, room = plate.clientHeight;
+    /* clientHeight is 0 before the artwork has laid out; leave the
+       stylesheet's size alone rather than shrinking to the floor */
+    if (room > 0) {
+      for (; fs > FS_MIN; fs--) {
+        probe.style.fontSize = fs + 'px';
+        if (probe.scrollHeight <= room) break;
+      }
+    }
+    plate.removeChild(probe);
+    el.mission.style.setProperty('--qb-fs', fs + 'px');
+  }
+
   function fadeWords(node, html) {
     node.innerHTML = '';
     /* split on spaces but keep inline markup groups intact */
@@ -320,6 +358,19 @@ CG.UI = (function () {
        tests know — but it is never written to any more. Two lines in
        this panel is the thing this rewrite exists to prevent. */
     el.missionSub.innerHTML = '';
+
+    /* The badge pulse went with the CSS reconstruction: the crest is
+       painted into the artwork now, so it cannot be scaled on its own,
+       and pulsing the whole plaque is exactly the movement the banner
+       is not allowed to make. The message animation below is what
+       acknowledges each new instruction. */
+
+    /* THE LINE IS FITTED TO THE PLATE BEFORE IT IS ANIMATED. The plaque
+       is a painted image: it cannot grow, so the text has to be what
+       gives. This is measured rather than guessed because the strings
+       come from LEVELS and the lesson arc and range from four words to
+       the fourteen of the co-ordinate definitions. */
+    fitPlate(opts.text || '');
 
     if (opts.animate === 'words') {
       fadeWords(el.missionText, opts.text || '');
@@ -622,6 +673,13 @@ CG.UI = (function () {
     showMission: showMission,
     playDockEntry: playDockEntry,
     mission: mission,
+    /* setInstruction(text) — the banner's own name for the one thing
+       most callers want: swap the sentence, keep everything else. It is
+       a thin front on mission(), not a second path, so the voice, the
+       badge pulse and the one-line rule all still apply. */
+    setInstruction: function (text, voice) {
+      mission({ text: text, voice: voice === undefined ? text : voice });
+    },
     setLevelPill: setLevelPill,
     coordTag: coordTag,
     emphasiseCoord: emphasiseCoord,
