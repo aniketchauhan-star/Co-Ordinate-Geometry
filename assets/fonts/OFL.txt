@@ -1,0 +1,10 @@
+Lilita One — Copyright (c) Juan Pablo del Peral, Huerta Tipografica
+(www.huertatipografica.com), with Reserved Font Name "Lilita One".
+
+Licensed under the SIL Open Font License, Version 1.1.
+Full licence text: https://scripts.sil.org/OFL
+
+The two .woff2 files in this directory are the unmodified latin and
+latin-ext subsets Google Fonts serves for this family (v17). They are
+bundled rather than linked so the game fetches nothing from a third
+party at runtime — see the @font-face block at the top of styles.css.

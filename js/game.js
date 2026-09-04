@@ -705,13 +705,13 @@ window.CG = window.CG || {};
     UI.showDock(true);
     UI.showMission(true);
 
-    /* The opening brief owns both the voice and the sub-line on the
-       first mission: the panel is written here, but the sentence under
-       it is not spoken until lines 1 and 2 have finished. */
+    /* The opening brief owns the voice on the first mission: the panel
+       is written here, but its line is not spoken until lines 1 and 2
+       have finished. */
     var briefTakesOver = lv.tutorial && gameState.tutorialStep < 0;
     UI.mission({
       text: lv.mission,
-      sub: briefTakesOver ? BRIEF_SUB : (lv.unlockNote || ''),
+      sub: lv.unlockNote || '',
       voice: briefTakesOver ? false
         : lv.unlockVoice ? lv.unlockVoice + ' ' + lv.mission
         : lv.mission
@@ -808,7 +808,11 @@ window.CG = window.CG || {};
     'Guide each aircraft to its target.'
   ];
   var BRIEF_MISSION_VOICE = 'Guide the aircraft to the target.';
-  var BRIEF_SUB = 'That glowing waypoint is its destination.';
+  /* NO HINT UNDER THE QUESTION. "That glowing waypoint is its
+     destination." stood here and was answering a question nobody had:
+     the waypoint is the only thing on the chart that glows, and the
+     line above it already says to fly to the target. The question
+     template asks; it does not also lean over and explain. */
 
   /* brief.pending is the continuation the mission line is waiting on —
      it is held rather than polled, so nothing is checking a clock. */

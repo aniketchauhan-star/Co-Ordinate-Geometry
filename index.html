@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#25BEE6">
 <title>Co-ordinate Geometry — Air Traffic Control</title>
+<!-- The one typeface, bundled (assets/fonts) rather than linked to a
+     CDN. Preloaded because the stylesheet only discovers it after the
+     CSS has parsed, and 10KB fetched a beat earlier is the difference
+     between the first sentence appearing in Lilita One and appearing
+     in a fallback and then being redrawn. -->
+<link rel="preload" href="assets/fonts/lilita-one-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>

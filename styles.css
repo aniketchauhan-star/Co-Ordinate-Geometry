@@ -3,6 +3,49 @@
    Design canvas: 1920 x 1080 (16:9), uniformly scaled.
    ============================================================ */
 
+/* ===================================================================
+   LILITA ONE — the game's one typeface.
+
+   SELF-HOSTED, NOT LINKED. The project's rule is that nothing is
+   fetched from a third party at runtime, and a Google Fonts <link> is
+   two cross-origin round trips before a single word can be painted.
+   The two woff2 subsets live in assets/fonts and total 12KB, which is
+   less than a tenth of the start button's artwork.
+
+   `font-weight:400 900` IS DELIBERATE, and it is the one line here
+   worth understanding. Lilita One ships a single weight. The interface
+   asks for 700 and 900 in dozens of places, and a browser given a 400
+   face and a 900 request SYNTHESISES the bold — it smears the glyphs
+   sideways, which on a face this heavy turns to mud. Declaring the
+   range says "this file covers 400 through 900", so every one of those
+   requests is served by the real drawing and nothing is faked. The
+   hierarchy those weights used to carry is in size and colour anyway.
+
+   Licence: SIL Open Font License 1.1 (Juan Pablo del Peral, Huerta
+   Tipografica). Redistribution in a bundle like this is what the OFL
+   is for; the files are unmodified.
+   =================================================================== */
+@font-face{
+  font-family:"Lilita One";
+  font-style:normal;
+  font-weight:400 900;
+  font-display:swap;
+  src:url("assets/fonts/lilita-one-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,
+                U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,
+                U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:"Lilita One";
+  font-style:normal;
+  font-weight:400 900;
+  font-display:swap;
+  src:url("assets/fonts/lilita-one-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,
+                U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,
+                U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
 :root{
   /* palette */
   --navy:#16375B;
@@ -60,6 +103,18 @@
   --grid-axis-line: #DCF4F9;
   --grid-border: #559DB8;
   --grid-glow: rgba(125, 211, 229, 0.30);
+
+  /* THE AXIS ARROWHEADS ARE THE ONE WARM THING ON THE CHART, and that
+     is the whole reason they can be seen. Everything on the plate is
+     some value of blue — the water, the plate, the graticule, the axes,
+     the flown route — so a pale cyan arrowhead was a cyan mark on a
+     cyan chart, technically drawn and effectively invisible. Gold is
+     the only hue up here that nothing else is using, so it needs no
+     help from size or weight to be found. It is also the dock's own
+     amber, so the chart and the controls are speaking one language. */
+  --axis-arrow: #FFD34A;
+  --axis-arrow-hi: #FFE9A0;
+  --axis-arrow-glow: rgba(255, 190, 45, .85);
 
   /* ---- THE CONTROL DOCK ----------------------------------------------
      DOWN is the one direction the palette did not name, so it keeps the
@@ -131,12 +186,10 @@
   --down-top: #50BCEF; --down-main: #2198DA; --down-bottom: #087BC5; --down-edge: #0866A5;
   --go-top:   #32D6D7; --go-main:   #12B7C5; --go-bottom:   #078CA7; --go-edge:   #08799B;
 
-  /* One rounded stack, no web font: nothing here is downloaded, which is
-     the whole project's constraint. Arial Rounded MT Bold is present on
-     macOS and is the genuinely rounded face this brief wants; anywhere
-     it is missing this falls through to the game's own --font rather
-     than to a default sans. */
-  --font-ctl:"Arial Rounded MT Bold","Baloo 2",var(--font);
+  /* The controls share the one face. This token is kept — every dock
+     label, gauge and pill reads it — so the control chrome can still be
+     given its own face later without touching a hundred rules. */
+  --font-ctl:var(--font);
 
   --sh-1:0 2px 6px rgba(8,45,70,.16);                    /* sits on      */
   --sh-2:0 6px 16px rgba(8,45,70,.20);                   /* lifts off    */
@@ -154,17 +207,22 @@
   --ease-io:cubic-bezier(.45,.05,.30,1);
 
   /* ---- TYPE ----------------------------------------------------------
-     "Nunito" was in this stack but is not installed anywhere in the
-     project and is not a system face, so every glyph has been silently
-     falling back to Avenir Next / Segoe UI since day one. The phantom is
-     removed. The core game may not pull a web font (no CDN dependency),
-     so display and text share one family and are separated by weight,
-     tracking and size instead — a real distinction, honestly labelled.
-     A characterful display face needs either a base64 @font-face embed
-     or lifting the no-CDN rule; say the word.                          */
-  --font:"Avenir Next","Segoe UI Variable Display","Segoe UI",system-ui,
-         -apple-system,"Helvetica Neue",Arial,sans-serif;
-  --font-num:"Avenir Next","Segoe UI Variable Display",system-ui,sans-serif;
+     ONE FACE, EVERYWHERE: Lilita One, bundled with the game rather than
+     linked (see the @font-face block at the top of this file). It is a
+     display face doing text work, which is a deliberate choice for a
+     screen whose longest sentence is eight words — nothing here is read
+     at length, and the chunky drawing matches the artwork it sits on.
+
+     The old stack is kept behind it as a fallback for the seconds
+     before the font arrives, and for the glyphs outside its subsets.
+     --font-num stays a separate token even though it now resolves to
+     the same family: the digits on the chart are the one thing that
+     might genuinely want a different face, and this is where that
+     decision would be made.                                            */
+  --font:"Lilita One","Avenir Next","Segoe UI Variable Display","Segoe UI",
+         system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --font-num:"Lilita One","Avenir Next","Segoe UI Variable Display",
+             system-ui,sans-serif;
 
   /* one scale, ratio ~1.27, in design px on the 1920x1080 canvas */
   --fs-hero:60px;   /* MISSION COMPLETE                */
@@ -182,6 +240,9 @@
 html,body{height:100%;margin:0;overflow:hidden;background:#0b2d40}
 body{
   font-family:var(--font);
+  /* Belt and braces with the @font-face weight range above: no
+     synthetic bold, no synthetic italic, anywhere. */
+  font-synthesis:none;
   -webkit-font-smoothing:antialiased;
   color:var(--navy);
   overscroll-behavior:none;
@@ -562,9 +623,41 @@ button{font-family:inherit}
 @keyframes axisNamed{0%,100%{stroke-width:5.6;opacity:.9}50%{stroke-width:7.2;opacity:1}}
 #ticks line{stroke:var(--grid-axis);stroke-width:2.8;stroke-linecap:round}
 #ticks{filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 12px var(--grid-glow))}
-#axisEnds path{fill:var(--grid-axis);transition:opacity 420ms var(--ease-out)}
-#axisEnds{filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow))}
-#axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
+/* THE ARROWHEADS. Gold, rimmed, glowing, and breathing.
+
+   FOUR THINGS, BECAUSE ONE WAS NOT ENOUGH. Colour alone loses against
+   the glow the whole chart already sits in; a rim alone reads as a
+   sticker. Together: the gold separates them from every other mark up
+   here, the navy rim holds their shape against the pale axis line
+   running underneath them, the warm bloom lifts them off the water, and
+   the slow pulse is what actually catches the eye — a static mark in a
+   corner of a busy chart is a mark nobody looks at.
+
+   THE PULSE IS ON `filter` AND NOT ON `transform`, and that is not a
+   style preference. Each head is positioned by a `transform` ATTRIBUTE
+   written by grid.js, and a CSS transform overrides that attribute
+   outright — animating scale here would fire all four arrowheads into
+   the middle of the chart. Light is the only thing safe to animate. */
+#axisEnds path{
+  fill:var(--axis-arrow);
+  stroke:rgba(16,48,80,.85);stroke-width:3;stroke-linejoin:round;
+  paint-order:stroke fill;         /* the rim goes UNDER, so the head keeps its size */
+  transition:opacity 420ms var(--ease-out);
+  animation:axisArrow 1900ms var(--ease-io) infinite;
+}
+@keyframes axisArrow{
+  0%,100%{filter:drop-shadow(0 0 5px var(--axis-arrow-glow))
+                 drop-shadow(0 0 13px rgba(255,170,20,.42))}
+  50%    {filter:drop-shadow(0 0 11px var(--axis-arrow-hi))
+                 drop-shadow(0 0 26px var(--axis-arrow-glow))}
+}
+/* No group filter any more: the heads carry their own light, and a
+   cyan bloom over the top of a gold one only greys it. */
+#axisEnds{filter:none}
+#axisEnds text{
+  font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms;
+  filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow));
+}
 
 
 .axis-num,.reveal-num{
@@ -1724,10 +1817,14 @@ img:not([src]){visibility:hidden}
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff,
   .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,
-  .axis-span-line,.axis-span-head,.axis-pip,
+  .axis-span-line,.axis-span-head,.axis-pip,#axisEnds path,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
+  /* Stopping the arrowhead pulse must not take its glow with it —
+     the light IS how it is seen. It keeps the bright half, held. */
+  #axisEnds path{filter:drop-shadow(0 0 9px var(--axis-arrow-hi))
+                        drop-shadow(0 0 22px var(--axis-arrow-glow))!important}
   .rw-puff,.cine-puff{display:none}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still

@@ -114,10 +114,10 @@ CG.Grid = (function () {
     }
 
     el.arrows = {
-      xp: mk('path', { d: 'M0,-13 L26,0 L0,13 Z' }),
-      xn: mk('path', { d: 'M0,-13 L-26,0 L0,13 Z' }),
-      yp: mk('path', { d: 'M-13,0 L0,-26 L13,0 Z' }),
-      yn: mk('path', { d: 'M-13,0 L0,26 L13,0 Z' })
+      xp: mk('path', { d: 'M0,-15 L30,0 L0,15 Z' }),
+      xn: mk('path', { d: 'M0,-15 L-30,0 L0,15 Z' }),
+      yp: mk('path', { d: 'M-15,0 L0,-30 L15,0 Z' }),
+      yn: mk('path', { d: 'M-15,0 L0,30 L15,0 Z' })
     };
     el.letters = {
       x: mk('text', { 'text-anchor': 'start', 'dominant-baseline': 'middle' }),
@@ -259,18 +259,24 @@ CG.Grid = (function () {
     el.letters.x.setAttribute('y', toY(0) - 44);
     el.letters.y.setAttribute('x', toX(0) + 40);
     el.letters.y.setAttribute('y', toY(c.yMax) + 54);
-    /* THE ARROWHEADS WAIT FOR THE FULL PLANE. An arrow means "this axis
-       carries on", and in quadrant I alone it points at the two edges
-       the chart does not actually have yet — it promises a direction
-       the learner cannot fly in. So all four appear together, at the
-       moment the last quadrant unfolds and the promise becomes true.
-       Until then the axes are lines with an origin, which is exactly
-       what they are. */
-    var whole = c.xMin <= -2 && c.yMin <= -2;
-    el.arrows.xp.style.opacity = whole ? 1 : 0;
-    el.arrows.yp.style.opacity = whole ? 1 : 0;
-    el.arrows.xn.style.opacity = whole ? 1 : 0;
-    el.arrows.yn.style.opacity = whole ? 1 : 0;
+    /* EACH ARROWHEAD APPEARS WITH THE AIRSPACE IT POINTS INTO.
+
+       All four used to wait for the last quadrant, on the reasoning
+       that an arrow promises "this axis carries on" and quadrant I
+       cannot keep that promise leftwards or downwards. Half of that is
+       right and half of it is not: RIGHT and UP carry on from the very
+       first mission — they are the only two directions there ARE at
+       that point — so their arrows were held back for nothing, and the
+       chart spent eight missions with no arrowheads on it at all.
+
+       So the promise is now made per direction. Right and up are
+       arrowed from the start; left and down get theirs at the unfold
+       that opens them. Nothing points anywhere the learner cannot
+       fly. */
+    el.arrows.xp.style.opacity = 1;
+    el.arrows.yp.style.opacity = 1;
+    el.arrows.xn.style.opacity = c.xMin <= -2 ? 1 : 0;
+    el.arrows.yn.style.opacity = c.yMin <= -2 ? 1 : 0;
 
     /* The aircraft lives outside this SVG, so it does not inherit the
        chart transform. Without this it keeps the pixel position it had
