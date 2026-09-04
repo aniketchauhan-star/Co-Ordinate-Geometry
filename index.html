@@ -178,11 +178,11 @@
 
       <!-- ============ THE INSTRUCTION BANNER ======================
            The supplied artwork, used as one image exactly as painted:
-           a deep blue plaque in a cyan double frame with four rivets,
-           a stepped wing off each side, and a circular aircraft badge
-           seated on its top edge. It replaced a CSS reconstruction of
-           the same plaque — same shapes, but hand-mixed gradients and
-           no painted highlights.
+           a pale glossy plate in a blue double frame with a stepped
+           wing off each side. It replaced an earlier, deeper-blue
+           plaque that carried an aircraft crest on its top edge — this
+           one has no crest, so the whole plate is writable and the
+           text is simply centred in it.
 
            THE THREE IDS ARE THE CONTRACT. #missionText, #missionSub and
            #missionActions are what UI.mission() writes into, and
@@ -191,11 +191,11 @@
 
            The text sits in .banner-plate, inset in PERCENTAGES of the
            artwork so it stays registered to the painted plate at any
-           banner width, and starting below the badge so the crest is
-           never written over. -->
+           banner width. The plate is PALE, so the type is navy — the
+           previous artwork's white would be invisible on it. -->
       <section class="mission aircraft-instruction-banner" id="mission"
                role="status" aria-live="polite">
-        <img class="banner-art" data-src="assets/question%20template.webp"
+        <img class="banner-art" data-src="assets/Question%20template%20.webp"
              alt="" aria-hidden="true" draggable="false">
         <div class="banner-plate">
           <p class="mission-text" id="missionText"></p>
