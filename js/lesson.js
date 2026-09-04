@@ -269,8 +269,8 @@
 
     /* --- the first number ------------------------------------------- */
     Grid.measure('x', P.x, P.y);
-    Grid.pulseLine('x', P.x);          /* the line that number names */
-    Grid.markLeg('x', P.x);            /* and the units it counted    */
+    Grid.litNumber('x', P.x);          /* the number at the strip's foot */
+    Grid.markLeg('x', P.x);            /* and the units it counted       */
     Audio.play('reveal');
     if (!await say(tk, {
       text: 'The point is <em>2</em> units to the right.', beat: CFG.beatMed
@@ -281,7 +281,9 @@
 
     /* --- the second number ------------------------------------------ */
     Grid.measure('y', P.x, P.y);
-    Grid.pulseLine('y', P.y);
+    /* 2 stays lit on the x-axis while 3 comes up on the y — the pair
+       the next sentence is about is on the chart before it is said */
+    Grid.litNumber('y', P.y);
     Grid.markLeg('y', P.y, P.x);
     Audio.play('reveal');
     if (!await say(tk, { text: 'The point is <em>3</em> units up.', beat: CFG.beatMed })) return false;
@@ -297,7 +299,7 @@
 
     /* --- 37/38. formalise each co-ordinate -------------------------- */
     tagAt(P, '(2, 3)', 'x');
-    Grid.pulseLine('x', P.x);
+    Grid.litNumber('x', P.x);
     if (!await say(tk, { text: 'The first number is the <em>x-coordinate</em>.', beat: CFG.beatMed })) return false;
     /* NOT "the distance from the y-axis", WHICH IS ABOUT TO BE FALSE.
        Two quadrants later the learner meets x = -3, and a distance of
@@ -311,7 +313,10 @@
     })) return false;
 
     tagAt(P, '(2, 3)', 'y');
-    Grid.pulseLine('y', P.y);
+    /* the second number on its own now: the definition being given
+       is about one of the pair, so only one of the pair is lit */
+    Grid.clearLitNumbers();
+    Grid.litNumber('y', P.y);
     if (!await say(tk, { text: 'The second number is the <em>y-coordinate</em>.', beat: CFG.beatMed })) return false;
     if (!await say(tk, {
       text: 'It is the distance of the point from the <em>x-axis</em>.',
@@ -430,7 +435,10 @@
           });
           nudgeNextZone();
         }
-      });
+      },
+      /* what the rack is holding, named the way the deck names it:
+         "label" on p30 and p45, "point" on p54 */
+      spec.trayTag);
 
     nudgeNextZone();
     await waitForAction(); if (!alive(tk)) return false;
@@ -628,6 +636,7 @@
 
     return await dragActivity(tk, {
       prompt: 'Drag each point to its correct position.',
+      trayTag: 'POINTS',
       zones: zones,
       chips: shuffle(chips),
       /* the caption that lands in the zone is the coordinate itself */

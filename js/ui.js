@@ -320,7 +320,15 @@ CG.UI = (function () {
   }
 
   /* the dock steps aside during the concept reveal and final recap */
-  function showDock(on) { el.dock.classList.toggle('dock-away', !on); }
+  /* THE ENTRANCE CLASS COMES OFF BEFORE THE DOCK CAN LEAVE.
+     .dock-enter's animation is `both`, so its filled end state (opacity
+     1, no offset) would override .dock-away's declarations outright — a
+     CSS animation beats a plain declaration, which is the same trap
+     that stacked the flight chips on the origin. */
+  function showDock(on) {
+    if (!on) el.dock.classList.remove('dock-enter');
+    el.dock.classList.toggle('dock-away', !on);
+  }
 
   /* and the mission strip steps aside for the completion card */
   function showMission(on) { el.mission.classList.toggle('mission-away', !on); }
@@ -622,22 +630,54 @@ CG.UI = (function () {
      ===================================================================== */
   var tray = { items: [], onDrop: null, sel: 0, zone: 0, zones: [] };
 
-  function dragTray(items, zones, onDrop) {
+  /* THE TRAY AND THE CONSOLE SHARE ONE SLOT.
+     Both are pinned to the bottom centre of the stage and the tray is
+     the higher layer, so while it was up the four arrow buttons and
+     their counters showed around and behind the chips — the console
+     was never asked to leave. It is now, and what it was doing before
+     is restored on the way out: the lesson arcs have already sent the
+     dock away for their whole duration and must not get it handed
+     back by a drag activity ending. */
+  var trayHidDock = false;
+
+  function dragTray(items, zones, onDrop, tag) {
     clearDragTray();
     tray.items = items.slice();
     tray.zones = zones.slice();
     tray.onDrop = onDrop || null;
+
+    trayHidDock = !el.dock.classList.contains('dock-away');
+    if (trayHidDock) showDock(false);
+
     el.tray.hidden = false;
     el.tray.innerHTML = '';
+
+    /* the rack's own label, then the hairline, then the groove the
+       strips sit in — the console's three parts, in its order */
+    var head = document.createElement('span');
+    head.className = 'tray-tag';
+    head.appendChild(document.createTextNode('DRAG'));
+    var strong = document.createElement('b');
+    strong.textContent = tag || 'LABELS';
+    head.appendChild(strong);
+    el.tray.appendChild(head);
+    el.tray.appendChild(document.createElement('span')).className = 'tray-rule';
+
+    var rack = document.createElement('div');
+    rack.className = 'tray-strip';
+    el.tray.appendChild(rack);
+
     items.forEach(function (it, i) {
       var b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip';
-      b.textContent = it.label;
+      /* the label goes in a span: ::before is the strip's torn grip and
+         must not be the flex item the text shares a box with */
+      b.appendChild(document.createElement('span')).textContent = it.label;
       b.dataset.key = it.key;
       b.setAttribute('aria-label', it.label + ' — drag onto the chart, or press Enter to place');
       bindChip(b);
-      el.tray.appendChild(b);
+      rack.appendChild(b);
     });
   }
 
@@ -787,6 +827,8 @@ CG.UI = (function () {
     tray.items = []; tray.zones = []; tray.onDrop = null; tray.zone = 0;
     if (el.tray) { el.tray.innerHTML = ''; el.tray.hidden = true; }
     clearZoneHighlight();
+    /* only if this tray is what moved it — see trayHidDock */
+    if (trayHidDock) { trayHidDock = false; showDock(true); }
   }
 
   return {

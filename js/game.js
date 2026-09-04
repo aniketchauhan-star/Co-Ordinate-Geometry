@@ -982,9 +982,25 @@ window.CG = window.CG || {};
      is how step 3 stays in step with levels.js instead of restating it. */
   /* p1's line is one sentence, not two: the build had clipped it to
      "You are the air traffic controller." and dropped the half that
-     tells the learner what to do. */
+     tells the learner what to do.
+
+     AND THEN IT WENT MISSING ALTOGETHER. This array was left holding a
+     single step — the mission's own line — so CG.SCRIPT_START was
+     written into js/script.js, audited by the script suite, and spoken
+     nowhere. The deck's opening voice-over, the one line that tells the
+     learner who they are and what the job is, never reached them: not
+     spoken, not shown, and the start screen is wordless artwork by
+     design. The comment above still described it as line 1 of the
+     brief, which is how it survived.
+
+     `write` means the step puts its own words on the panel. Step 0
+     normally must not — loadLevel() has already written the mission
+     line there as part of the console's arrival, and rewriting it
+     would replay that animation — but p1 is a different sentence, so
+     it has to be written as well as said. */
   var BRIEF = [
-    { text: null }
+    { text: CG.SCRIPT_START.text, write: true },   /* p1 */
+    { text: null }                                 /* p2, the mission's own */
   ];
   var BRIEF_GAP = 550;        /* ms of air between one line and the next */
   var BRIEF_MAX = 13000;      /* per-line deadline — see THE BACKSTOP    */
@@ -1021,8 +1037,9 @@ window.CG = window.CG || {};
 
     /* Step 0's words are already on the panel: loadLevel() wrote them
        there along with the console's arrival animation, and rewriting
-       them here would replay it. */
-    if (i > 0) {
+       them here would replay it. A step that carries `write` owns the
+       panel regardless — see BRIEF. */
+    if (i > 0 || (BRIEF[i] && BRIEF[i].write)) {
       UI.mission({ text: briefText(i), sub: '', voice: false, animate: 'words' });
     }
 
@@ -1742,8 +1759,12 @@ window.CG = window.CG || {};
       onStep: updateControls,
       onGo: onGo,
       onReset: function () {
-        /* teaching sequences are not interruptible by reset */
-        if (gameState.screen === 'reveal' || gameState.screen === 'complete') return;
+        /* teaching sequences are not interruptible by reset — and the
+           lesson arc is one. It was missing from this list, so R in the
+           middle of the lesson rebuilt the level's controls and zeroed
+           its counters underneath a sequence still running over them. */
+        if (gameState.screen === 'reveal' || gameState.screen === 'complete' ||
+            gameState.screen === 'lesson') return;
         resetLevel();
       },
       onCoordChange: function () { refreshGo(); onLearnerInteraction('coord'); },

@@ -575,8 +575,49 @@ CG.Grid = (function () {
   }
 
   function clearPulseLines() {
-    clearAxisSpan(); clearNamedValue();
+    clearAxisSpan(); clearNamedValue(); clearLitNumbers();
     if (el.pulse) el.pulse.innerHTML = ''; }
+
+  /* ---------------- the number the sentence is about -----------------
+     "The point is 2 units to the right" is a statement about ONE
+     number, and that number is already printed on the axis at the foot
+     of the strip measuring it. So the numeral is what lights, at the
+     corner where its strip meets its axis.
+
+     This replaced pulseLine() for the locate-a-point beats. That drew
+     the whole grid line at the coordinate, gold, right across the
+     chart: fourteen columns of airspace lit to say one thing about one
+     number, in the colour the axis spans already use, crossing both
+     measurement strips on the way. clearPulseLines() clears this too,
+     so every place that already tidied a pulse away still does.
+
+     Signs are followed, so -3 lights the numeral at -3. The numeral is
+     found in whichever host is showing: the permanent axis numerals
+     when they are up, otherwise the flight chip for that value. */
+  function litNumber(axis, value) {
+    clearLitNumbers(axis);
+    if (!value) return;                      /* 0 is the origin's own */
+    var node = permanentNums
+      ? el.nums.querySelector('text[data-axis="' + axis + '"][data-v="' + value + '"]')
+      : el.reveal.querySelector('g[data-rv="' + axis + value + '"]');
+    if (!node) return;
+    /* the axis goes on as an attribute rather than a second class so
+       the stylesheet can colour it from its own strip, and so one axis
+       can be cleared without touching the other — (2,3) is built by
+       lighting 2 and leaving it lit while 3 comes on */
+    node.setAttribute('data-lit', axis);
+    node.classList.add('num-lit');
+  }
+
+  function clearLitNumbers(axis) {
+    if (!el.svg) return;
+    var sel = axis ? '.num-lit[data-lit="' + axis + '"]' : '.num-lit';
+    var n = el.svg.querySelectorAll(sel), i;
+    for (i = 0; i < n.length; i++) {
+      n[i].classList.remove('num-lit');
+      n[i].removeAttribute('data-lit');
+    }
+  }
 
   /* ---------------- origin beacon ---------------- */
   function drawOrigin() {
@@ -1271,6 +1312,7 @@ CG.Grid = (function () {
     getCharted: function () { return Object.assign({}, charted); },
     showHint: showHint,
     pulseLine: pulseLine,
+    litNumber: litNumber, clearLitNumbers: clearLitNumbers,
     routeLine: routeLine, routeRevealLeg: routeRevealLeg,
     clearRouteLine: clearRouteLine,
     glowAxisSpan: glowAxisSpan, clearAxisSpan: clearAxisSpan,
