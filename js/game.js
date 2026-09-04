@@ -144,9 +144,11 @@ window.CG = window.CG || {};
     UI.setGoEnabled((c.right + c.left + c.up + c.down) > 0);
   }
 
-  function lockInput(v) {
+  /* lockInput(on, quiet) — `quiet` is the opening brief's lock, which is
+     the same gate with a calmer face. See UI.setControlsLocked(). */
+  function lockInput(v, quiet) {
     gameState.inputLocked = !!v;
-    UI.setControlsLocked(!!v);
+    UI.setControlsLocked(!!v, quiet);
     refreshGo();
   }
 
@@ -791,8 +793,16 @@ window.CG = window.CG || {};
      PANEL as it is said, and then the learner is on their own.
 
        1  "You are the air traffic controller."
-       2  "Guide each aircraft to its target."
-       3  the mission's own line — "Guide the aircraft to the target."
+       2  the mission's own line — "Guide the aircraft to the target."
+
+     THERE USED TO BE A THIRD. Between those two sat "Guide each
+     aircraft to its target.", and on screen it was the same sentence
+     twice: the learner read "guide each aircraft to its target", then
+     read "guide the aircraft to the target" a beat later. Spoken they
+     were near enough identical, and written into the panel one after
+     the other they were plainly the same instruction restated. The
+     mission line is the one that has to stay — levels.js owns it and
+     every later mission shows it — so the general one went.
 
      ALL OF IT AFTER THE LANDING, AND NONE OF IT DURING THE FLIGHT.
      Lines 1 and 2 used to play across the arrival cinematic, on the
@@ -827,7 +837,6 @@ window.CG = window.CG || {};
      is how step 3 stays in step with levels.js instead of restating it. */
   var BRIEF = [
     { text: 'You are the air traffic controller.' },
-    { text: 'Guide each aircraft to its target.' },
     { text: null }
   ];
   var BRIEF_GAP = 320;        /* ms of air between one line and the next */
@@ -853,7 +862,7 @@ window.CG = window.CG || {};
     gameState.tutorialStep = 0;
     UI.highlight('target');
     refreshTargetGlow(true);
-    lockInput(true);        /* the controls wait until the brief is done */
+    lockInput(true, true);  /* the controls wait — quietly — for the brief */
     clearIdleHint();
     runBriefStep(0, ++briefToken);
   }

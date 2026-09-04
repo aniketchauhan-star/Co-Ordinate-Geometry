@@ -1254,7 +1254,10 @@ button{font-family:inherit}
   --console-cyan:#69D5F4;
 
   position:absolute;left:50%;bottom:20px;transform:translateX(-50%);
-  padding:12px 104px 12px 26px;      /* right clears the overlapping GO */
+  /* The right padding is the seat GO sits in: 14px of margin, its own
+     98px box, and 14px of air before the last stepper. Change GO's
+     diameter and this changes with it. */
+  padding:12px 126px 12px 26px;
   border-radius:38px;
   background:linear-gradient(180deg,#FFFBEA 0%,#FFF5D7 60%,#FBE9B8 100%);
   border:5px solid var(--console-navy);
@@ -1490,7 +1493,14 @@ button{font-family:inherit}
 
 /* LOCKED — "not right now", while the aircraft is flying. Carried by a
    diagonal hatch as well as a tint, never by opacity alone, so it stays
-   distinguishable from LIMIT at a glance. */
+   distinguishable from LIMIT at a glance.
+
+   Every rule here is keyed to [data-locked="1"] and NOT to the bare
+   attribute, which matters: the opening brief closes the console too,
+   with data-locked="brief", and it must not get this treatment. Nine
+   seconds of hatched console at the start of the game reads as a fault
+   rather than as a pause. The quiet lock takes the buttons out and
+   leaves them looking like buttons. */
 .dock[data-locked="1"] .step-btn,
 .dock[data-locked="1"] .go{cursor:default}
 .dock[data-locked="1"] .stepper{
@@ -1501,27 +1511,34 @@ button{font-family:inherit}
 .dock[data-locked="1"] .ctrl-label{filter:saturate(.55) brightness(.96)}
 
 /* ---- GO -----------------------------------------------------------
-   Round, ringed, and sitting OVER the console's right end rather than
-   in the row — the same move as the roundel on the question bar at the
-   other end of the screen, so the two ends of the interface are one
-   family. It is the only round thing down here, which is most of why
-   it is findable without being loud.
+   Round, ringed, and SEATED INSIDE the console's right end — not
+   hanging off it. It was overhanging for one revision, half on the
+   panel and half on the ocean, and it read as a button that had come
+   loose: the navy console edge ran behind it and stopped, the wing fins
+   appeared to sprout from the button rather than from the panel, and
+   nothing on screen explained why this one control was outside the box
+   every other control was inside. In the panel it is obviously part of
+   the same instrument, and the round silhouette does all the work of
+   telling it apart from the four rectangular plates.
 
    THE RINGS ARE ONE BORDER AND TWO INSET SHADOWS: navy outside, gold,
    then cream, then the face. Same construction as the console edge and
    the question bar's roundel, for the same reason — inset shadows cost
    no layout and cannot fall out of register with a 50% radius.
 
-   96px, not the 130 the brief asks for, and the number is arithmetic
-   rather than taste: the console's border box is 118px (84 + 24 padding
-   + 10 border), GO's is 96 + 10 of border = 106, which centres with 6px
-   to spare — exactly the 6px its solid lower edge needs. One px larger
-   and that edge prints through the console's bottom border. See THE
-   HEIGHT IS LOAD-BEARING in note 2 for where the 118 comes from. */
+   88px, not the 130 the brief asks for, and the number is arithmetic
+   rather than taste. Sitting inside, GO has to clear the console's
+   padding box, which is 108px tall (84 control row + 24 padding). Its
+   own box is 88 + 10 of border = 98, so it centres with 5px above and
+   below, and its 4px solid lower edge lands inside that. Any larger and
+   the edge prints through the console's bottom border. See THE HEIGHT
+   IS LOAD-BEARING in note 2 for where the 108 comes from. */
 .go{
   position:absolute;z-index:3;
-  right:-18px;top:50%;transform:translateY(-50%);
-  width:96px;height:96px;padding:0;
+  /* `right` is measured from the console's PADDING box, so this is
+     14px inside the navy border, not 14px from the outside edge. */
+  right:14px;top:50%;transform:translateY(-50%);
+  width:88px;height:88px;padding:0;
   border-radius:50%;cursor:pointer;
   font-family:var(--font-ctl);
   font-size:32px;font-weight:900;letter-spacing:.04em;
@@ -1534,8 +1551,8 @@ button{font-family:inherit}
     inset 0 0 0 9px #FFF2C9,
     inset 0 5px 8px rgba(255,255,255,.22),
     inset 0 -8px 10px rgba(0,0,0,.12),
-    0 6px 0 rgba(10,49,86,.20),
-    0 10px 16px rgba(9,46,72,.24);
+    0 4px 0 rgba(10,49,86,.20),
+    0 7px 12px rgba(9,46,72,.20);
   transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-press),
              filter var(--t-hover);
 }
@@ -1556,8 +1573,8 @@ button{font-family:inherit}
     inset 0 0 0 5px var(--console-gold-light),
     inset 0 0 0 9px #FFF2C9,
     inset 0 2px 6px rgba(0,0,0,.14),
-    0 2px 0 rgba(10,49,86,.18),
-    0 4px 8px rgba(9,46,72,.20);
+    0 1px 0 rgba(10,49,86,.18),
+    0 3px 7px rgba(9,46,72,.20);
 }
 /* DISABLED IS DESATURATED, NOT FADED. Dropping the opacity of a ringed
    circle takes the rings with it and the button stops being a shape;
@@ -1578,12 +1595,12 @@ button{font-family:inherit}
     inset 0 0 0 5px var(--console-gold-light),inset 0 0 0 9px #FFF2C9,
     inset 0 5px 8px rgba(255,255,255,.22),inset 0 -8px 10px rgba(0,0,0,.12),
     0 0 0 0 rgba(105,213,244,0),
-    0 6px 0 rgba(10,49,86,.20),0 10px 16px rgba(9,46,72,.24)}
+    0 4px 0 rgba(10,49,86,.20),0 7px 12px rgba(9,46,72,.20)}
   50%{box-shadow:
     inset 0 0 0 5px var(--console-gold-light),inset 0 0 0 9px #FFF2C9,
     inset 0 5px 8px rgba(255,255,255,.22),inset 0 -8px 10px rgba(0,0,0,.12),
-    0 0 0 9px rgba(105,213,244,.40),
-    0 6px 0 rgba(10,49,86,.20),0 10px 16px rgba(9,46,72,.24)}
+    0 0 0 5px rgba(105,213,244,.42),
+    0 4px 0 rgba(10,49,86,.20),0 7px 12px rgba(9,46,72,.20)}
 }
 .dock[data-locked="1"] .go{
   background:repeating-linear-gradient(135deg,#8FB6BE 0 6px,#7FA8B1 6px 12px);
@@ -1591,7 +1608,7 @@ button{font-family:inherit}
   animation:none;
   box-shadow:
     inset 0 0 0 5px #E7CE8E,inset 0 0 0 9px #F3E6C4,
-    0 6px 0 rgba(10,49,86,.16);
+    0 4px 0 rgba(10,49,86,.16);
 }
 
 /* ---- THE ACTIVE DIRECTION -----------------------------------------

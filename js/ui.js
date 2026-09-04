@@ -208,9 +208,19 @@ CG.UI = (function () {
   }
 
   /* Layer 41 — state locking while the aircraft is in the air. */
-  function setControlsLocked(v) {
+  /* setControlsLocked(on, quiet)
+       The console has TWO reasons to be closed and they do not look
+       alike. '1' is "the aircraft is flying" — hatched, unmistakably
+       out of action, because the learner has just pressed GO and needs
+       to see that pressing it again does nothing. 'brief' is "wait, I
+       am still talking", which is nine seconds at the very start of the
+       game; hatching the whole console for that reads as a fault, so
+       the quiet lock takes the buttons out without dressing them up.
+       Both set the same `locked` flag — only the styling differs. */
+  function setControlsLocked(v, quiet) {
     locked = !!v;
-    if (locked) el.dock.dataset.locked = '1'; else delete el.dock.dataset.locked;
+    if (locked) el.dock.dataset.locked = quiet ? 'brief' : '1';
+    else delete el.dock.dataset.locked;
     Object.keys(ctrlMap).forEach(function (k) { applyLock(ctrlMap[k]); });
   }
 
