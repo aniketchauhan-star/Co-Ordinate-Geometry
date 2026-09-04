@@ -41,6 +41,18 @@
     if (g) g(v);
   }
 
+  /* THE SKIP HOOK. The arc parks on waitForAction() at every tap and
+     drag, so a skip has to be able to satisfy whatever is pending. This
+     reports whether anything is waiting and lets it through with the
+     answer the beat was expecting, so the sequence continues rather
+     than being torn down mid-way. */
+  CG.lessonPending = function () { return !!gate; };
+  CG.lessonSkip = function () {
+    if (!gate) return false;
+    release(true);
+    return true;
+  };
+
   /* ---- the nudge -------------------------------------------------------
      THE LESSON IS ALL TAPPING, and until now none of it was nudged: the
      hand only knew how to point at the control dock, which the lesson

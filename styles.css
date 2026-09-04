@@ -948,6 +948,38 @@ button{font-family:inherit}
   100%{transform:scale(1.9);opacity:0}
 }
 .path-dot{fill:rgba(214,248,255,.88);animation:dotIn 200ms var(--ease-out) both}
+/* ---- the route as one drawn line (deck page 12) ------------------
+   The replay swaps the flight's dotted crumb trail for a single solid
+   stroke along the two legs, because "we moved 3 across, then 2 up" is
+   a statement about a PATH, and a line says that where a row of dots
+   only implies it. It glows and breathes for as long as the sentence
+   naming it is on screen. */
+/* animation:none MATTERS HERE. .path-dot runs `dotIn ... both`, and a
+   running animation's value beats a plain declaration — so opacity:0
+   alone was overridden by dotIn's final keyframe and all 41 dots stayed
+   at full strength behind the line. Dropping the animation lets the
+   opacity apply. */
+#pathLayer.route-lined .path-dot{opacity:0;animation:none}
+.route-line{
+  fill:none;
+  stroke:#EAFBFF;stroke-width:7;
+  stroke-linecap:round;stroke-linejoin:round;
+}
+.route-line.lit{
+  filter:drop-shadow(0 0 5px #9BE9FF) drop-shadow(0 0 16px rgba(120,215,255,.85));
+  animation:routeDraw 420ms var(--ease-out) both,
+            routePulse 1700ms var(--ease-io) 420ms infinite;
+}
+/* drawn on, rather than appearing: the eye follows the route in the
+   direction it was flown, which is the order the voice names it in */
+@keyframes routeDraw{
+  from{stroke-dasharray:0 2000;stroke-dashoffset:0}
+  to  {stroke-dasharray:2000 0;stroke-dashoffset:0}
+}
+@keyframes routePulse{
+  0%,100%{stroke-width:7;opacity:.92}
+  50%    {stroke-width:9;opacity:1}
+}
 @keyframes dotIn{from{opacity:0}to{opacity:1}}
 
 /* origin beacon */
@@ -1061,6 +1093,33 @@ button{font-family:inherit}
 
    Sized to sit under the aircraft, and pointer-events:none so it can
    never take a tap meant for the chart. */
+/* THE AIRCRAFT'S PLACE MARKER.
+   A soft disc under the aircraft in the grid's own light colour, so its
+   position on the chart is legible at a glance rather than being
+   carried by a drop-shadow alone. It takes --grid-axis-line and
+   --grid-glow, the same two values the axes and their halo use, which
+   is what makes it read as part of the chart rather than an object
+   sitting on top of it. */
+.plane-holder::before{
+  content:"";position:absolute;
+  left:50%;top:50%;width:96px;height:96px;margin:-48px 0 0 -48px;
+  border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,
+    rgba(220,244,249,.34) 0 26%,
+    rgba(183,231,239,.20) 52%,
+    rgba(183,231,239,0)   72%);
+  box-shadow:0 0 18px 2px rgba(183,231,239,.22);
+  animation:planeMark 2600ms var(--ease-io) infinite;
+}
+@keyframes planeMark{
+  0%,100%{transform:scale(.94);opacity:.72}
+  50%    {transform:scale(1.04);opacity:1}
+}
+/* in flight the marker steps back — the trail and the aircraft are
+   doing the work, and a pulsing disc travelling with it is noise */
+#planeSpin.free ~ *,
+.plane-holder:has(#plane.flying)::before{animation:none;opacity:.4}
+
 .plane-holder::after{
   content:"";position:absolute;
   left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;
@@ -1753,6 +1812,71 @@ button{font-family:inherit}
    at the bottom of the stage through every mission, and the idle hand
    was never really taken away. One rule instead of six, so the next
    element to use hidden cannot reintroduce it. */
+/* ===================================================================
+   THE ORIGIN TAP TARGET  (deck page 25, "Tap where the two axes meet")
+   -------------------------------------------------------------------
+   THIS HAD NO RULES AT ALL and the beat could not be completed. The
+   button carries no text and showOriginTap only sets left/top, so with
+   no width or height it laid out 0x0 — present, positioned, and
+   impossible to hit. The lesson waits on it, so the arc simply stopped
+   there.
+
+   It is invisible on purpose: the deck marks the spot with the orange
+   beacon already on the chart, and a second visible ring on top of it
+   would read as a different object. What this provides is the hit area.
+   =================================================================== */
+.origin-tap{
+  position:absolute;
+  /* centred on the origin, since showOriginTap sets left/top to it */
+  transform:translate(-50%,-50%);
+  width:84px;height:84px;          /* comfortably over the 70px floor */
+  border:none;background:transparent;
+  border-radius:50%;
+  cursor:pointer;
+  z-index:24;                      /* above the chart, below the dock */
+  -webkit-tap-highlight-color:transparent;
+}
+/* a quiet ring while it waits, so a child who has not spotted the
+   beacon still sees that something here is askable */
+.origin-tap::after{
+  content:"";position:absolute;inset:8px;border-radius:50%;
+  border:3px solid rgba(255,214,110,.55);
+  animation:originAsk 1500ms var(--ease-io) infinite;
+}
+@keyframes originAsk{
+  0%,100%{transform:scale(.86);opacity:.45}
+  50%    {transform:scale(1.06);opacity:.95}
+}
+.origin-tap:hover::after{border-color:rgba(255,224,140,.95)}
+.origin-tap:active{transform:translate(-50%,-50%) scale(.94)}
+.origin-tap:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 4px rgba(255,255,255,.75),0 0 0 7px rgba(76,150,195,.35);
+}
+
+/* ---- SKIP -------------------------------------------------------
+   Small, cool-toned and in the corner. It is an exit, so it must not
+   compete with GO: no warm colour, no depth, no pulse. */
+.skip-btn{
+  position:absolute;right:22px;top:22px;z-index:25;
+  display:flex;align-items:center;gap:7px;
+  padding:9px 15px;border-radius:999px;
+  background:rgba(255,255,255,.82);
+  border:2px solid rgba(100,170,200,.55);
+  box-shadow:0 3px 8px rgba(18,66,110,.18);
+  cursor:pointer;
+  font-family:var(--font);font-weight:800;font-size:14px;
+  letter-spacing:.1em;color:#2C5F86;
+  transition:transform 110ms var(--ease-out),background 110ms;
+}
+.skip-btn svg{width:15px;height:15px;fill:#2C5F86}
+.skip-btn:hover{transform:translateY(-1px);background:#FFFFFF}
+.skip-btn:active{transform:translateY(1px)}
+.skip-btn:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 4px rgba(255,255,255,.8),0 0 0 7px rgba(76,150,195,.35);
+}
+
 [hidden]{display:none!important}
 img:not([src]){visibility:hidden}
 
@@ -2103,6 +2227,7 @@ img:not([src]){visibility:hidden}
   .axis-span-line,.axis-span-head,.axis-pip,#axisHot line.on,
   .mission.gq-in,.move-counter.bump,.go-armed-pop,
   .stage.voice-speaking .game-question-panel,.mission.enter .mission-text,
+  .origin-tap::after,.route-line.lit,.plane-holder::before,
   .mission.enter .mission-text,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,

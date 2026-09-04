@@ -268,6 +268,18 @@
            37.4% across and 1.7% down the artwork, which is what the
            offset in .hand is derived from — measured off the alpha
            channel, not eyeballed. -->
+      <!-- SKIP. A way past the current interaction, for anyone who
+           needs to reach the end of the flow without playing all nine
+           missions and the whole concept arc. Deliberately small and
+           in the corner: it is a way out, not a call to action. -->
+      <button class="skip-btn" id="btnSkip" type="button"
+              aria-label="Skip this step">
+        <span>SKIP</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M5 5l8 7-8 7zM15 5l1 0 0 14-1 0z"/>
+        </svg>
+      </button>
+
       <div class="hand" id="hand" hidden aria-hidden="true">
         <img data-src="assets/handNudge%20(2).webp" alt="" draggable="false">
       </div>

@@ -648,12 +648,53 @@ CG.Grid = (function () {
   }
 
   /* ---------------- live flight path + contrail ---------------- */
-  function clearPath() { clear(el.path); clear(el.trail); }
+  function clearPath() {
+    clear(el.path); clear(el.trail);
+    /* the class outlives the children it was hiding, so a new flight
+       would lay its dots into a layer still set to hide them */
+    el.path.classList.remove('route-lined');
+  }
 
   /* one dot laid at the aircraft's current position — called from the
      flight loop, so the route grows exactly as fast as the aircraft */
   function addPathDot(x, y) {
     el.path.appendChild(mk('circle', { cx: toX(x), cy: toY(y), r: 3.6 }, 'path-dot'));
+  }
+
+
+  /* THE ROUTE AS ONE SOLID LINE, for the replay (deck page 12).
+     ------------------------------------------------------------------
+     During the flight the trail is a string of dots, which is right:
+     they accumulate, so they read as progress being made. The replay is
+     a different statement — "we moved 3 across, then 2 up" — and a
+     dotted crumb trail says that far less clearly than a drawn line
+     does. So the highlight swaps them: the dots step aside and the same
+     route is drawn as a single glowing, pulsing polyline along the two
+     legs it was actually flown in.
+
+     One polyline, not two: the corner is part of the route, and a join
+     drawn as two separate strokes shows a seam exactly where the turn
+     is being talked about. */
+  function routeLine(x, y, lit) {
+    clearRouteLine();
+    if (!x && !y) return;
+    var pts = [toX(0) + ',' + toY(0)];
+    if (x) pts.push(toX(x) + ',' + toY(0));
+    pts.push(toX(x) + ',' + toY(y));
+    var pl = mk('polyline', {
+      points: pts.join(' '),
+      'vector-effect': 'non-scaling-stroke'
+    }, 'route-line' + (lit === false ? '' : ' lit'));
+    el.path.appendChild(pl);
+    /* the dots are hidden rather than removed: a reset or a retry puts
+       the trail straight back without having to re-fly it */
+    el.path.classList.add('route-lined');
+  }
+
+  function clearRouteLine() {
+    var n = el.path.querySelectorAll('.route-line'), i;
+    for (i = 0; i < n.length; i++) n[i].parentNode.removeChild(n[i]);
+    el.path.classList.remove('route-lined');
   }
 
   /* The points along one leg of the route, lit while the voice is
@@ -1204,6 +1245,7 @@ CG.Grid = (function () {
     getCharted: function () { return Object.assign({}, charted); },
     showHint: showHint,
     pulseLine: pulseLine,
+    routeLine: routeLine, clearRouteLine: clearRouteLine,
     glowAxisSpan: glowAxisSpan, clearAxisSpan: clearAxisSpan,
     clearPulseLines: clearPulseLines,
     clearHint: clearHint,
