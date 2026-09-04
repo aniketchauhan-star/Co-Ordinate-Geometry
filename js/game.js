@@ -636,6 +636,12 @@ window.CG = window.CG || {};
        below, each with the sentence that names it. */
     Grid.routeLine(sel.x, sel.y);
     Grid.routeRevealLeg('x');          /* "...3 spaces horizontally" */
+    /* ONE AXIS AT A TIME. The replay named neither axis, so nothing
+       distinguished the line being talked about from the line that was
+       not. highlightAxis is exclusive by construction — 'x' turns y off
+       — so naming each in turn is the whole fix: x pulses while the
+       horizontal sentence is up and y stays normal, then they swap. */
+    Grid.highlightAxis('x');
     /* THE CROSSING IS SHOWN ALONG THE ROUTE, NEVER ACROSS THE CHART.
        Each crossed grid line was briefly lit full-height as well, on the
        reasoning that "three spaces" IS "three lines". It is — but three
@@ -661,6 +667,7 @@ window.CG = window.CG || {};
     for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
     Grid.glowAxisSpan('y', sel.y, sel.x);
     Grid.routeRevealLeg('y');          /* "...2 spaces vertically"   */
+    Grid.highlightAxis('y');           /* ...and x returns to normal   */
     Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
       text: 'Then, we moved <em>' + Math.abs(sel.y) + '</em> spaces vertically.',
@@ -689,9 +696,13 @@ window.CG = window.CG || {};
          deck never wrote. Page 11 shows the Location callout, page 12
          replays the route, and that is the entire arrival. */
       Grid.clearPulseLines();
-      Grid.highlightAxis(null);
       Grid.clearRoutePoints();
     }
+
+    /* NEITHER AXIS IS BEING NAMED ANY MORE, and this has to be outside
+       the block above: that only runs on the first mission, so from
+       mission 2 on the y-axis stayed lit into the next question. */
+    Grid.highlightAxis(null);
 
 
     Grid.clearPulseLines();
