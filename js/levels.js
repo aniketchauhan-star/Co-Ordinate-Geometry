@@ -96,7 +96,21 @@ CG.STAGES = {
      cell back to 73.
      --------------------------------------------------------------------- */
   1: { cell: 116, origin: { x: 612, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
-  2: { cell: 116, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
+  /* QUADRANT II OPENS THE WHOLE PLANE, on request: "after 1st quadrant
+     when fold to the second quadrant all buttons enable and continue
+     this thing." DOWN cannot be live without airspace below the axis,
+     and the full plane is the only extent that provides it — so this
+     row is now stage 3's geometry, and the unfold goes straight from
+     quadrant I to all four.
+
+     THE COST, stated rather than hidden: deck page 14 unfolds in three
+     shapes, quadrant I then I+II then all four, and this collapses it
+     to two. Missions 3 and 4 already show quadrants III and IV while
+     the lesson is still working in II. Restoring the middle step is
+     this one line — x -6..6, y 0..6 — and DOWN goes back to waiting
+     until mission 5. */
+  2: { cell: 73,  origin: { x: 960, y: 517 }, extent: { xMin: -5,  xMax: 5,  yMin: -5, yMax: 5 },
+       labels: { xMin: -4, xMax: 4, yMin: -4, yMax: 4 } },
   3: { cell: 73,  origin: { x: 960, y: 517 }, extent: { xMin: -5,  xMax: 5,  yMin: -5, yMax: 5 },
        /* the deck numbers only -4..4 here, leaving the outer row bare */
        labels: { xMin: -4, xMax: 4, yMin: -4, yMax: 4 } },
