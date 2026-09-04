@@ -675,20 +675,46 @@ CG.Grid = (function () {
      One polyline, not two: the corner is part of the route, and a join
      drawn as two separate strokes shows a seam exactly where the turn
      is being talked about. */
-  function routeLine(x, y, lit) {
+  function routeLine(x, y) {
     clearRouteLine();
     if (!x && !y) return;
     var pts = [toX(0) + ',' + toY(0)];
     if (x) pts.push(toX(x) + ',' + toY(0));
     pts.push(toX(x) + ',' + toY(y));
+
+    /* ONE PATH, REVEALED A LEG AT A TIME.
+       Page 12 names the two movements in order — horizontally, then
+       vertically — and highlights each as it says it. Drawing the whole
+       route on the first sentence lit the vertical leg while the voice
+       was still talking about the horizontal one.
+
+       Two polylines would let each be shown separately, but they would
+       meet at the corner and show a seam exactly where the turn is being
+       described. So it stays one path and the dash does the work: the
+       stroke is laid out as a single dash the length of the whole route
+       and slid into view, xLen first, then the rest. */
+    var xLen = Math.abs(x) * CELL, yLen = Math.abs(y) * CELL;
+    var total = xLen + yLen;
     var pl = mk('polyline', {
       points: pts.join(' '),
       'vector-effect': 'non-scaling-stroke'
-    }, 'route-line' + (lit === false ? '' : ' lit'));
+    }, 'route-line lit');
+    pl.style.strokeDasharray = total;
+    pl.style.strokeDashoffset = total;         /* nothing shown yet */
+    pl.dataset.xlen = xLen;
+    pl.dataset.total = total;
     el.path.appendChild(pl);
-    /* the dots are hidden rather than removed: a reset or a retry puts
-       the trail straight back without having to re-fly it */
     el.path.classList.add('route-lined');
+  }
+
+  /* 'x' slides the horizontal leg in; 'y' (or anything else) carries on
+     to the end of the route. The transition lives in the stylesheet, so
+     each call is one property write. */
+  function routeRevealLeg(which) {
+    var pl = el.path.querySelector('.route-line');
+    if (!pl) return;
+    var xLen = +pl.dataset.xlen, total = +pl.dataset.total;
+    pl.style.strokeDashoffset = (which === 'x') ? (total - xLen) : 0;
   }
 
   function clearRouteLine() {
@@ -1245,7 +1271,8 @@ CG.Grid = (function () {
     getCharted: function () { return Object.assign({}, charted); },
     showHint: showHint,
     pulseLine: pulseLine,
-    routeLine: routeLine, clearRouteLine: clearRouteLine,
+    routeLine: routeLine, routeRevealLeg: routeRevealLeg,
+    clearRouteLine: clearRouteLine,
     glowAxisSpan: glowAxisSpan, clearAxisSpan: clearAxisSpan,
     clearPulseLines: clearPulseLines,
     clearHint: clearHint,

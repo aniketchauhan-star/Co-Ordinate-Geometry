@@ -631,8 +631,11 @@ window.CG = window.CG || {};
     Grid.glowAxisSpan('x', sel.x);
     /* THE ROUTE AS ONE DRAWN LINE for the replay: the flight's dotted
        trail steps aside and the same path is stroked in, glowing and
-       breathing, for as long as page 12's two sentences are on screen. */
+       breathing, for as long as page 12's two sentences are on screen.
+       The geometry goes in now; the two legs are revealed one at a time
+       below, each with the sentence that names it. */
     Grid.routeLine(sel.x, sel.y);
+    Grid.routeRevealLeg('x');          /* "...3 spaces horizontally" */
     /* THE CROSSING IS SHOWN ALONG THE ROUTE, NEVER ACROSS THE CHART.
        Each crossed grid line was briefly lit full-height as well, on the
        reasoning that "three spaces" IS "three lines". It is — but three
@@ -657,6 +660,7 @@ window.CG = window.CG || {};
 
     for (q = 1; q <= Math.abs(sel.y); q++) Grid.highlightRevealed('y', Math.sign(sel.y) * q, true);
     Grid.glowAxisSpan('y', sel.y, sel.x);
+    Grid.routeRevealLeg('y');          /* "...2 spaces vertically"   */
     Grid.markLeg('y', sel.y, sel.x);
     UI.mission({
       text: 'Then, we moved <em>' + Math.abs(sel.y) + '</em> spaces vertically.',
@@ -843,40 +847,6 @@ window.CG = window.CG || {};
   }
 
   /* Reset: cancels flight safely, never restarts progression. */
-  /* SKIPPING A MISSION. It counts as flown — the recap replays the
-     routes the learner actually took, so a skipped mission has to
-     contribute its target rather than leave a hole in the sequence. */
-  function skipMission() {
-    clearAuto(); seqToken++; animToken++;
-    CG.Voice.cancel();
-    Audio.engineStop();
-    Audio.duck('flight', false);
-    var t = gameState.target;
-    /* INDEXED BY LEVEL, not pushed: showSuccess writes
-       reached[levelIndex], and the recap reads it back by index. A push
-       here would file the skipped mission against the wrong slot and
-       the replay would show the wrong routes. */
-    if (t) gameState.reached[gameState.levelIndex] = { x: t.x, y: t.y };
-    Grid.clearPath(); Grid.clearReveal(); Grid.clearFx();
-    Grid.clearHint(); Grid.clearRoutePoints(); Grid.clearPulseLines();
-    UI.hideCoordTag(); UI.hideHand();
-    lockInput(false);
-    if (gameState.levelIndex + 1 >= LEVELS.length) { showComplete(); return; }
-    loadLevel(gameState.levelIndex + 1);
-  }
-
-  /* and the same for the final activity, which keeps its own index */
-  function directSkip() {
-    clearAuto(); seqToken++; animToken++;
-    CG.Voice.cancel();
-    Grid.clearPath(); Grid.clearFx(); UI.hideCoordTag();
-    gameState.direct.index++;
-    if (gameState.direct.index >= CG.DIRECT_TARGETS.length) { showComplete(); return; }
-    resetControlValues();
-    lockInput(false);
-    loadDirectTarget();
-  }
-
   function resetLevel() {
     animToken++; seqToken++; clearAuto();
     idleHintShown = 0;               /* starting over earns a new hand */
@@ -1727,7 +1697,6 @@ window.CG = window.CG || {};
     dom.btnPlayAgain = document.getElementById('btnPlayAgain');
     dom.rotateHint = document.getElementById('rotateHint');
     dom.originTap = document.getElementById('originTap');
-    dom.btnSkip = document.getElementById('btnSkip');
 
     Grid.build();
     /* Re-place the aircraft on every frame of a stage change: it is an
@@ -1779,21 +1748,6 @@ window.CG = window.CG || {};
     dom.btnPlay.addEventListener('pointerdown', function () {
       if (!dom.btnPlay.disabled) dom.btnPlay.classList.add('pressed');
     });
-    /* SKIP — one button, three jobs, in the order a player would expect.
-       It satisfies whatever is actually in front of them rather than
-       tearing the sequence down: a waiting tap or drag gets released, a
-       mission in progress is completed and banked, and anything else
-       moves to the next mission. */
-    if (dom.btnSkip) dom.btnSkip.addEventListener('click', function () {
-      Audio.play('uiClick');
-      /* 1. a lesson beat parked on a tap or a drag */
-      if (CG.lessonPending && CG.lessonPending()) { CG.lessonSkip(); return; }
-      /* 2. the final activity: take its current target as reached */
-      if (gameState.direct) { directSkip(); return; }
-      /* 3. a mission: bank it and move on */
-      skipMission();
-    });
-
     dom.btnPlay.addEventListener('click', startGame);
     dom.btnPlayAgain.addEventListener('click', playAgain);
     window.addEventListener('resize', fitStage);
