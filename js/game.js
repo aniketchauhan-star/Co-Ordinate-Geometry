@@ -966,12 +966,30 @@ window.CG = window.CG || {};
     if (routeIsSet()) return 'go';
     /* direct mode swapped the four directions for a signed X and Y —
        same DOM, different keys, so the nudge has to ask which it is */
-    var usable = gameState.direct ? ['x', 'y'] : (level().controls || []);
-    for (var i = 0; i < usable.length; i++) {
-      if (!gameState.controls[usable[i]]) return usable[i];
+    if (gameState.direct) {
+      return !gameState.controls.x ? 'x' : (!gameState.controls.y ? 'y' : null);
     }
-    /* every armed control already carries a value, yet the route reads
-       as unset — nothing here is worth pointing at */
+
+    /* POINT AT THE DIRECTION THE TARGET IS IN, NOT THE FIRST ONE ARMED.
+       This walked level().controls in declaration order and pointed at
+       whichever was still empty — so on a mission whose target is to
+       the LEFT it happily pointed at RIGHT, because right came first in
+       the list. The reviewer hit exactly that: "I have to move to the
+       left but the nudge is saying to move to the right."
+
+       The target's own sign decides it now: horizontal first, because
+       that is the order every mission teaches and the order the route
+       replay narrates. A direction this mission has not armed is never
+       offered, so the hand still cannot land on a dead control. */
+    var t = gameState.target || { x: 0, y: 0 };
+    var armed = level().controls || [];
+    var wantX = t.x < 0 ? 'left' : (t.x > 0 ? 'right' : null);
+    var wantY = t.y < 0 ? 'down' : (t.y > 0 ? 'up' : null);
+
+    if (wantX && armed.indexOf(wantX) !== -1 && !gameState.controls[wantX]) return wantX;
+    if (wantY && armed.indexOf(wantY) !== -1 && !gameState.controls[wantY]) return wantY;
+    /* both legs already carry a value, yet the route reads as unset —
+       nothing here is worth pointing at */
     return null;
   }
 

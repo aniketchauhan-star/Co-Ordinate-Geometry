@@ -134,6 +134,17 @@ CG.Grid = (function () {
       el.nums.appendChild(ty);
     }
 
+    /* THE ZERO, which was missing. Both loops above skip i === 0 so the
+       label is not drawn twice at the origin — but nothing then drew it
+       once, and the review says so plainly: "0 is missing." It goes
+       down and to the left of the origin, the one diagonal where it sits
+       on neither axis, and it is tagged on both axes so the counting
+       animation and the y-axis reveal each treat it as theirs. */
+    var t0 = mk('text', { x: toX(0) - 34, y: toY(0) + 40,
+                          'data-axis': 'xy', 'data-v': 0 }, 'axis-num axis-zero');
+    t0.textContent = '0';
+    el.nums.appendChild(t0);
+
     el.arrows = {
       xp: mk('path', { d: 'M0,-15 L30,0 L0,15 Z' }),
       xn: mk('path', { d: 'M0,-15 L-30,0 L0,15 Z' }),
@@ -202,7 +213,7 @@ CG.Grid = (function () {
      rectangle once quadrant II unfolds, square again with all four. Both
      the visible tint and the clip that stops the grid at the rounded
      corner are driven from the same rect, so they can never disagree. */
-  var PLAY = { x: 64, y: 160, w: 1792, h: 756 };   /* == CG.CHART.rect */
+  var PLAY = { x: 64, y: 118, w: 1792, h: 798 };   /* == CG.CHART.rect */
   /* The origin beacon sits ON the grid's corner in stage 1, and its ring
      is r25 in canonical units. For that ring to stay inside a rounded
      panel the margin has to exceed the ring plus the corner arc's own
@@ -255,6 +266,18 @@ CG.Grid = (function () {
     view = v;
     el.chart.setAttribute('transform',
       'translate(' + v.px.toFixed(2) + ',' + v.py.toFixed(2) + ') scale(' + v.k.toFixed(5) + ')');
+    /* THE AXIS NUMERALS ARE INSIDE THIS SCALE, WHICH IS WHY THEY LOOKED
+       TINY. #axisNums is a child of #chart, so a fixed 25px font was
+       rendering at 25*k: 29 stage px at stage 1 (k=1.16) but 11 at
+       stage 3 (k=0.45), which is about 8px on a 1366-wide screen. The
+       review flags it twice — "numbers are very small in size".
+       Publishing k lets the stylesheet divide it back out, so one
+       declared size means one SCREEN size at every stage. */
+    el.svg.style.setProperty('--k', v.k.toFixed(5));
+    /* At stage 3 the cells are 45 stage px apart and a two-digit label
+       is wider than that, so every other x label would overlap its
+       neighbour. Thin them rather than shrink them. */
+    el.nums.classList.toggle('thin-x', (v.k * CELL) < 58);
     applyPanel(c, v);
 
     /* The clip is what makes the plane unfold: nothing outside the

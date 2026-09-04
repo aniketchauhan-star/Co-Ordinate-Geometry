@@ -563,49 +563,74 @@ CG.UI = (function () {
     setTimeout(function () { b.classList.remove('chip-wrong'); }, 620);
   }
 
+  /* THE CHIP HAS TO MOVE IN STAGE UNITS, NOT VIEWPORT UNITS.
+     ------------------------------------------------------------------
+     This used to set `position:fixed` and then write the raw clientX /
+     clientY into left/top, on the reasoning that fixed positioning
+     escapes the stage's scale. It does not: a transformed element is
+     the containing block for its fixed-position descendants, and
+     .stage carries `translate(-50%,-50%) scale(var(--s))`. So the
+     coordinates were resolved against the stage's own 1920x1080 box
+     and then scaled again — on a 1366-wide window the chip tracked the
+     pointer at about 70% speed and sat a few hundred px away from it.
+     That is the "when I am picking something, it's not moving" in the
+     review.
+
+     A transform in stage units is the honest fix. The chip stays where
+     it is in the tray and is translated by the pointer's movement
+     DIVIDED by the stage scale, so a finger moving 100 viewport px
+     moves the chip 100 viewport px whatever the window size. It also
+     keeps the drag on the compositor, which is the "not smooth" half. */
+  var DRAG_SLOP = 3;          /* px of movement before it counts as a drag */
+
+  function stageScale() {
+    var r = el.stage.getBoundingClientRect();
+    return r.width ? r.width / 1920 : 1;
+  }
+
   function bindChip(b) {
     var drag = null;
 
     b.addEventListener('pointerdown', function (e) {
       if (b.disabled) return;
+      e.preventDefault();              /* no native text-selection drag */
       b.setPointerCapture(e.pointerId);
-      var r = b.getBoundingClientRect();
-      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, moved: false };
+      drag = { x0: e.clientX, y0: e.clientY, s: stageScale(), moved: false };
+      /* the stylesheet transitions `transform`, which would make every
+         pointermove a 120ms animation and lag the finger */
+      b.style.transition = 'none';
+      b.style.zIndex = 40;
       b.classList.add('chip-dragging');
     });
 
     b.addEventListener('pointermove', function (e) {
       if (!drag) return;
+      var dx = (e.clientX - drag.x0) / drag.s;
+      var dy = (e.clientY - drag.y0) / drag.s;
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < DRAG_SLOP) return;
       drag.moved = true;
-      /* lift the chip out of the tray and let it follow the pointer in
-         viewport space — the stage is scaled, so a transform in stage
-         units would drift away from the cursor */
-      b.style.position = 'fixed';
-      b.style.left = (e.clientX - drag.dx) + 'px';
-      b.style.top = (e.clientY - drag.dy) + 'px';
-      b.style.zIndex = 40;
+      /* inline, so it beats both .chip:hover and .chip-dragging without
+         a specificity fight */
+      b.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) +
+                          'px) scale(1.06) rotate(-1.5deg)';
       highlightNearestZone(e.clientX, e.clientY);
     });
 
-    b.addEventListener('pointerup', function (e) {
+    function endDrag(e, drop) {
       if (!drag) return;
-      b.classList.remove('chip-dragging');
-      var hit = drag.moved ? nearestZone(e.clientX, e.clientY) : null;
-      b.style.position = ''; b.style.left = ''; b.style.top = '';
-      b.style.zIndex = '';
-      clearZoneHighlight();
+      var moved = drag.moved;
       drag = null;
-      /* dropped on empty water: the chip simply returns to the tray */
-      if (hit && tray.onDrop) tray.onDrop(b.dataset.key, hit);
-    });
-
-    b.addEventListener('pointercancel', function () {
-      if (!drag) return;
       b.classList.remove('chip-dragging');
-      b.style.position = ''; b.style.left = ''; b.style.top = '';
-      b.style.zIndex = '';
-      clearZoneHighlight(); drag = null;
-    });
+      b.style.transform = ''; b.style.transition = ''; b.style.zIndex = '';
+      clearZoneHighlight();
+      /* dropped on empty water: the chip simply returns to the tray */
+      if (drop && moved) {
+        var hit = nearestZone(e.clientX, e.clientY);
+        if (hit && tray.onDrop) tray.onDrop(b.dataset.key, hit);
+      }
+    }
+    b.addEventListener('pointerup', function (e) { endDrag(e, true); });
+    b.addEventListener('pointercancel', function (e) { endDrag(e, false); });
 
     /* keyboard route */
     b.addEventListener('keydown', function (e) {
@@ -630,14 +655,20 @@ CG.UI = (function () {
     b.addEventListener('blur', clearZoneHighlight);
   }
 
+  /* 190 STAGE px, not 190 viewport px. dropZoneRect returns viewport
+     coordinates, so the distance has to be divided back by the stage
+     scale before it is compared to a design-pixel tolerance — otherwise
+     the catch radius silently grew on small windows and shrank on large
+     ones, and "where to drag?" depended on the browser size. */
+  var DROP_REACH = 190;
+
   function nearestZone(cx, cy) {
-    var best = null, bestD = Infinity;
+    var best = null, bestD = Infinity, s = stageScale();
     tray.zones.forEach(function (k) {
       var r = CG.Grid.dropZoneRect(k);
       if (!r) return;
-      var d = Math.hypot(cx - r.cx, cy - r.cy);
-      /* generous: anywhere within roughly a zone's width counts */
-      if (d < bestD && d < 190) { bestD = d; best = k; }
+      var d = Math.hypot(cx - r.cx, cy - r.cy) / s;
+      if (d < bestD && d < DROP_REACH) { bestD = d; best = k; }
     });
     return best;
   }

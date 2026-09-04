@@ -679,9 +679,21 @@ button{font-family:inherit}
 
 
 .axis-num,.reveal-num{
-  font:800 25px/1 var(--font);
+  /* ONE SIZE ON SCREEN AT EVERY STAGE. These sit inside #chart's
+     scale(k), so the declared size is divided by k to cancel it out —
+     32 here means 32 stage px whether the cell is 116 or 45. Before
+     this the same rule rendered at 29px in stage 1 and 11px in stage 3.
+     --k is published by apply() in grid.js and defaults to 1 so the
+     numerals are still sane before the first stage is applied. */
+  font-weight:800;
+  font-size:calc(32px / var(--k, 1));
+  line-height:1;
+  font-family:var(--font);
   fill:var(--cream);
-  stroke:rgba(14,39,64,.66);stroke-width:4.5;paint-order:stroke fill;
+  /* the halo has to cancel the scale too, or it thickens as the chart
+     zooms out and swallows the digit it is meant to lift off the grid */
+  stroke:rgba(14,39,64,.66);stroke-width:calc(5px / var(--k, 1));
+  paint-order:stroke fill;
   text-anchor:middle;dominant-baseline:middle;
 }
 #axisNums{
@@ -689,6 +701,16 @@ button{font-family:inherit}
   filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow));
 }
 #axisNums.shown{opacity:1}
+/* the origin's 0 sits on the diagonal between the two axes, so it wants
+   slightly less weight than the counting numerals either side of it */
+.axis-zero{opacity:.88}
+/* stage 3 packs 22 columns in: at that spacing a two-digit label is
+   wider than one cell, so the odd ones step aside for the even ones */
+#axisNums.thin-x text[data-axis="x"][data-v$="1"],
+#axisNums.thin-x text[data-axis="x"][data-v$="3"],
+#axisNums.thin-x text[data-axis="x"][data-v$="5"],
+#axisNums.thin-x text[data-axis="x"][data-v$="7"],
+#axisNums.thin-x text[data-axis="x"][data-v$="9"]{display:none}
 /* COUNTED ON, one tick at a time — see countNumbersOn() in grid.js. The
    group is shown outright and each number fades itself in on a delay
    set from its own value, so 1 and -1 arrive together, then 2 and -2,
@@ -1054,37 +1076,40 @@ button{font-family:inherit}
    of register with the drawing because there are no shapes.
 
    ---- THE ARTWORK'S OWN GEOMETRY, MEASURED FROM ITS PIXELS ---------
-   The file is 2100x749 with transparent padding. Measured off the
+   The file is 2123x741 with transparent padding. Measured off the
    alpha and the rim luminance:
 
-       opaque art        x   28..2070   y  155..569
-       writable plate    x  294..1806   y  203..521
+       opaque art        x   34..2088   y  211..464
+       writable plate    x  260..1874   y  236..439
 
-   Every inset below is one of those numbers over 2100 or 749, so the
+   Every inset below is one of those numbers over 2123 or 741, so the
    text box is locked to the painted plate and stays locked at any
    banner width. There is no crest on this artwork, so the plate is
    writable top to bottom and the text is centred in the whole of it —
    the previous plaque had a badge overhanging the middle of its top
    edge, which is why that version's top inset was the badge's bottom.
 
-   ---- THE PLATE IS PALE, SO THE TYPE IS NAVY -----------------------
-   Measured plate colour runs #78E4FA to #BAE0F3. The previous artwork
-   was deep blue and carried white text; the same white here would be
-   invisible. Navy on the pale plate measures 8.6:1, and the shadow is
-   a white under-highlight rather than a dark drop, which is what the
-   glossy plate asks for.
+   ---- THE PLATE IS DEEP BLUE, SO THE TYPE IS WHITE -----------------
+   Measured plate colour runs #2C64C2 to #001661. White measures
+   5.66:1 at the lightest stop and 16.31:1 at the darkest — AA to AAA.
+   Navy, which the PALE second artwork needed, measures 1.42:1 here:
+   invisible. So the shadow is a dark drop again, not a white
+   under-highlight — light type on a dark plate needs the opposite
+   lift. This slot has now been pale once and deep blue twice, which
+   is exactly why the colour is decided by measuring the artwork
+   rather than by eye.
 
-   ---- THE VERTICAL BUDGET, AND WHAT THE CHART GOT BACK -------------
-   The artwork's opaque region is 2043x415 — an aspect of 4.923:1 — so
+   ---- THE VERTICAL BUDGET, AND WHY THE CHART IS NOW THE BIGGEST ----
+   The artwork's opaque region is 2055x254 — an aspect of 8.091:1 — so
    its height follows from its width and cannot be traded against it.
-   At 760px wide the art is 150px tall, against 207 for the plaque it
-   replaced. That 57px went straight back to the coordinate plane: the
-   chart plate starts at y=160 (CG.CHART.rect in levels.js, PLAY in
-   grid.js, and the rows of CG.STAGES are all derived from it), and the
-   stage cells returned from 103 to 112 and from 53 to 58 — stage 1 and
-   2 are back to exactly the cell they had before any banner artwork
-   was fitted at all. The banner still clears the panel by 6.2px at
-   every stage.
+   That flatness is worth a great deal. At 900px wide this art is only
+   107px tall, where the 4.92:1 artwork needed 150 at 760px and the
+   3.68:1 plaque needed 207. So the banner is WIDER than either of them
+   (900px, giving a 684px text field) and still shorter, and the chart
+   plate starts at y=118 — CG.CHART.rect in levels.js, PLAY in grid.js
+   and every row of CG.STAGES derive from that one number. Stage 1 and
+   2 now reach cell 116, which is the DOCK's clearance ceiling rather
+   than the banner's, and stage 3 reaches 45.
 
    ---- WHY THERE IS NO clamp() OR vw ---------------------------------
    The game is a fixed 1920x1080 canvas scaled to fit by one transform
@@ -1100,13 +1125,13 @@ button{font-family:inherit}
      is the only number to change — but changing it changes the art's
      height by the same factor, and CG.CHART.rect.y has to move with
      it or the banner lands on the chart. */
-  --qb-w:760px;
+  --qb-w:900px;
 
   position:absolute;left:50%;
-  /* The art starts 155/749 of the way down its own file, so the element
+  /* The art starts 211/741 of the way down its own file, so the element
      is lifted by exactly that much to put the painted top edge at y=4.
-     -52px = 4 - 155/2100 * 760. */
-  top:-52px;transform:translateX(-50%);
+     -85px = 4 - 211/2123 * 900. */
+  top:-85px;transform:translateX(-50%);
   width:var(--qb-w);
   transition:opacity var(--t-panel) var(--ease-out),transform var(--t-panel) var(--ease-out);
 }
@@ -1120,10 +1145,10 @@ button{font-family:inherit}
    and gives 115px of height for two or three. */
 .banner-plate{
   position:absolute;
-  left:14.000%;              /*  294 / 2100 */
-  right:14.000%;             /* (2100-1806) / 2100 */
-  top:27.103%;               /*  203 / 749  */
-  bottom:30.441%;            /* (749-521) / 749 */
+  left:12.247%;              /*  260 / 2123 */
+  right:11.729%;             /* (2123-1874) / 2123 */
+  top:31.849%;               /*  236 / 741  */
+  bottom:40.756%;            /* (741-439) / 741 */
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:2px;
   text-align:center;
@@ -1140,16 +1165,14 @@ button{font-family:inherit}
      20px rather than 15, because this is read at a distance by a class
      and a line that will not fit at 20px is a content problem. */
   font-size:var(--qb-fs,30px);line-height:1.16;font-weight:900;
-  color:var(--navy);letter-spacing:.2px;
-  /* a white UNDER-highlight, not a dark drop: the plate is pale and
-     glossy, and a dark shadow under dark type just reads as mud */
-  text-shadow:0 1px 0 rgba(255,255,255,.75);
+  color:#FFFFFF;letter-spacing:.2px;
+  text-shadow:0 2px 2px rgba(0,20,60,.5);
   text-wrap:balance;
 }
 .mission-sub{
   margin:0;
   font-size:calc(var(--qb-fs,30px) * .72);line-height:1.2;font-weight:800;
-  color:rgba(22,55,91,.72);
+  color:rgba(226,238,255,.86);
 }
 .mission-sub:empty,.mission-text:empty{display:none}
 .mission-actions{display:flex;gap:14px;justify-content:center;margin-top:4px}

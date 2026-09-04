@@ -12,7 +12,7 @@ window.CG = window.CG || {};
    mission strip and the control dock:
 
      left / right ....  64px  ( 3.3% )
-     top ............. 160px  (14.8% )  the question banner ends at 154
+     top ............. 118px  (10.9% )  the question banner ends at 111
      bottom .......... 916px  (dock top 944 - 28px gap)
 
    The coordinate plane UNFOLDS across four stages (one per
@@ -24,12 +24,12 @@ window.CG = window.CG || {};
    Within a stage nothing moves: cell size and origin are fixed
    for the whole mission.
    ============================================================ */
-/* y=160: the question-template artwork is a 4.923:1 banner and stands
-   150px tall at its 760px width, so the chart starts just below it.
-   The replaced artwork was 3.68:1 and needed 207px, which had pushed
-   this to 212 — the 52px it gave back is why the cells below returned
-   to 112. Move the banner's width and this moves with it. */
-CG.CHART = { rect: { x: 64, y: 160, w: 1792, h: 756 } };
+/* y=118: the artwork is an 8.091:1 banner standing only 107px tall at
+   its 900px width, so the chart starts higher than it ever has. This
+   slot has taken three artworks at three aspects — 3.68, 4.92, 8.09 —
+   and each time this one number and the four rows below it were
+   re-derived from the new one. Move the banner's width and it moves. */
+CG.CHART = { rect: { x: 64, y: 118, w: 1792, h: 798 } };
 
 CG.STAGES = {
   /* ---------------------------------------------------------------------
@@ -46,13 +46,13 @@ CG.STAGES = {
 
      Cells are always square (one `cell` value for both axes), and each
      stage takes the largest cell its shape allows inside the play box
-     (1792 x 756):
+     (1792 x 798):
 
-       stage 1   cell 112  ->   672 x 672    36 cells
-       stage 2   cell 112  ->  1344 x 672    72 cells — the SAME cell,
+       stage 1   cell 116  ->   696 x 696    36 cells
+       stage 2   cell 116  ->  1392 x 696    72 cells — the SAME cell,
                                              so it is a pure sideways
                                              unfold with no zoom at all
-       stage 3   cell  43  ->   946 x 688   352 cells  -- RECTANGLE
+       stage 3   cell  45  ->   990 x 720   352 cells  -- RECTANGLE
 
      NONE OF THOSE NUMBERS IS CHOSEN; THEY ARE ALL DERIVED. The play box
      is 1792 x 756 because the question-template banner occupies y 4..154
@@ -60,9 +60,10 @@ CG.STAGES = {
      the largest that fits its own shape with the panel's margin intact:
 
        stages 1 and 2 are 6 cells tall below an origin at y=870, so
-         6c <= 870 - 160 - 38  ->  c = 112
+         6c <= 870 - 118 - 38  ->  c = 116  (here the DOCK is binding,
+                                    not the banner: 119 would fit)
        stage 3 is 16 cells tall inside the whole box, so
-         16c <= 756 - 2*34     ->  c = 43
+         16c <= 798 - 2*38     ->  c = 45
 
      and stage 1's origin x is 960 - 3c, which is what keeps its square
      panel centred. If the banner's width ever changes, re-deriving
@@ -107,12 +108,12 @@ CG.STAGES = {
      whole game. The origin stays put from 1 to 2 (804) and only moves
      when the airspace opens below it (787 -> 532).
      --------------------------------------------------------------------- */
-  1: { cell: 112, origin: { x: 624, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
-  2: { cell: 112, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
-  3: { cell: 43,  origin: { x: 960, y: 538 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } },
+  1: { cell: 116, origin: { x: 612, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
+  2: { cell: 116, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
+  3: { cell: 45,  origin: { x: 960, y: 517 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } },
   /* quadrant IV opens no new airspace beyond stage 3, so it shares the
      geometry and nothing lurches. */
-  4: { cell: 43,  origin: { x: 960, y: 538 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } }
+  4: { cell: 45,  origin: { x: 960, y: 517 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } }
 };
 
 /* ============================================================

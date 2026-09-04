@@ -142,7 +142,7 @@ CG.Arrival = (function () {
      wingspan syncPlaneScale() asks for. Read from the same config the
      game reads, so the two cannot drift apart. */
   function station() {
-    var s = (CG.STAGES && CG.STAGES[1]) || { cell: 112, origin: { x: 624, y: 870 } };
+    var s = (CG.STAGES && CG.STAGES[1]) || { cell: 116, origin: { x: 612, y: 870 } };
     return {
       x: s.origin.x,
       y: s.origin.y,
