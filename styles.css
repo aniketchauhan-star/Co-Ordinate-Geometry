@@ -1204,7 +1204,14 @@ button{font-family:inherit}
 :root{
   /* interaction palette — retune freely */
   --ui-right-main:#FF9418; --ui-right-hi:#FFB43C; --ui-right-dark:#D9680B;
-  --ui-left-main:#AEBFD0;  --ui-left-hi:#D9E5EF;  --ui-left-dark:#73889E;
+  /* LEFT CARRIES MORE BLUE THAN THE BRIEF'S #AEBFD0, and it has to.
+     Measured in CIELAB, the brief's steel sits 3.7-9.8 deltaE from the
+     disabled grey ramp — under about 10 reads as the SAME colour — so
+     an enabled LEFT looked dead. RIGHT is 75-87 away and UP is 86-98;
+     only LEFT had the problem, because steel and grey are the same
+     thing to the eye. This is still the steel family, just far enough
+     from grey to read as live: 16.9 / 28.2 / 36.5 deltaE. */
+  --ui-left-main:#7BA5D0;  --ui-left-hi:#B8D6F4;  --ui-left-dark:#4E739F;
   --ui-up-main:#9147E8;    --ui-up-hi:#B567F2;    --ui-up-dark:#6423B7;
   --ui-down-main:#D49399;  --ui-down-hi:#E7B3B6;  --ui-down-dark:#A96E76;
   --ui-go-main:#68C96C;    --ui-go-hi:#8DDD8D;    --ui-go-dark:#3E9A50;
@@ -1375,22 +1382,25 @@ button{font-family:inherit}
     inset 0 -2px 0 rgba(0,0,0,.10),
     0 1px 3px rgba(20,50,80,.16);
 }
-/* DISABLED IS GREY, and now it safely can be. LEFT is neutral steel,
-   so draining colour used to risk an armed LEFT looking like a dead
-   one — but LEFT and DOWN are only ever disabled in quadrant I, and
-   from quadrant II every direction is live, so the two states never
-   have to be told apart on the same screen.
-
-   Grey AND flat: the colour goes, and so does the lift, because a
-   raised grey button still invites a press. */
+/* DISABLED DIFFERS ON MORE THAN COLOUR, because colour alone cannot
+   carry it. No grey ramp can sit far enough from a steel button at
+   every stop — steel IS a light grey-blue — so the state is told three
+   ways at once: the colour drains, the bevel goes (a raised button
+   invites a press however pale it is), and a faint diagonal hatch
+   marks it as out of action. The hatch is the one cue that still works
+   when hue is unavailable to the viewer. */
 .direction-button:disabled{
   cursor:not-allowed;
-  background:linear-gradient(180deg,#E3E9EE 0%,#CBD5DD 60%,#B4C0CA 100%);
-  border-color:rgba(255,255,255,.45);
-  box-shadow:inset 0 2px 5px rgba(34,75,110,.20);
+  background:
+    repeating-linear-gradient(135deg,
+      rgba(120,140,160,.16) 0 5px, rgba(120,140,160,0) 5px 11px),
+    linear-gradient(180deg,#E3E9EE 0%,#CBD5DD 60%,#B4C0CA 100%);
+  border-color:rgba(255,255,255,.4);
+  /* sunken, not raised: no white lip and no bottom rim */
+  box-shadow:inset 0 2px 6px rgba(34,75,110,.24);
   transform:none;
 }
-.direction-button:disabled svg{stroke:#8C9BA8;filter:none}
+.direction-button:disabled svg{stroke:#93A1AE;filter:none;opacity:.85}
 /* the label and readout go with it, so the whole module reads as off */
 .control-group[data-armed="0"] .control-label{color:rgba(23,59,122,.42)}
 

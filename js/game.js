@@ -97,6 +97,20 @@ window.CG = window.CG || {};
     if (lv && lv.cfu && CG.SCRIPT_CFU) return CG.SCRIPT_CFU.text;
     return (lv && lv.mission) || (CG.SCRIPT_MISSION && CG.SCRIPT_MISSION.text) || '';
   }
+  /* THE CFU'S FEEDBACK, FROM THE SCRIPT. Moving the deck's words into
+     js/script.js emptied `feedback` off the CFU level, and both readers
+     were guarded with `if (fb)` — so nothing crashed and nothing was
+     said: page 58's three lines simply stopped appearing.
+
+     Ordinary missions return null on purpose. Page 13 answers a miss
+     with a DISPLAY — arrows, then arrows with unit counts — and gives
+     no sentence at all, so there is nothing to return. */
+  function feedbackFor(lv) {
+    lv = lv || level();
+    if (lv && lv.cfu && CG.SCRIPT_FB_CFU) return CG.SCRIPT_FB_CFU;
+    return null;
+  }
+
   function missionVoice(lv) {
     lv = lv || level();
     if (lv && lv.cfu && CG.SCRIPT_CFU) return CG.SCRIPT_CFU.voice || CG.SCRIPT_CFU.text;
@@ -585,7 +599,7 @@ window.CG = window.CG || {};
 
     /* The final CFU is a check, not a lesson: it confirms and stops
        rather than replaying the route and naming the numbers again. */
-    var fb = level().feedback;
+    var fb = feedbackFor();
     if (fb) {
       Grid.highlightRevealed('x', sel.x, true);
       Grid.highlightRevealed('y', sel.y, true);
@@ -732,11 +746,16 @@ window.CG = window.CG || {};
     locationCallout(sel);
 
     /* FLOW 12 — first miss: no answer, no hint, just try again */
-    var fb = level().feedback;
-    UI.mission(fb
-      ? { text: gameState.attemptNumber >= 2 ? fb.second : fb.first,
-          voice: gameState.attemptNumber >= 2 ? fb.second : fb.first }
-      : { text: 'Not there yet. Try again.', voice: 'Not there yet. Try again.' });
+    /* THE CFU IS THE ONLY MISS THAT SPEAKS. "Not there yet. Try again."
+       used to stand here as a fallback; it was mine, and page 13 does
+       not answer a miss with words — the arrows below are the whole
+       feedback. So an ordinary mission leaves the instruction on screen
+       and lets the display do it. */
+    var fb = feedbackFor();
+    if (fb) UI.mission({
+      text:  gameState.attemptNumber >= 2 ? fb.second : fb.first,
+      voice: gameState.attemptNumber >= 2 ? fb.second : fb.first
+    });
     await wait(CFG.retryDelay); if (tk !== seqToken) return;
 
     UI.hideCoordTag();
