@@ -180,7 +180,7 @@ window.CG = window.CG || {};
        not fighting each other, they are two halves of one co-ordinate. */
     if (gameState.direct) {
       if (dir !== 'x' && dir !== 'y') return;
-      var R = CG.DIRECT_RANGE;
+      var R = CG.DIRECT_RANGE_OF(dir);       /* x reaches 7, y reaches 4 */
       var v = clamp(gameState.controls[dir] + delta, -R, R);
       if (v === gameState.controls[dir]) return;
       gameState.controls[dir] = v;
@@ -1172,8 +1172,9 @@ window.CG = window.CG || {};
     Grid.setStage(4, true);
     loadDirectTarget();
     UI.mission({
+      /* p59, and only p59. The sub-line that used to sit here
+         ("Enter the co-ordinate itself now") was not in the PDF. */
       text: 'You’re ready. Guide the aircraft to its position.',
-      sub: 'Enter the co-ordinate itself now — <span class="coord">X</span> then <span class="coord">Y</span>.',
       voice: 'You are ready. Guide the aircraft to its position.',
       animate: 'words'
     });

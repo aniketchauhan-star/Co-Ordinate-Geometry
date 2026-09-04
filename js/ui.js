@@ -174,7 +174,8 @@ CG.UI = (function () {
       wrap.appendChild(val);
       wrap.appendChild(stepper);
       el.controls.appendChild(wrap);
-      ctrlMap[d.key] = { root: wrap, val: val, up: up, down: dn, armed: true, signed: true };
+      ctrlMap[d.key] = { root: wrap, val: val, up: up, down: dn, armed: true,
+                         signed: true, dir: d.key };   /* dir: p60's x and y have different limits */
     });
   }
 
@@ -188,8 +189,8 @@ CG.UI = (function () {
       c.val.classList.add('bump');
     }
     /* a signed stepper stops at -RANGE, not at zero */
-    var hi = c.signed ? CG.DIRECT_RANGE : CG.CONFIG.maxStep;
-    var lo = c.signed ? -CG.DIRECT_RANGE : 0;
+    var hi = c.signed ? CG.DIRECT_RANGE_OF(c.dir) : CG.CONFIG.maxStep;
+    var lo = c.signed ? -CG.DIRECT_RANGE_OF(c.dir) : 0;
     c.up.dataset.limit = v >= hi ? '1' : '0';
     c.down.dataset.limit = v <= lo ? '1' : '0';
     applyLock(c);

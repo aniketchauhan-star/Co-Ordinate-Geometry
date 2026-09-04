@@ -121,7 +121,7 @@
     Grid.showPermanentNumbers(false);
     await wait(700); if (!alive(tk)) return false;
 
-    if (!await say(tk, { text: 'Let’s see what we discovered.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: CG.SCRIPT_LESSON[0].text, beat: CFG.beatMed })) return false;
 
     /* --- 21. FLOW 32 — RE-FLY THREE OF THEM, BEFORE ANY EXPLANATION.
        The learner has just spent eight missions doing this; the recap
@@ -132,10 +132,8 @@
        not invented ones: `reached` is what they flew. */
     var demo = pickDemos(reached);
     if (demo.length) {
-      UI.mission({
-        text: 'Here is where you took them.',
-        voice: 'Here is where you took them.', animate: 'words'
-      });
+      /* p16 demonstrates three points and supplies NO line for the
+         beat, so nothing is said over it. */
       for (var d = 0; d < demo.length; d++) {
         Grid.setTarget(demo[d]);
         if (!await CG.demoFlight(demo[d].x, demo[d].y)) return false;
@@ -161,17 +159,17 @@
       /* FLOW 33 says FOUR directions, and it is right to: the learner
          pressed RIGHT, LEFT, UP and DOWN. The pairing into two axes is
          the next two lines' job, not this one's. */
-      text: 'You used four directions to locate every aircraft.',
+      text: 'We used four directions to locate every aircraft.',
       beat: CFG.beatLong
     })) return false;
 
     /* --- 22/23. pair them, without naming the axes yet ------------- */
     Grid.showAxes(true);
     Grid.highlightAxis('x');
-    if (!await say(tk, { text: 'Either you moved left and right.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'Either we moved left and right.', beat: CFG.beatMed })) return false;
 
     Grid.highlightAxis('y');
-    if (!await say(tk, { text: 'Or you moved up and down.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'Or we moved up and down.', beat: CFG.beatMed })) return false;
 
     Grid.highlightAxis(null);
     Grid.clearRecapMarkers();
@@ -191,24 +189,20 @@
 
     Grid.countNumbersOn();
     Audio.play('reveal');
-    if (!await say(tk, {
-      text: '…we use two special number lines.',
-      voice: 'We use two special number lines.',
-      beat: CFG.beatMed
-    })) return false;
+    /* p22 brings the numbers onto both axes and carries no line of
+       its own — its slide title is a stray "z", a placeholder. */
 
-    if (!await say(tk, { text: 'Now these two lines have special names.', beat: CFG.beatMed })) return false;
 
     /* --- 25/26. x-axis, then y-axis ---------------------------------- */
     Grid.highlightAxis('x'); Grid.setLetter('x', true); Audio.play('reveal');
     if (!await say(tk, {
-      text: 'The horizontal line you used to move left and right is the <em>x-axis</em>.',
+      text: 'The horizontal line is called the <em>x-axis</em>.',
       beat: CFG.beatLong
     })) return false;
 
     Grid.highlightAxis('y'); Grid.setLetter('y', true); Audio.play('reveal');
     if (!await say(tk, {
-      text: 'The vertical line you used to move up and down is the <em>y-axis</em>.',
+      text: 'The vertical line is called the <em>y-axis</em>.',
       beat: CFG.beatLong
     })) return false;
 
@@ -226,18 +220,17 @@
     Grid.highlightOrigin(true);
     Grid.showOriginLabel('(0, 0)');
     Audio.play('reveal');
-    if (!await say(tk, { text: 'That point is the <em>origin</em>.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'This point is the <em>origin</em>.', beat: CFG.beatMed })) return false;
 
     /* --- 29. right angle, then the word for it ----------------------- */
     Grid.showRightAngle(true);
-    if (!await say(tk, { text: 'The axes meet at a right angle.', beat: CFG.beatMed })) return false;
-    if (!await say(tk, { text: 'So, the axes are <em>perpendicular</em>.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'The axes are <em>perpendicular</em> to each other.', beat: CFG.beatMed })) return false;
 
     /* --- 30. the whole structure ------------------------------------- */
     Grid.showRightAngle(false);
     Grid.highlightOrigin(false);
     if (!await say(tk, {
-      text: 'Together, they form the <em>co-ordinate plane</em>.', beat: CFG.beatLong
+      text: 'Together, they form the <em>coordinate plane</em>.', beat: CFG.beatLong
     })) return false;
 
     /* --- 31. label the plane ----------------------------------------- */
@@ -273,10 +266,8 @@
     Grid.clearLesson();
     Grid.plotPoint(P.x, P.y, { cls: 'plot-lesson' });
     if (!await say(tk, { text: 'Now, let’s locate a point.', beat: CFG.beatShort })) return false;
-    if (!await say(tk, { text: 'We need two numbers to locate a point.', beat: CFG.beatMed })) return false;
 
     /* --- the first number ------------------------------------------- */
-    if (!await say(tk, { text: 'First, move along the <em>x-axis</em>.', beat: CFG.beatShort })) return false;
     Grid.measure('x', P.x, P.y);
     Grid.pulseLine('x', P.x);          /* the line that number names */
     Grid.markLeg('x', P.x);            /* and the units it counted    */
@@ -287,10 +278,8 @@
 
     /* the tag is deliberately incomplete — (2, ) before (2, 3) */
     tagAt(P, '(2,  )');
-    if (!await say(tk, { text: 'So, the first number is <em>2</em>.', beat: CFG.beatMed })) return false;
 
     /* --- the second number ------------------------------------------ */
-    if (!await say(tk, { text: 'Now move along the <em>y-axis</em>.', beat: CFG.beatShort })) return false;
     Grid.measure('y', P.x, P.y);
     Grid.pulseLine('y', P.y);
     Grid.markLeg('y', P.y, P.x);
@@ -301,15 +290,15 @@
     Grid.clearRoutePoints();
     tagAt(P, '(2, 3)');
     Audio.play('reveal');
-    if (!await say(tk, { text: 'So, the second number is <em>3</em>.', beat: CFG.beatMed })) return false;
     if (!await say(tk, {
-      text: 'The location of the point is <span class="coord">(2, 3)</span>.', beat: CFG.beatLong
+      text: 'So, the location of the point is <span class="coord">(2,3)</span>.',
+      voice: 'So, the location of the point is two, three.', beat: CFG.beatLong
     })) return false;
 
     /* --- 37/38. formalise each co-ordinate -------------------------- */
     tagAt(P, '(2, 3)', 'x');
     Grid.pulseLine('x', P.x);
-    if (!await say(tk, { text: 'The first number gives the <em>x-co-ordinate</em>.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'The first number is the <em>x-coordinate</em>.', beat: CFG.beatMed })) return false;
     /* NOT "the distance from the y-axis", WHICH IS ABOUT TO BE FALSE.
        Two quadrants later the learner meets x = -3, and a distance of
        negative three is not a thing. "How far, and in which direction"
@@ -317,17 +306,15 @@
        they are taught the first time — retrofitting direction onto a
        definition they already believe is much harder than including it. */
     if (!await say(tk, {
-      text: 'The x-co-ordinate tells us how far, and in which horizontal direction, ' +
-            'the point is from the <em>y-axis</em>.',
+      text: 'It is the distance of the point from the <em>y-axis</em>.',
       beat: CFG.beatLong
     })) return false;
 
     tagAt(P, '(2, 3)', 'y');
     Grid.pulseLine('y', P.y);
-    if (!await say(tk, { text: 'The second number gives the <em>y-co-ordinate</em>.', beat: CFG.beatMed })) return false;
+    if (!await say(tk, { text: 'The second number is the <em>y-coordinate</em>.', beat: CFG.beatMed })) return false;
     if (!await say(tk, {
-      text: 'The y-co-ordinate tells us how far, and in which vertical direction, ' +
-            'the point is from the <em>x-axis</em>.',
+      text: 'It is the distance of the point from the <em>x-axis</em>.',
       beat: CFG.beatLong
     })) return false;
 
@@ -335,7 +322,8 @@
     Grid.clearPulseLines();
     tagAt(P, '(2, 3)', 'both');
     if (!await say(tk, {
-      text: 'We write the co-ordinates of a point in the order <span class="coord">(x, y)</span>.',
+      text: 'So, we write the coordinates of a point in the order <span class="coord">(x, y)</span>.',
+      voice: 'So, we write the coordinates of a point in the order x, y.',
       beat: CFG.beatLong
     })) return false;
 
@@ -364,7 +352,7 @@
     Grid.plotPoint(P.x, P.y, { cls: 'plot-lesson', label: coordText(P) });
     var above = P.y >= 0;
     return await dragActivity(tk, {
-      prompt: 'Drag each label to the correct co-ordinate.',
+      prompt: 'Drag each label to the correct coordinate.',
       zones: [
         { key: 'xc', x: P.x + (P.x >= 0 ? 3.2 : -3.2), y: P.y + (above ? 2.1 : -1.2),
           lead: { x: P.x, y: P.y } },
@@ -428,10 +416,13 @@
              line, because "the first number is the x-co-ordinate" is
              the right scaffold when the learner is labelling numbers
              and the wrong one when they are placing points. */
-          var h2  = spec.hint2 ||
-            'The first number is the <em>x-co-ordinate</em>, and the second number is the <em>y-co-ordinate</em>. Try again.';
-          var h2v = spec.hint2Voice ||
-            'The first number is the x co-ordinate, and the second number is the y co-ordinate. Try again.';
+          /* p44's second miss says "In a point highlight one by one and
+             tell labelling x-coordinate, y-coordinate" — an instruction
+             to DEMONSTRATE, not a line to read. So the labels walk one
+             at a time and the only words are the PDF's own two, which
+             it already gave for p38 and p40. */
+          var h2  = spec.hint2 || CG.SCRIPT_LESSON.filter(function (b) { return b.p === 38; })[0].text;
+          var h2v = spec.hint2Voice || null;
           UI.mission({
             text:  wrongs === 1 ? 'Not quite. Try again.' : h2,
             voice: wrongs === 1 ? 'Not quite. Try again.' : h2v,
@@ -476,6 +467,19 @@
       text: 'The axes split the plane into four regions.', beat: CFG.beatMed
     })) return false;
 
+    /* p46 — the four labels go on, and the PDF names them. This beat
+       was missing: the game went straight from "four regions" to
+       teaching the sign patterns without ever saying "quadrants". */
+    Grid.showRegionLabel(1, 'I');
+    Grid.showRegionLabel(2, 'II');
+    Grid.showRegionLabel(3, 'III');
+    Grid.showRegionLabel(4, 'IV');
+    Audio.play('reveal');
+    if (!await say(tk, {
+      text: 'These regions are called <em>quadrants</em>.', beat: CFG.beatMed
+    })) return false;
+    Grid.clearRegionLabels();
+
     for (var i = 0; i < QUAD.length; i++) {
       if (!await oneQuadrant(tk, QUAD[i])) return false;
     }
@@ -508,8 +512,11 @@
       Grid.plotPoint(picked.x, picked.y, { cls: 'plot-lesson', label: coordText(picked) });
       Audio.play('reveal');
       if (!await say(tk, {
-        text: (first ? 'The x-co-ordinate is ' : 'Here too, the x-co-ordinate is ') +
-              signWord(picked.x) + ', and the y-co-ordinate is ' + signWord(picked.y) + '.',
+        /* p48 and p50, verbatim: "x-coordinate: positive,
+           y-coordinate: positive." Only the two sign words change with
+           the quadrant being tapped; the sentence does not. */
+        text: 'x-coordinate: ' + signWord(picked.x) +
+              ', y-coordinate: ' + signWord(picked.y) + '.',
         beat: CFG.beatMed
       })) return false;
     }
@@ -517,13 +524,12 @@
     /* only now is the region named */
     Grid.showRegionLabel(spec.q, spec.roman);
     Audio.play('reveal');
-    if (!await say(tk, { text: 'This region is <em>' + spec.roman + '</em>.', beat: CFG.beatMed })) return false;
 
     Grid.showRegionLabel(spec.q, spec.roman, spec.signs);
     if (!await say(tk, {
-      text: 'So, points in this quadrant have the sign pattern <span class="coord">' +
+      text: 'So, quadrant ' + spec.roman + ' have the sign pattern <span class="coord">' +
             spec.signs + '</span>.',
-      voice: 'So, points in this quadrant have the sign pattern ' + spokenSigns(spec.signs) + '.',
+      voice: 'So, quadrant ' + spec.roman + ' have the sign pattern ' + spokenSigns(spec.signs) + '.',
       beat: CFG.beatLong
     })) return false;
 

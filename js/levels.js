@@ -149,64 +149,51 @@ CG.STAGES = {
    `visible` stays all four throughout, so the dock never changes width
    and a direction that is coming is visible as a thing that is coming
    — see the NOT YET state in styles.css. */
+/* THE WORDS ARE NOT HERE. Every line the learner sees or hears is
+   in js/script.js, copied from the PDF; these rows carry only the
+   geometry and which two buttons the PDF names for each quadrant
+   (p2 and p14). That is what keeps the script auditable. */
 CG.LEVELS = [
   /* ---------- FIRST QUADRANT : right + up ---------- */
   {
     quadrant: 1, target: { x: 3, y: 2 },
     visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
-    mission: 'Guide the aircraft to the target.',
     tutorial: true,
     coordinateReveal: true          /* FLOW 10 — the "X = 3, Y = 2" moment */
   },
   {
     quadrant: 1, target: { x: 5, y: 4 },
     visible: ['right', 'left', 'up', 'down'], controls: ['right', 'up'],
-    mission: 'Guide the aircraft to the target.'
   },
 
   /* ---------- SECOND QUADRANT : left + up ---------- */
   {
     quadrant: 2, target: { x: -2, y: 4 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
-    mission: 'Guide the aircraft to the target.',
-    unlockNote: 'The airspace now extends to the left.',
-    unlockVoice: 'Now the airspace extends to the left.',
-    signLesson: 'Moving left gives negative horizontal values.'
+    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'up'],
   },
   {
     quadrant: 2, target: { x: -5, y: 2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up'],
-    mission: 'Guide the aircraft to the target.'
+    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'up'],
   },
 
   /* ---------- THIRD QUADRANT : left + down ---------- */
   {
     quadrant: 3, target: { x: -4, y: -2 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
-    mission: 'Guide the aircraft to the target.',
-    unlockNote: 'The airspace now extends below the origin.',
-    unlockVoice: 'Now the airspace extends below the origin.',
-    signLesson: 'Moving left gives a negative X value. Moving down gives a negative Y value.'
+    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'down'],
   },
   {
     quadrant: 3, target: { x: -5, y: -3 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
-    mission: 'Guide the aircraft to the target.'
+    visible: ['right', 'left', 'up', 'down'], controls: ['left', 'down'],
   },
 
   /* ---------- FOURTH QUADRANT : right + down ---------- */
   {
     quadrant: 4, target: { x: 4, y: -5 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
-    mission: 'Guide the aircraft to the target.',
-    unlockNote: 'The last part of the airspace is open.',
-    unlockVoice: 'Use right and down to reach the target.',
-    signLesson: 'Moving right keeps X positive. Moving down makes Y negative.'
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'down'],
   },
   {
     quadrant: 4, target: { x: 3, y: -3 },
-    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
-    mission: 'Guide the aircraft to the target.'
+    visible: ['right', 'left', 'up', 'down'], controls: ['right', 'down'],
   },
 
   /* ---- CFU 3 (PDF p58) ------------------------------------------------
@@ -219,15 +206,7 @@ CG.LEVELS = [
     visible: ['right', 'left', 'up', 'down'], controls: ['right', 'left', 'up', 'down'],
     cfu: true,
     lessonBefore: true,
-    mission: 'The target is (2, −3). Move the aircraft to its position.',
-    voice: 'The target is two, negative three. Move the aircraft to its position.',
     showTargetCoord: true,
-    feedback: {
-      correct: 'Perfect! You reached (2, −3).',
-      correctVoice: 'Perfect! You reached two, negative three.',
-      first: 'Not quite. Try again!',
-      second: 'First find x. Then move to y.'
-    }
   }
 ];
 
@@ -251,15 +230,26 @@ CG.DIRECTIONS = [
    so rather than pretend otherwise they live here, clearly labelled and
    trivially editable. One per quadrant, so the mode exercises all four
    sign patterns the learner has just discovered.                       */
-CG.DIRECT_TARGETS = [
-  { x:  4, y:  3 },
-  { x: -3, y:  2 },
-  { x: -2, y: -4 },
-  { x:  5, y: -2 }
+/* p60 puts the first target at (-5, 3) on a plane running x -7..7 and
+   y -4..4; p61 says "the same flow repeat with different points", so the
+   rest are free but must fit that plane. Held in js/script.js with the
+   rest of the PDF and mirrored here. */
+CG.DIRECT_TARGETS = (CG.SCRIPT_DIRECT && CG.SCRIPT_DIRECT.targets) || [
+  { x: -5, y:  3 },
+  { x:  4, y: -3 },
+  { x: -6, y: -2 },
+  { x:  6, y:  2 }
 ];
 
 /* the signed range the X and Y steppers travel through */
-CG.DIRECT_RANGE = 6;
+/* p60's plane is WIDER THAN IT IS TALL: x runs -7..7 and y runs -4..4,
+   so the two steppers do not share one limit. They did (both 6), which
+   let the learner dial a y the chart cannot show. */
+CG.DIRECT_RANGE = { x: 7, y: 4 };
+CG.DIRECT_RANGE_OF = function (dir) {
+  var r = CG.DIRECT_RANGE;
+  return typeof r === 'number' ? r : (r[dir] || r.x);
+};
 
 CG.CONFIG = {
   maxStep: 5,          /* highest value a single direction stepper can reach */
