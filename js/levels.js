@@ -52,7 +52,7 @@ CG.STAGES = {
        stage 2   cell 112  ->  1344 x 672    72 cells — the SAME cell,
                                              so it is a pure sideways
                                              unfold with no zoom at all
-       stage 3   cell  58  ->   696 x 696   144 cells  -- SQUARE
+       stage 3   cell  43  ->   946 x 688   352 cells  -- RECTANGLE
 
      NONE OF THOSE NUMBERS IS CHOSEN; THEY ARE ALL DERIVED. The play box
      is 1792 x 756 because the question-template banner occupies y 4..154
@@ -61,8 +61,8 @@ CG.STAGES = {
 
        stages 1 and 2 are 6 cells tall below an origin at y=870, so
          6c <= 870 - 160 - 38  ->  c = 112
-       stage 3 is 12 cells tall inside the whole box, so
-         12c <= 756 - 2*30     ->  c = 58
+       stage 3 is 16 cells tall inside the whole box, so
+         16c <= 756 - 2*34     ->  c = 43
 
      and stage 1's origin x is 960 - 3c, which is what keeps its square
      panel centred. If the banner's width ever changes, re-deriving
@@ -109,10 +109,10 @@ CG.STAGES = {
      --------------------------------------------------------------------- */
   1: { cell: 112, origin: { x: 624, y: 870 }, extent: { xMin: 0,   xMax: 6,  yMin: 0,  yMax: 6 } },
   2: { cell: 112, origin: { x: 960, y: 870 }, extent: { xMin: -6,  xMax: 6,  yMin: 0,  yMax: 6 } },
-  3: { cell: 58,  origin: { x: 960, y: 538 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } },
+  3: { cell: 43,  origin: { x: 960, y: 538 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } },
   /* quadrant IV opens no new airspace beyond stage 3, so it shares the
      geometry and nothing lurches. */
-  4: { cell: 58,  origin: { x: 960, y: 538 }, extent: { xMin: -6,  xMax: 6,  yMin: -6, yMax: 6 } }
+  4: { cell: 43,  origin: { x: 960, y: 538 }, extent: { xMin: -11, xMax: 11, yMin: -8, yMax: 8 } }
 };
 
 /* ============================================================

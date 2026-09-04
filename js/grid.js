@@ -17,14 +17,20 @@ CG.Grid = (function () {
 
   /* canonical space: 1 cell = 100px, origin at (0,0) */
   var CELL = 100;
-  var MAX = { xMin: -14, xMax: 14, yMin: -6, yMax: 6 };   /* widest drawable */
+  /* WIDEST DRAWABLE. y went from -6..6 to -8..8 when stage 3 became a
+     wide rectangle: the graticule, the axis lines and the axis-hot
+     overlay are all drawn to MAX, so an -8..8 chart on a -6..6 MAX shows
+     two blank rows top and bottom and axis lines that stop short of
+     their own arrowheads. x came in from 14 to 11 to match the stage,
+     so nothing is drawn only to be clipped away. */
+  var MAX = { xMin: -11, xMax: 11, yMin: -8, yMax: 8 };   /* widest drawable */
   /* THE NUMBERED RANGE, and it must not exceed the charted one. It was
      x -10..10, left over from the stage-3 chart that ran to x=14: eight
      labels and eight ticks were being drawn on every boot and then
      clipped away unseen. Worse for countNumbersOn(), which staggers by
      |value| — the invisible ones were still holding delays, so the
      count appeared to stall after 6. */
-  var LAB = { xMin: -6, xMax: 6, yMin: -6, yMax: 6 };     /* numbered range  */
+  var LAB = { xMin: -11, xMax: 11, yMin: -8, yMax: 8 };   /* numbered range  */
 
   var el = {};
   var view = { k: 1, px: 960, py: 532 };   /* chart transform, stage px */
