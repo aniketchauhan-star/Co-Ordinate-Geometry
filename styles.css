@@ -104,17 +104,20 @@
   --grid-border: #559DB8;
   --grid-glow: rgba(125, 211, 229, 0.30);
 
-  /* THE AXIS ARROWHEADS ARE THE ONE WARM THING ON THE CHART, and that
-     is the whole reason they can be seen. Everything on the plate is
-     some value of blue — the water, the plate, the graticule, the axes,
-     the flown route — so a pale cyan arrowhead was a cyan mark on a
-     cyan chart, technically drawn and effectively invisible. Gold is
-     the only hue up here that nothing else is using, so it needs no
-     help from size or weight to be found. It is also the dock's own
-     amber, so the chart and the controls are speaking one language. */
-  --axis-arrow: #FFD34A;
-  --axis-arrow-hi: #FFE9A0;
-  --axis-arrow-glow: rgba(255, 190, 45, .85);
+  /* GOLD MEANS "THE AIRCRAFT CROSSED THIS", and it means nothing else
+     on the chart. Everything up here is some value of blue — the water,
+     the plate, the graticule, the axes, the flown route — so one warm
+     hue, used for exactly one idea, is found instantly and can never be
+     confused with the furniture it is drawn over.
+
+     The idea it carries is the lesson's whole first move: three spaces
+     right is three LINES CROSSED, and these tokens are what light them.
+     They were briefly on the axis arrowheads instead, which spent the
+     colour on chart furniture that is never the answer to anything —
+     the arrowheads are back to the axis hue below. */
+  --cross-gold: #FFD34A;
+  --cross-gold-hi: #FFF0B8;
+  --cross-glow: rgba(255, 190, 45, .85);
 
   /* ---- THE CONTROL DOCK ----------------------------------------------
      DOWN is the one direction the palette did not name, so it keeps the
@@ -567,20 +570,23 @@ button{font-family:inherit}
    The pips arrive in sequence, so the count is read in the order the
    aircraft flew it rather than appearing all at once.
    =================================================================== */
+/* Gold here too, and for the same reason: this measures ground the
+   aircraft actually covered. White read as "a line has been drawn on
+   the chart"; gold reads as "this is the bit you just flew". */
 .axis-span-line{
-  fill:none;stroke:#FFFFFF;stroke-width:6;stroke-linecap:round;
-  filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 16px var(--grid-glow));
+  fill:none;stroke:var(--cross-gold);stroke-width:6;stroke-linecap:round;
+  filter:drop-shadow(0 0 6px var(--cross-glow)) drop-shadow(0 0 18px rgba(255,170,20,.45));
   animation:spanDraw 520ms var(--ease-out) both;
 }
 @keyframes spanDraw{from{opacity:0}to{opacity:1}}
 .axis-span-head{
-  fill:#FFFFFF;
-  filter:drop-shadow(0 0 6px var(--grid-glow));
+  fill:var(--cross-gold);
+  filter:drop-shadow(0 0 7px var(--cross-glow));
   animation:spanDraw 520ms var(--ease-out) 200ms both;
 }
 .axis-pip{
-  fill:var(--grid-axis);stroke:#FFFFFF;stroke-width:2.5;
-  filter:drop-shadow(0 0 6px var(--grid-glow));
+  fill:var(--cross-gold-hi);stroke:rgba(14,39,64,.62);stroke-width:2.5;
+  filter:drop-shadow(0 0 7px var(--cross-glow));
   transform-box:fill-box;transform-origin:center;
   animation:pipIn 300ms var(--ease-out) both;
 }
@@ -623,41 +629,27 @@ button{font-family:inherit}
 @keyframes axisNamed{0%,100%{stroke-width:5.6;opacity:.9}50%{stroke-width:7.2;opacity:1}}
 #ticks line{stroke:var(--grid-axis);stroke-width:2.8;stroke-linecap:round}
 #ticks{filter:drop-shadow(0 0 5px var(--grid-glow)) drop-shadow(0 0 12px var(--grid-glow))}
-/* THE ARROWHEADS. Gold, rimmed, glowing, and breathing.
+/* THE ARROWHEADS ARE FURNITURE, and they are dressed as furniture.
 
-   FOUR THINGS, BECAUSE ONE WAS NOT ENOUGH. Colour alone loses against
-   the glow the whole chart already sits in; a rim alone reads as a
-   sticker. Together: the gold separates them from every other mark up
-   here, the navy rim holds their shape against the pale axis line
-   running underneath them, the warm bloom lifts them off the water, and
-   the slow pulse is what actually catches the eye — a static mark in a
-   corner of a busy chart is a mark nobody looks at.
+   They were gold and pulsing for one revision. That was the wrong place
+   to spend the chart's only warm colour: an arrowhead marks where the
+   airspace keeps going, which is true all the time and is never the
+   answer to anything. Gold now means "the aircraft crossed this" and
+   nothing else — see --cross-gold.
 
-   THE PULSE IS ON `filter` AND NOT ON `transform`, and that is not a
-   style preference. Each head is positioned by a `transform` ATTRIBUTE
-   written by grid.js, and a CSS transform overrides that attribute
-   outright — animating scale here would fire all four arrowheads into
-   the middle of the chart. Light is the only thing safe to animate. */
+   What they keep from that revision is being DRAWN at all: they are
+   larger than they were, they carry a navy rim so their shape holds
+   against the pale axis line running underneath them, and each one
+   appears with the airspace it points into rather than all four waiting
+   for the last quadrant. Visible, and quiet. */
 #axisEnds path{
-  fill:var(--axis-arrow);
-  stroke:rgba(16,48,80,.85);stroke-width:3;stroke-linejoin:round;
+  fill:var(--grid-axis);
+  stroke:rgba(16,48,80,.55);stroke-width:2.5;stroke-linejoin:round;
   paint-order:stroke fill;         /* the rim goes UNDER, so the head keeps its size */
   transition:opacity 420ms var(--ease-out);
-  animation:axisArrow 1900ms var(--ease-io) infinite;
 }
-@keyframes axisArrow{
-  0%,100%{filter:drop-shadow(0 0 5px var(--axis-arrow-glow))
-                 drop-shadow(0 0 13px rgba(255,170,20,.42))}
-  50%    {filter:drop-shadow(0 0 11px var(--axis-arrow-hi))
-                 drop-shadow(0 0 26px var(--axis-arrow-glow))}
-}
-/* No group filter any more: the heads carry their own light, and a
-   cyan bloom over the top of a gold one only greys it. */
-#axisEnds{filter:none}
-#axisEnds text{
-  font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms;
-  filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow));
-}
+#axisEnds{filter:drop-shadow(0 0 6px var(--grid-glow)) drop-shadow(0 0 14px var(--grid-glow))}
+#axisEnds text{font:700 30px var(--font);fill:var(--cream);opacity:0;transition:opacity 420ms}
 
 
 .axis-num,.reveal-num{
@@ -720,12 +712,14 @@ button{font-family:inherit}
    this is not idle — it exists only while a sentence is being said, and
    it is cleared the moment the sentence ends. */
 .pulse-line{
-  stroke:var(--grid-axis);
+  /* the same gold as the crossed lines, because it is the same claim:
+     this line, the one in the sentence */
+  stroke:var(--cross-gold);
   stroke-linecap:round;
   /* two shadows, not three — see #gridLines */
   filter:
-    drop-shadow(0 0 7px var(--grid-glow))
-    drop-shadow(0 0 22px var(--grid-glow));
+    drop-shadow(0 0 8px var(--cross-glow))
+    drop-shadow(0 0 24px rgba(255,170,20,.45));
   animation:linePulse 1150ms var(--ease-io) infinite;
 }
 @keyframes linePulse{
@@ -733,26 +727,54 @@ button{font-family:inherit}
   50%    {opacity:1;  stroke-width:5.6}
 }
 
-/* "count the spaces" hint — the distance is shown, never the number */
+/* ===================================================================
+   THE LINES THE AIRCRAFT CROSSED
+
+   This is the lesson's first move made visible: "three spaces right"
+   IS "three lines crossed", and until the learner can see the three
+   lines the sentence is just a number. So each crossed grid line is
+   lit right across the chart, in gold, one at a time in the order the
+   aircraft crossed them, and then left PULSING for as long as the
+   instruction is on screen.
+
+   WHY IT PULSES AND DOES NOT JUST SIT THERE. A line lit once and held
+   is read once and then stops being seen — it joins the graticule
+   within a second or two. These lines have to survive being looked
+   away from and back at, because the learner is counting them against
+   a spoken sentence and a control they are also being asked to set.
+   The pulse is what keeps them a live part of the instruction rather
+   than a mark left on the chart.
+
+   THE STAGGER IS THE WHOLE POINT and it is fragile, so read this
+   before adding an animation here: the entrance is delayed per line
+   (grid.js sets --d), and a second animation that also touches opacity
+   would win the cascade from frame zero and light every line at once —
+   which is precisely the "here are three lines" the count is meant to
+   replace. The pulse therefore starts AFTER that line's own entrance
+   has finished: `animation-delay:var(--d), calc(var(--d) + 520ms)`.
+   =================================================================== */
 .hint-run{animation:fadeIn 260ms both}
+/* the space just crossed, laid along the axis */
 .hint-span{
-  stroke:#FFF3C4;stroke-width:10;stroke-linecap:round;opacity:0;
-  filter:drop-shadow(0 0 7px rgba(255,243,196,.85)) drop-shadow(0 0 18px rgba(255,196,77,.5));
+  stroke:var(--cross-gold-hi);stroke-width:10;stroke-linecap:round;opacity:0;
+  filter:drop-shadow(0 0 7px var(--cross-glow)) drop-shadow(0 0 18px rgba(255,170,20,.5));
   /* one segment per space, drawn as that space is counted */
   animation:hintSpanIn 420ms var(--ease-out) forwards;
+  animation-delay:var(--d,0ms);
 }
 @keyframes hintSpanIn{from{opacity:0}to{opacity:.95}}
 /* one pip per space to count — bigger and lit, so a learner can see
    them from across a classroom. Each arrives on its own beat (the delay
    is set per pip in grid.js), then they settle into a shared pulse. */
 .hint-pip{
-  fill:#FFFFFF;stroke:rgba(14,39,64,.55);stroke-width:2.5;
-  filter:drop-shadow(0 0 6px rgba(255,243,196,.9));
+  fill:var(--cross-gold);stroke:rgba(14,39,64,.62);stroke-width:2.5;
+  filter:drop-shadow(0 0 7px var(--cross-glow));
   transform-box:fill-box;transform-origin:center;
   /* One animation only. A perpetual pulse listed after the entrance
      would win the opacity cascade and every pip would appear at once,
      which is exactly what the stagger is here to prevent. */
   animation:hintPipIn 460ms var(--ease-out) both;
+  animation-delay:var(--d,0ms);
 }
 @keyframes hintPipIn{
   0%  {opacity:0;transform:scale(.2)}
@@ -761,16 +783,25 @@ button{font-family:inherit}
 }
 
 /* the grid line reached by each step, lit right across the chart so the
-   space just counted is unmistakable */
+   space just counted is unmistakable — then held, breathing */
 .hint-line{
-  stroke:#FFF3C4;stroke-width:3.2;opacity:0;
-  filter:drop-shadow(0 0 8px rgba(255,243,196,.8));
-  animation:hintLineIn 520ms var(--ease-out) forwards;
+  stroke:var(--cross-gold);stroke-width:4.2;stroke-linecap:round;opacity:0;
+  animation:hintLineIn 520ms var(--ease-out) forwards,
+            hintLinePulse 1500ms var(--ease-io) infinite;
+  animation-delay:var(--d,0ms), calc(var(--d,0ms) + 520ms);
 }
 @keyframes hintLineIn{
-  0%  {opacity:0}
-  40% {opacity:.95}
-  100%{opacity:.5}
+  0%  {opacity:0;filter:drop-shadow(0 0 8px var(--cross-glow))}
+  40% {opacity:1;filter:drop-shadow(0 0 14px var(--cross-gold-hi))
+                        drop-shadow(0 0 28px var(--cross-glow))}
+  100%{opacity:.78;filter:drop-shadow(0 0 9px var(--cross-glow))}
+}
+@keyframes hintLinePulse{
+  0%,100%{opacity:.55;stroke-width:3.4;
+          filter:drop-shadow(0 0 7px var(--cross-glow))}
+  50%    {opacity:1;stroke-width:5.6;
+          filter:drop-shadow(0 0 15px var(--cross-gold-hi))
+                 drop-shadow(0 0 30px var(--cross-glow))}
 }
 
 /* quadrant labels + sign patterns (concept reveal only) */
@@ -2001,15 +2032,18 @@ img:not([src]){visibility:hidden}
   .tut-hi::after,.hand.show,#plane.bob,#plane.lost,.puff,
   .go.armed:not(:disabled),.ctrl.tut-hi .ctrl-label,
   .play-slot::before,.play-slot::after,
-  .axis-span-line,.axis-span-head,.axis-pip,#axisEnds path,
+  .axis-span-line,.axis-span-head,.axis-pip,
   .game-question-panel::after,.game-question-bar.gq-in,
   .rw-heat,.rw-puff,.rw-puff.big,.cine-puff,
   .cine-flash.mid,.cine-flash.go,.stage.intro-land .mtn-l,.stage.intro-land .mtn-r,
   .stage.intro-land .surf{animation:none!important}
-  /* Stopping the arrowhead pulse must not take its glow with it —
-     the light IS how it is seen. It keeps the bright half, held. */
-  #axisEnds path{filter:drop-shadow(0 0 9px var(--axis-arrow-hi))
-                        drop-shadow(0 0 22px var(--axis-arrow-glow))!important}
+  /* THE CROSSED LINES KEEP THEIR ENTRANCE. Dropping every animation
+     here would leave them at opacity 0 — they start invisible and the
+     entrance is what reveals them — so only the second animation, the
+     endless pulse, is removed. Naming one animation truncates every
+     other list in the shorthand to match, so the duration, easing,
+     fill and delay all fall back to the entrance's own values. */
+  .hint-line{animation-name:hintLineIn!important}
   .rw-puff,.cine-puff{display:none}
   .puff{display:none}
   /* THE TAKEOFF. intro.js shortens the timeline to a still

@@ -362,10 +362,17 @@ CG.Grid = (function () {
                                           x2: toX(MAX.xMax), y2: toY(at) }, nss), 'hint-line');
         pip = mk('circle', { cx: toX(0), cy: toY(at), r: 10 }, 'hint-pip');
       }
+      /* The beat is handed over as a custom property, not as
+         animationDelay. The crossed line runs TWO animations — its
+         entrance and then its held pulse — and they need different
+         delays; an inline animationDelay is one value and would set
+         both to the same beat, starting every pulse before its own
+         line had appeared. --d is the beat, and the stylesheet derives
+         the second delay from it. See .hint-line. */
       var delay = ((i - 1) * HINT_STEP) + 'ms';
-      line.style.animationDelay = delay;
-      span.style.animationDelay = delay;
-      pip.style.animationDelay = delay;
+      line.style.setProperty('--d', delay);
+      span.style.setProperty('--d', delay);
+      pip.style.setProperty('--d', delay);
       g.appendChild(line);
       g.appendChild(span);
       g.appendChild(pip);
